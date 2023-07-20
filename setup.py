@@ -19,13 +19,13 @@ with open("README.md", "r") as fh:
 
 setup(
     name="bitcoin_qrreader",
-    version="0.1.1",
+    version="0.1.2",
     author="Andreas Griffin",
     author_email="andreasgriffin@proton.me",
     description="Bitcoin qr reader",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/andreasgriffin/bitcoin_qrreader",
+    url="https://github.com/andreasgriffin/bitcoin-qrreader",
     packages=find_packages(),
     install_requires=reqs,
     classifiers=[
