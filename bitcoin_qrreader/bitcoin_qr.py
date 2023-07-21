@@ -3,6 +3,9 @@ from typing import List, Callable, Union, Optional, Tuple, Dict
 from decimal import Decimal
 import bdkpython as bdk
 import base64, json
+from urtypes.crypto import PSBT as UR_PSBT
+from urtypes.crypto import Output as US_OUTPUT
+from ur.ur_decoder import URDecoder
 
 
 def is_bitcoin_address(s):
@@ -398,12 +401,21 @@ class Data:
         descriptor = None
         try:
             descriptor = bdk.Descriptor(s, network)
+            if descriptor:
+                print("detected descriptor")
+                return Data(descriptor, DataType.Descriptor)
         except:
             pass
 
-        if descriptor:
-            print("detected descriptor")
-            return Data(descriptor, DataType.Descriptor)
+        # try if it is a dict containing a descriptor
+        try:
+            specter_dict = json.loads(s)
+            if "descriptor" in specter_dict:
+                descriptor = bdk.Descriptor(specter_dict["descriptor"], network)
+                print("detected descriptor")
+                return Data(descriptor, DataType.Descriptor)
+        except:
+            pass
 
         # try txid
         if is_valid_bitcoin_hash(s):
@@ -467,7 +479,7 @@ class Data:
                 except:
                     pass
 
-        # try specter partial descriptor
+        # try specter DIY partial descriptor
         keystore_info = None
         try:
             keystore_info = extract_keystore(s)
@@ -495,7 +507,8 @@ class Data:
                     keystore_info[key] = cobo_dict[cobo_key]
                 if key in cobo_dict:
                     keystore_info[key] = cobo_dict[key]
-            return Data(keystore_info, DataType.KeyStoreInfo)
+            if keystore_info:
+                return Data(keystore_info, DataType.KeyStoreInfo)
         except:
             pass
 
@@ -583,6 +596,51 @@ class SpecterDIYCollector(BaseCollector):
         self.total_parts = None
 
 
+class URCollector(BaseCollector):
+    def __init__(self, network) -> None:
+        super().__init__(network)
+        self.clear()
+
+    def is_psbt(self, s: str):
+        return re.search("^UR:CRYPTO-PSBT/", s, re.IGNORECASE)
+
+    def is_descriptor(self, s: str):
+        return re.search("^UR:CRYPTO-OUTPUT/", s, re.IGNORECASE)
+
+    # def is_account(self, s:str):
+    #     return re.search("^UR:CRYPTO-ACCOUNT/", s, re.IGNORECASE)
+
+    def is_correct_data_format(self, s):
+        if self.is_psbt(s):
+            return True
+        if self.is_descriptor(s):
+            return True
+        # if self.is_account(s):
+        #     return True
+
+        return False
+
+    def is_complete(self) -> bool:
+        return self.decoder.is_complete()
+
+    def get_complete_data(self) -> Data:
+        if self.decoder.result.type == "crypto-psbt":
+            qr_content = UR_PSBT.from_cbor(self.decoder.result.cbor).data
+            s = base64.b64encode(qr_content).decode("utf-8")
+        if self.decoder.result.type == "crypto-output":
+            s = US_OUTPUT.from_cbor(self.decoder.result.cbor).descriptor()
+        return Data.from_str(s, network=self.network)
+
+    def add(self, s: str):
+        self.decoder.receive_part(s)
+        print(f"{round(self.decoder.estimated_percent_complete()*100)}% complete")
+        return s
+
+    def clear(self):
+        super().clear()
+        self.decoder = URDecoder()
+
+
 class MetaDataHandler:
     "Unified class to handle animated and static qr codes"
 
@@ -590,6 +648,7 @@ class MetaDataHandler:
         self.network = network
         # SinglePassCollector must be the last one
         self.collectors: List[BaseCollector] = [
+            URCollector(self.network),
             SpecterDIYCollector(self.network),
             SinglePassCollector(self.network),
         ]

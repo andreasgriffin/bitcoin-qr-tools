@@ -3,3 +3,4 @@ bdkpython>=0.28.0
 pygame
 PySide2
 pyzbar
+urtypes @ git+https://github.com/selfcustody/urtypes.git@7fb280eab3b3563dfc57d2733b0bf5cbc0a96a6a
