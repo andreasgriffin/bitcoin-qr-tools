@@ -3,6 +3,7 @@ import pygame.camera
 from PySide2 import QtCore, QtWidgets, QtGui
 from pyzbar import pyzbar
 import time
+from PySide2.QtCore import QEvent
 
 
 class VideoWidget(QtWidgets.QWidget):
@@ -34,14 +35,16 @@ class VideoWidget(QtWidgets.QWidget):
         self.timer.timeout.connect(self.update_frame)
         self.timer.start(1000.0 / 30.0)  # 30 FPS
 
-    def close(self):
+    def closeEvent(self, event: QEvent) -> None:
         self.timer.stop()
         if self.capture:
             try:
                 self.capture.stop()
             except:
                 pass
-        super().close()
+
+        # If you call the parent's closeEvent(), it will proceed to close the widget
+        super().closeEvent(event)
 
     def get_valid_cameras(self):
         valid_cameras = []
