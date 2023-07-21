@@ -1,6 +1,7 @@
 from .qr_qui import VideoWidget
 from .bitcoin_qr import *
 from PySide2 import QtWidgets
+from typing import Dict
 
 
 class BitcoinVideoWidget(VideoWidget):
@@ -14,21 +15,22 @@ class BitcoinVideoWidget(VideoWidget):
         super().__init__(qr_data_callback=self.qr_data_callback, parent=parent)
 
         self.network = network
-        self.data = None
         self.result_callback = result_callback
         self.close_on_result = close_on_result
+        
+        self.meta_data_handler = MetaDataHandler(self.network)
+        
 
     def qr_data_callback(self, qr_data):
-        data = Data.from_str(qr_data.decode("utf-8"), network=self.network)
+        self.meta_data_handler.add(qr_data.decode("utf-8"))
+            
+        if self.meta_data_handler.is_complete():
+            if self.close_on_result:
+                self.close()
+            if self.result_callback:
+                self.result_callback(self.meta_data_handler.get_complete_data())
 
-        if not data:
-            return
-
-        self.data = data
-        if self.close_on_result:
-            self.close()
-        if self.result_callback:
-            self.result_callback(data)
+            
 
 
 
