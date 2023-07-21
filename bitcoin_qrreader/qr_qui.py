@@ -19,7 +19,7 @@ class VideoWidget(QtWidgets.QWidget):
         self.cameras = self.get_valid_cameras()
         self.combo_cameras = QtWidgets.QComboBox()
         self.combo_cameras.addItems(self.cameras)
-        self.combo_cameras.currentIndexChanged.connect(qr_data_callback)
+        self.combo_cameras.currentIndexChanged.connect(self.switch_camera)
 
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.label_image)

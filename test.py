@@ -128,3 +128,13 @@ assert (
     bytes(data.data.serialize()).hex()
     == "01000000000101324ffaac81edf89c4b318f42028116c6d19fc547884327e9fc8dce0c2e34a7650000000000fdffffff02dbad3d25000000001600140277d89eda5f5c3152595828c5239eda1cc045dc400d03000000000016001488aca5ab3813f3e09512487e30be0fa293ce2bf602473044022054634107fa26af77735d2eefa48618de2500cc0e852fd804a1816b85e58de671022010170c91c3423f324f7487456dfa0c485220bc7bc66f3e65ec90abe88731ad640121026c192a98c1fb5f84870e6833b4bc7a06f8d37f58ffa940428d3a3dca8809e4cca4020000"
 )
+
+
+# cobo
+s = """{"xfp":"7cf42c8e","xpub":"tpubDE5U4jVviWBZ9iXA7ZEpYR8FM1oce2N2Pv16mfVjr7q9WRR2DJva6co8acMLAmhm8kkMJsFMRmaHL8v6rzc81hsvgcVzc3MTSfnrtwYZMMy","path":"m\/48'\/0'\/0'\/2'"}"""
+data = Data.from_str(s, network=bdk.Network.REGTEST)
+assert data.data_type == DataType.KeyStoreInfo
+assert (
+    str(data.data)
+    == """{'fingerprint': '7cf42c8e', 'derivation_path': "m/48'/0'/0'/2'", 'xpub': 'tpubDE5U4jVviWBZ9iXA7ZEpYR8FM1oce2N2Pv16mfVjr7q9WRR2DJva6co8acMLAmhm8kkMJsFMRmaHL8v6rzc81hsvgcVzc3MTSfnrtwYZMMy'}"""
+)

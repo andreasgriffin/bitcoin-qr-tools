@@ -2,7 +2,7 @@ import re, urllib
 from typing import List, Callable, Union, Optional, Tuple, Dict
 from decimal import Decimal
 import bdkpython as bdk
-import base64
+import base64, json
 
 
 def is_bitcoin_address(s):
@@ -331,13 +331,7 @@ def base_decode(v, *, base: int):
     return num.to_bytes(origlen - newlen + (num.bit_length() + 7) // 8, "big")
 
 
-
-
-    
 import enum
-
-
-
 
 
 class DataType(enum.Enum):
@@ -489,58 +483,80 @@ class Data:
                 )
             return Data(keystore_info, DataType.KeyStoreInfo)
 
-        raise Exception(f"{s} Could not be decoded")
+        # tries to use json to decode and recognize keystore infos
+        # used by cobo vault
+        # s = """{"xfp":"7cf42c8e","xpub":"tpubDE5U4jVviWBZ9iXA7ZEpYR8FM1oce2N2Pv16mfVjr7q9WRR2DJva6co8acMLAmhm8kkMJsFMRmaHL8v6rzc81hsvgcVzc3MTSfnrtwYZMMy","path":"m\/48'\/0'\/0'\/2'"}"""
+        try:
+            cobo_dict = json.loads(s)
+            keystore_info = {}
+            key_map = {"fingerprint": "xfp", "derivation_path": "path", "xpub": "xpub"}
+            for key, cobo_key in key_map.items():
+                if cobo_key in cobo_dict:
+                    keystore_info[key] = cobo_dict[cobo_key]
+                if key in cobo_dict:
+                    keystore_info[key] = cobo_dict[key]
+            return Data(keystore_info, DataType.KeyStoreInfo)
+        except:
+            pass
 
+        raise Exception(f"{s} Could not be decoded")
 
 
 class BaseCollector:
     def __init__(self, network) -> None:
-        self.data:Data = None
+        self.data: Data = None
         self.network = network
+
     def is_correct_data_format(self, s):
         pass
+
     def is_complete(self) -> bool:
         pass
+
     def get_complete_data(self) -> Data:
         pass
-    def add(self, s:str):
+
+    def add(self, s: str):
         pass
+
     def clear(self):
         self.data = None
 
 
-class SinglePassCollector(BaseCollector): 
+class SinglePassCollector(BaseCollector):
     def is_correct_data_format(self, s):
         return True
+
     def is_complete(self) -> bool:
         return True
+
     def get_complete_data(self) -> Data:
         return self.data
-    def add(self, s:str):
+
+    def add(self, s: str):
         self.data = Data.from_str(s, network=self.network)
         return self.data
 
-    
+
 class SpecterDIYCollector(BaseCollector):
     def __init__(self, network) -> None:
         super().__init__(network)
         self.clear()
-        
+
     def is_correct_data_format(self, s):
         return self.extract_specter_diy_qr_part(s) is not None
-            
+
     def is_complete(self) -> bool:
         return len(self.parts) == self.total_parts
-    
+
     def get_complete_data(self) -> Data:
         if not self.is_complete():
             return None
-    
-        total_s =  '' 
-        for i in range(1, self.total_parts+1):
-            total_s +=  self.parts[i] 
-        return Data.from_str(total_s, network=self.network)
 
+        total_s = ""
+        for i in range(1, self.total_parts + 1):
+            total_s += self.parts[i]
+        return Data.from_str(total_s, network=self.network)
 
     def extract_specter_diy_qr_part(self, s) -> Tuple[int, int, str]:
         "pMofM something  ->  (M,N,something)"
@@ -550,48 +566,48 @@ class SpecterDIYCollector(BaseCollector):
             return int(match.group(1)), int(match.group(2)), match.group(3)
         else:
             return None
-        
-    def add(self, s:str):
-        m,n, data= self.extract_specter_diy_qr_part(s)
+
+    def add(self, s: str):
+        m, n, data = self.extract_specter_diy_qr_part(s)
         if self.total_parts is None:
             self.total_parts = n
         else:
             assert n == self.total_parts
-        
+
         self.parts[m] = data
         return data
-        
+
     def clear(self):
         super().clear()
-        self.parts:Dict[int, str] = {}
-        self.total_parts = None        
+        self.parts: Dict[int, str] = {}
+        self.total_parts = None
 
 
 class MetaDataHandler:
     "Unified class to handle animated and static qr codes"
+
     def __init__(self, network) -> None:
         self.network = network
         # SinglePassCollector must be the last one
-        self.collectors:List[BaseCollector] = [SpecterDIYCollector(self.network), SinglePassCollector(self.network)]
+        self.collectors: List[BaseCollector] = [
+            SpecterDIYCollector(self.network),
+            SinglePassCollector(self.network),
+        ]
         self.last_used_collector = None
-    
-    def get_collector(self, s:str):
+
+    def get_collector(self, s: str):
         for collector in self.collectors:
             if collector.is_correct_data_format(s):
                 return collector
-        
-    
-    def add(self, s:str):
-        self.last_used_collector =  self.get_collector(s)        
+
+    def add(self, s: str):
+        self.last_used_collector = self.get_collector(s)
         return self.last_used_collector.add(s)
-        
 
     def is_complete(self) -> bool:
         return self.last_used_collector.is_complete()
-    
+
     def get_complete_data(self) -> Data:
         data = self.last_used_collector.get_complete_data()
         self.last_used_collector.clear()
         return data
-        
-
