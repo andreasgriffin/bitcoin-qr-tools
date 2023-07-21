@@ -6,6 +6,7 @@ import base64, json
 from urtypes.crypto import PSBT as UR_PSBT
 from urtypes.crypto import Output as US_OUTPUT
 from ur.ur_decoder import URDecoder
+from urtypes.bytes import Bytes as UR_BYTES
 
 
 def is_bitcoin_address(s):
@@ -607,16 +608,19 @@ class URCollector(BaseCollector):
     def is_descriptor(self, s: str):
         return re.search("^UR:CRYPTO-OUTPUT/", s, re.IGNORECASE)
 
-    # def is_account(self, s:str):
-    #     return re.search("^UR:CRYPTO-ACCOUNT/", s, re.IGNORECASE)
+    def is_descriptor(self, s: str):
+        return re.search("^UR:CRYPTO-OUTPUT/", s, re.IGNORECASE)
+
+    def is_bytes(self, s: str):
+        return re.search("^UR:BYTES/", s, re.IGNORECASE)
 
     def is_correct_data_format(self, s):
         if self.is_psbt(s):
             return True
         if self.is_descriptor(s):
             return True
-        # if self.is_account(s):
-        #     return True
+        if self.is_bytes(s):
+            return True
 
         return False
 
@@ -629,6 +633,10 @@ class URCollector(BaseCollector):
             s = base64.b64encode(qr_content).decode("utf-8")
         if self.decoder.result.type == "crypto-output":
             s = US_OUTPUT.from_cbor(self.decoder.result.cbor).descriptor()
+        if self.decoder.result.type == "bytes":
+            raw = UR_BYTES.from_cbor(self.decoder.result.cbor).data
+            s = raw.hex()
+
         return Data.from_str(s, network=self.network)
 
     def add(self, s: str):

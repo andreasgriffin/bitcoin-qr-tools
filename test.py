@@ -138,3 +138,38 @@ assert (
     str(data.data)
     == """{'fingerprint': '7cf42c8e', 'derivation_path': "m/48'/0'/0'/2'", 'xpub': 'tpubDE5U4jVviWBZ9iXA7ZEpYR8FM1oce2N2Pv16mfVjr7q9WRR2DJva6co8acMLAmhm8kkMJsFMRmaHL8v6rzc81hsvgcVzc3MTSfnrtwYZMMy'}"""
 )
+
+
+# psbt , splitted according to specter
+def split_string_by_length(input_string, length):
+    return [input_string[i : i + length] for i in range(0, len(input_string), length)]
+
+
+s = "cHNidP8BAHEBAAAAAXgQzjk+DTWQTPUtRMbYiheC0jfbipvw+jQ5lidmyABjAAAAAAD9////AgDh9QUAAAAAFgAUbBuOQOlcnz8vpruh2Kb3CFr4vlhkEQ2PAAAAABYAFN1n2hvBWYzshD42xwQzy9XYoji3BAEAAAABAKoCAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////BQKYAAEB/////wIA+QKVAAAAABYAFLlHwN6VXNLM381bMxmNJlaDTQzVAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkBIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBHwD5ApUAAAAAFgAUuUfA3pVc0szfzVszGY0mVoNNDNUiBgISCnRxeOxzC0MgK01AmiIRLrgS1AyIqKeBkdwL+nt/6RikLG3TVAAAgAEAAIAAAACAAAAAAAAAAAAAACICAlQcwExiTUk9f7olLkwPlQpiregRHc9jXXFJBlMoucgNGKQsbdNUAACAAQAAgAAAAIAAAAAAAQAAAAA="
+meta_data_handler = MetaDataHandler(bdk.Network.REGTEST)
+splitted = split_string_by_length(s, 10)
+for part in [f"p{i+1}of{len(splitted)} {s}" for i, s in enumerate(splitted)]:
+    meta_data_handler.add(part)
+
+assert meta_data_handler.is_complete()
+data = meta_data_handler.get_complete_data()
+assert data.data_type == DataType.PSBT
+assert data.data.serialize() == s
+
+
+# raw transaction splitted with UR  (like sparrow)
+parts = [
+    "UR:BYTES/162-3/LPCSOEAXCSVTCYHKMSLGOLHDGRVOVLHLGRHDCEFLTBCXCFMUAEAEAEAECMAEBBBGSOVTSOGTTBSTCEZESTRFZMCMZEWDBKBSRORFHLAOFLDYFYAOCXHHLOTYTSVLAHNECMSWYLGTWMRHKPGLZERDLDYTDRCNKGKIASTAJKDMHKROOSTBBAOLCXKP",
+    "UR:BYTES/164-3/LPCSOXAXCSVTCYHKMSLGOLHDGRRDFSHHGRHDCEFLTSCLJTJZJEGTVEHHRHISMNLTZMNLMEPRRYHFDYUTFWISDEFZSSVLPFGLJKRPJSEYPRBGFYAOCXHHLODTDECEZSNTRPAYCKGSWMRHKPGLVSRDNTBDAAISIOWSDNWFGRNSURFEJYFDBSCMFHVA",
+    "UR:BYTES/165-3/LPCSONAXCSVTCYHKMSLGOLHDGRFNVYKIIOROWFJYHHTSIODMLKBBPLLOVYVSDAAADTHTWYVWGSDTIETSDESFDMWDJKJKONASRHNTHELFINDLNNATMTKTMSTESGTBRHGLFHFTYATTCSVSASDKASASEYYKSNGLBTRDTSURZEDMHKROOSTBETOLNBMD",
+]
+meta_data_handler = MetaDataHandler(bdk.Network.REGTEST)
+for part in parts:
+    meta_data_handler.add(part)
+assert meta_data_handler.is_complete()
+data = meta_data_handler.get_complete_data()
+assert data.data_type == DataType.Tx
+assert (
+    serialized_to_hex(data.data.serialize())
+    == "0100000000010177ff6b4de45caf689a95367958ff6b912c2385d4d7563a09ba41cb0a2c30f5220000000000fdffffff02a0cee90100000000160014f22e4b1c92222a38b286fdd39ee2e35d4b581c47d62019930000000016001412c9e0c94dd6c71cfec7bcff16feea0a0fb8bc5d0247304402205c88d4d7e3059f16c6f74debb9754efeba89f92a237b7d09d9732e59b8a7d6de02202ce0ef338af77ebd8c14ae88f7e83116e0ba27a89aee7829ef70d1fc8d99af06012102802e1fda05b62b1f071d35bcd129fc0f9cf3517c6af7b3bb0ce76d76c7de068d00000000"
+)

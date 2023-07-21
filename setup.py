@@ -1,5 +1,4 @@
-from setuptools import setup,  find_namespace_packages, find_packages
-
+from setuptools import setup, find_namespace_packages, find_packages
 
 
 with open("requirements.txt") as f:
@@ -19,7 +18,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="bitcoin_qrreader",
-    version="0.1.2",
+    version="0.2.0",
     author="Andreas Griffin",
     author_email="andreasgriffin@proton.me",
     description="Bitcoin qr reader",

@@ -8,8 +8,9 @@
   * Descriptor
   * Partial descriptors (Specter DIY) ( finger print , derivation, xpub)
   * TxId
+  * Animated QR Codes ([UR](https://github.com/BlockchainCommons/Research/blob/master/papers/bcr-2020-005-ur.md)) (Transactions and Descriptors)
+  * Animated QR Codes (Specter)
 * **blazingly fast** recognition
-* bdkpython as only bitcoin dependency
 * SLIP132 -> to BIP32 conversion
 
 ### Demo
