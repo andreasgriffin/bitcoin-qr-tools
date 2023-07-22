@@ -535,13 +535,16 @@ class BaseCollector:
     def clear(self):
         self.data = None
 
+    def estimated_percent_complete(self):
+        pass
+
 
 class SinglePassCollector(BaseCollector):
     def is_correct_data_format(self, s):
         return True
 
     def is_complete(self) -> bool:
-        return True
+        return bool(self.data)
 
     def get_complete_data(self) -> Data:
         return self.data
@@ -549,6 +552,9 @@ class SinglePassCollector(BaseCollector):
     def add(self, s: str):
         self.data = Data.from_str(s, network=self.network)
         return self.data
+
+    def estimated_percent_complete(self):
+        return float(bool(self.data))
 
 
 class SpecterDIYCollector(BaseCollector):
@@ -582,10 +588,12 @@ class SpecterDIYCollector(BaseCollector):
 
     def add(self, s: str):
         m, n, data = self.extract_specter_diy_qr_part(s)
+        if (self.total_parts is not None) and n != self.total_parts:
+            # if n != self.total_parts then, it appears we switched to a different qrcode
+            self.clear()
+
         if self.total_parts is None:
             self.total_parts = n
-        else:
-            assert n == self.total_parts
 
         self.parts[m] = data
         return data
@@ -594,6 +602,11 @@ class SpecterDIYCollector(BaseCollector):
         super().clear()
         self.parts: Dict[int, str] = {}
         self.total_parts = None
+
+    def estimated_percent_complete(self):
+        if not self.total_parts:
+            return 0
+        return min(len(self.parts) / max(self.total_parts, 1), 1)
 
 
 class URCollector(BaseCollector):
@@ -641,11 +654,28 @@ class URCollector(BaseCollector):
     def add(self, s: str):
         self.decoder.receive_part(s)
         print(f"{round(self.decoder.estimated_percent_complete()*100)}% complete")
+
+        # if the decoder is stuck for some reason. reset it
+        # this part must be done AFTER receive_part(s)
+        if self.received_parts > self.decoder.expected_part_count() * 2:
+            print(
+                f"{self.received_parts}/{self.decoder.expected_part_count()} parts received, but incomplete. Resetting"
+            )
+            self.clear()
+
+        if self.last_received_part != s:
+            self.received_parts += 1
+            self.last_received_part = s
         return s
 
     def clear(self):
         super().clear()
         self.decoder = URDecoder()
+        self.received_parts = 0
+        self.last_received_part = None
+
+    def estimated_percent_complete(self):
+        return self.decoder.estimated_percent_complete()
 
 
 class MetaDataHandler:
@@ -677,3 +707,8 @@ class MetaDataHandler:
         data = self.last_used_collector.get_complete_data()
         self.last_used_collector.clear()
         return data
+
+    def estimated_percent_complete(self):
+        if not self.last_used_collector:
+            return 0
+        return self.last_used_collector.estimated_percent_complete()

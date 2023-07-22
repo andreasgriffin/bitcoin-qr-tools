@@ -69,6 +69,13 @@ class VideoWidget(QtWidgets.QWidget):
         self.capture.start()
         time.sleep(0.1)  # Add a short delay
 
+    def on_draw_surface(self, surface, barcode):
+        x, y, w, h = barcode.rect
+        y_new = x
+        x_new = y
+        rect = pygame.Rect(x_new, y_new, h, w)  # swapped width and height as well
+        pygame.draw.rect(surface, (0, 255, 0), rect, 2)
+
     def update_frame(self):
         try:
             surface = self.capture.get_image()
@@ -76,13 +83,7 @@ class VideoWidget(QtWidgets.QWidget):
             barcodes = pyzbar.decode(pygame.surfarray.array3d(surface))
 
             for barcode in barcodes:
-                x, y, w, h = barcode.rect
-                y_new = x
-                x_new = y
-                rect = pygame.Rect(
-                    x_new, y_new, h, w
-                )  # swapped width and height as well
-                pygame.draw.rect(surface, (0, 255, 0), rect, 2)
+                self.on_draw_surface(surface, barcode)
                 # only show the 1. barcode
                 break
 
