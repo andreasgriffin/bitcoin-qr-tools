@@ -370,13 +370,12 @@ class Data:
         if self.data_type == DataType.PSBT:
             return str(self.data.serialize())
         if self.data_type == DataType.Tx:
-            return str(self.data.serialize())
+            return str(serialized_to_hex(self.data.serialize()))
+
+        return str(self.data)
 
     def __str__(self) -> str:
-        if self.data_type == DataType.Descriptor:
-            return f"{self.data_type.name}: {self.data_as_string()}"
-
-        return f"{self.data_type.name}: {self.data}"
+        return f"{self.data_type.name}: {self.data_as_string()}"
 
     @classmethod
     def from_str(cls, s, network: bdk.Network):
