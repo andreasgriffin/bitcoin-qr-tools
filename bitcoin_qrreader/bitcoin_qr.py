@@ -459,6 +459,12 @@ class Data:
                     return Data(bdk.PartiallySignedTransaction(s), DataType.PSBT)
             except:
                 pass
+        # check hex
+        elif s[:5] == b"psbt\xff":
+            try:
+                return Data(bdk.PartiallySignedTransaction(s), DataType.PSBT)
+            except:
+                pass
         else:
             # try base43 encoding (electrum uses that)
             for base in [43, 58]:
