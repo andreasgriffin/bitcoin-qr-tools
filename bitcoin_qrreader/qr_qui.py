@@ -111,12 +111,14 @@ class DemoVideoWidget(VideoWidget):
     def __init__(self, parent=None):
         super().__init__(qr_data_callback=self.show_qr, parent=parent)
 
-        self.label_qr = QtWidgets.QLabel()
+        self.label_qr = QtWidgets.QTextEdit()
 
         self.layout().addWidget(self.label_qr)
 
     def show_qr(self, qr_data):
-        self.label_qr.setText(qr_data.decode("utf-8"))
+        s = qr_data.decode("utf-8")
+        print(s)
+        self.label_qr.setText(s)
 
 
 if __name__ == "__main__":

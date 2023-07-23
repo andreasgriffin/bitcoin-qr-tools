@@ -14,12 +14,23 @@ class BitcoinVideoWidget(VideoWidget):
         network=bdk.Network.REGTEST,
     ):
         super().__init__(qr_data_callback=self.qr_data_callback, parent=parent)
+        self.network: bdk.Network = network
 
-        self.network = network
+        self.combo_network = QtWidgets.QComboBox(self)
+        self.combo_network.addItems([n.name for n in bdk.Network])
+        self.combo_network.setCurrentText(self.network.name)
+        self.layout().addWidget(self.combo_network)
+
         self.result_callback = result_callback
         self.close_on_result = close_on_result
 
         self.meta_data_handler = MetaDataHandler(self.network)
+        self.switch_network([n.name for n in bdk.Network].index(self.network.name))
+        self.combo_network.currentIndexChanged.connect(self.switch_network)
+
+    def switch_network(self, idx):
+        networks = [n for n in bdk.Network]
+        self.meta_data_handler.set_network(networks[idx])
 
     def qr_data_callback(self, qr_data):
         self.meta_data_handler.add(qr_data.decode("utf-8"))
