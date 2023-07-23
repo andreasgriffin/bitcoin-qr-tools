@@ -697,6 +697,11 @@ class MetaDataHandler:
         ]
         self.last_used_collector = None
 
+    def set_network(self, network: bdk.Network):
+        self.network = network
+        for collector in self.collectors:
+            collector.network = network
+
     def get_collector(self, s: str):
         for collector in self.collectors:
             if collector.is_correct_data_format(s):
