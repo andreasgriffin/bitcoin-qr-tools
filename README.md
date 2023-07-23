@@ -11,7 +11,7 @@
   * Animated QR Codes ([UR](https://github.com/BlockchainCommons/Research/blob/master/papers/bcr-2020-005-ur.md)) (Transactions and Descriptors)
   * Animated QR Codes (Specter)
 * **blazingly fast** recognition
-* SLIP132 -> to BIP32 conversion
+* SLIP132 --> BIP32 conversion (output descriptors replace SLIP132)
 
 ### Demo
 
@@ -44,3 +44,12 @@ pip install dist/bitcoin_qrreader*.whl
 
 
 
+
+
+# Licences
+
+The *bitcoin_qrreader*  folder is under the [GPL3](LICENSE).
+
+The folder *ur* is from https://github.com/Foundation-Devices/foundation-ur-py  and under   [BSD-2-Clause Plus Patent License](ur/LICENSE).
+
+The folder *urtypes* from https://github.com/selfcustody/urtypes  is under  [MIT](urtypes/LICENSE.md).
