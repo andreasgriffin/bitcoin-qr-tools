@@ -157,6 +157,23 @@ assert data.data_type == DataType.PSBT
 assert data.data.serialize() == s
 
 
+# descriptor export from sparrow
+# the strange thing is that sparrow shows
+# "wpkh([7d315cd9/84h/1h/0h]tpubDCUCSorYswSAurXv7ZcwfkPR8ms2fmxkEW7LFHuLs85wsCngaNAEVFkAvZSabsnz2VH6NvH4uFd4tZ8J3PSaVaxchE8QCd9wxak5Sugnd9p/<0;1>/*)#3gahv2xk"
+# but the qr code contains "wpkh([7d315cd9/84'/1'/0']tpubDCUCSorYswSAurXv7ZcwfkPR8ms2fmxkEW7LFHuLs85wsCngaNAEVFkAvZSabsnz2VH6NvH4uFd4tZ8J3PSaVaxchE8QCd9wxak5Sugnd9p)#ca2wu8zu"
+s = "UR:CRYPTO-OUTPUT/TAADMWTAADDLOLAOWKAXHDCLAOVDGSDWLDGMAOIEIDECDPKSPABKRSLUSPWPVAPSFZIEPSMUJLBYETIEFZCFVYDYRTAAHDCXGLBKNBPSPETIJNLYATMUSPNTZCHEFXYTFRFGEHVWDIMEOSINLPHTUTKTWPMERPHGAHTAADEHOEADAEAOADAMTAADDYOTADLNCSGHYKADYKAEYKAOCYKIEHHHTAAXAXAYCYFNLRPAGLLGGSMTFR"
+meta_data_handler = MetaDataHandler(bdk.Network.REGTEST)
+meta_data_handler.add(s)
+assert meta_data_handler.is_complete()
+data = meta_data_handler.get_complete_data()
+assert isinstance(data.data, bdk.Descriptor)
+print(s), print(data.data.as_string_private())
+assert (
+    data.data.as_string_private()
+    == "wpkh([7d315cd9/84'/1'/0']tpubDCUCSorYswSAurXv7ZcwfkPR8ms2fmxkEW7LFHuLs85wsCngaNAEVFkAvZSabsnz2VH6NvH4uFd4tZ8J3PSaVaxchE8QCd9wxak5Sugnd9p)#ca2wu8zu"
+)
+
+
 # raw transaction splitted with UR  (like sparrow)
 parts = [
     "UR:BYTES/162-3/LPCSOEAXCSVTCYHKMSLGOLHDGRVOVLHLGRHDCEFLTBCXCFMUAEAEAEAECMAEBBBGSOVTSOGTTBSTCEZESTRFZMCMZEWDBKBSRORFHLAOFLDYFYAOCXHHLOTYTSVLAHNECMSWYLGTWMRHKPGLZERDLDYTDRCNKGKIASTAJKDMHKROOSTBBAOLCXKP",

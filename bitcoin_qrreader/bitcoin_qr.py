@@ -7,6 +7,12 @@ from urtypes.crypto import PSBT as UR_PSBT
 from urtypes.crypto import Output as US_OUTPUT
 from ur.ur_decoder import URDecoder
 from urtypes.bytes import Bytes as UR_BYTES
+import hashlib
+import base58
+import logging
+
+BITCOIN_BIP21_URI_SCHEME = "bitcoin"
+logger = logging.getLogger(__name__)
 
 
 def is_bitcoin_address(s):
@@ -19,20 +25,12 @@ def is_bitcoin_address(s):
         return False
 
 
-BITCOIN_BIP21_URI_SCHEME = "bitcoin"
-LIGHTNING_URI_SCHEME = "lightning"
-
-
 class InvalidBitcoinURI(Exception):
     pass
 
 
 def serialized_to_hex(serialized):
     return bytes(serialized).hex()
-
-
-def hex_to_serialized(hex_string):
-    return bytes.fromhex(hex_string)
 
 
 def decode_bip21_uri(uri: str) -> dict:
@@ -107,40 +105,6 @@ def decode_bip21_uri(uri: str) -> dict:
     return out
 
 
-def create_bip21_uri(
-    addr,
-    amount_sat: Optional[int],
-    message: Optional[str],
-    *,
-    extra_query_params: Optional[dict] = None,
-) -> str:
-    from . import bitcoin
-
-    if not bitcoin.is_address(addr):
-        return ""
-    if extra_query_params is None:
-        extra_query_params = {}
-    query = []
-    if amount_sat:
-        query.append(f"amount={amount_sat}")
-    if message:
-        query.append(f"message={urllib.parse.quote(message)}")
-    for k, v in extra_query_params.items():
-        if not isinstance(k, str) or k != urllib.parse.quote(k):
-            raise Exception(f"illegal key for URI: {repr(k)}")
-        v = urllib.parse.quote(v)
-        query.append(f"{k}={v}")
-    p = urllib.parse.ParseResult(
-        scheme=BITCOIN_BIP21_URI_SCHEME,
-        netloc="",
-        path=addr,
-        params="",
-        query="&".join(query),
-        fragment="",
-    )
-    return str(urllib.parse.urlunparse(p))
-
-
 def is_xpub(s):
     if not s.isalnum():
         return False
@@ -192,10 +156,28 @@ def is_valid_wallet_fingerprint(fingerprint):
         return False
 
 
+###############  here is the simplified electrum base43 code
+def base43_decode(v: str):
+    __b43chars = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$*+-./:"
+    assert len(__b43chars) == 43
+    __b43chars_inv = {v: k for k, v in enumerate(__b43chars)}
+
+    base = 43
+    num = 0
+
+    # Remove leading zeros and adjust length
+    v = v.lstrip("0")
+
+    # Convert each character to a number using the inverse character map
+    for char in v:
+        num = num * base + __b43chars_inv[ord(char)]
+
+    # Convert the number to bytes
+    return num.to_bytes((num.bit_length() + 7) // 8, "big")
+
+
 ################ here is the slip132 part
 ### see https://github.com/satoshilabs/slips/blob/master/slip-0132.md
-import hashlib
-import base58
 
 
 def get_version_bytes(slip132_key):
@@ -268,71 +250,8 @@ def convert_slip132_to_bip32(slip132_key):
     return bip32_key
 
 
-# slip132_key = 'vpub5ZfBcsqfiq4GvTyyYpJW13W9KyZTT1TXNd4bvVk8TZ5ShYh2Bjfm5PyVhcSoLwAr23iRUvYtpza8wmCKPYu8ECKyZPAfwDaFniMjpzACeqJ'
-# bip32_key = convert_slip132_to_bip32(slip132_key)
-
-# print(bip32_key)
-
-
 def is_slip132(key):
     return get_version_bytes(key) in version_bytes_map
-
-
-###############  here is the electrum base43 code
-def inv_dict(d):
-    return {v: k for k, v in d.items()}
-
-
-__b58chars = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-assert len(__b58chars) == 58
-__b58chars_inv = inv_dict(dict(enumerate(__b58chars)))
-
-__b43chars = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$*+-./:"
-assert len(__b43chars) == 43
-__b43chars_inv = inv_dict(dict(enumerate(__b43chars)))
-
-
-def to_bytes(something, encoding="utf8") -> bytes:
-    """
-    cast string to bytes() like object, but for python2 support it's bytearray copy
-    """
-    if isinstance(something, bytes):
-        return something
-    if isinstance(something, str):
-        return something.encode(encoding)
-    elif isinstance(something, bytearray):
-        return bytes(something)
-    else:
-        raise TypeError("Not a string or bytes like object")
-
-
-def base_decode(v, *, base: int):
-    """decode v into a string of len bytes.
-
-    based on the work of David Keijser in https://github.com/keis/base58
-    """
-    # assert_bytes(v)
-    v = to_bytes(v, "ascii")
-    if base not in (58, 43):
-        raise ValueError("not supported base: {}".format(base))
-    chars = __b58chars
-    chars_inv = __b58chars_inv
-    if base == 43:
-        chars = __b43chars
-        chars_inv = __b43chars_inv
-
-    origlen = len(v)
-    v = v.lstrip(chars[0:1])
-    newlen = len(v)
-
-    num = 0
-    try:
-        for char in v:
-            num = num * base + chars_inv[char]
-    except KeyError:
-        raise Exception("Forbidden character {} for base {}".format(char, base))
-
-    return num.to_bytes(origlen - newlen + (num.bit_length() + 7) // 8, "big")
 
 
 import enum
@@ -378,114 +297,73 @@ class Data:
         return f"{self.data_type.name}: {self.data_as_string()}"
 
     @classmethod
-    def from_str(cls, s, network: bdk.Network):
-        s = s.strip()
-
-        # try is it is an bip21 uri
-        # this also handles addresses without a prefix
-        decoded_bip21 = None
+    def _try_decode_bip21(cls, s):
         try:
-            decoded_bip21 = decode_bip21_uri(s)
-        except:
-            pass
-        if decoded_bip21:
-            return Data(decoded_bip21, DataType.Bip21)
+            return decode_bip21_uri(s)
+        except Exception:
+            return None
 
-        # try xpub
-        if is_xpub(s):
-            if is_slip132(s):
-                return Data(convert_slip132_to_bip32(s), DataType.Xpub)
-            return Data(s, DataType.Xpub)
-
-        # try descriptor
-        descriptor = None
+    @classmethod
+    def _try_get_descriptor(cls, s, network):
         try:
             descriptor = bdk.Descriptor(s, network)
             if descriptor:
-                print("detected descriptor")
-                return Data(descriptor, DataType.Descriptor)
-        except:
+                logger.debug("detected descriptor")
+                return descriptor
+        except Exception:
             pass
 
-        # try if it is a dict containing a descriptor
         try:
             specter_dict = json.loads(s)
             if "descriptor" in specter_dict:
                 descriptor = bdk.Descriptor(specter_dict["descriptor"], network)
-                print("detected descriptor")
-                return Data(descriptor, DataType.Descriptor)
-        except:
+                logger.debug("detected descriptor")
+                return descriptor
+        except Exception:
             pass
 
-        # try txid
-        if is_valid_bitcoin_hash(s):
-            return Data(s, DataType.Txid)
+        return None
 
-        # try txid
-        if is_valid_wallet_fingerprint(s):
-            return Data(s, DataType.Fingerprint)
+    @classmethod
+    def _decoding_strategies(cls):
+        return [
+            lambda x: base64.b64decode(x),  # base64 decoding
+            lambda x: bytes.fromhex(x),  # hex decoding
+            lambda x: base43_decode(x),  # base43 decoding
+            lambda x: base58.b58decode(x),
+        ]
 
-        # Regular expression for a serialized transaction (hex string)
-        serialized_transaction_pattern = re.compile("^[a-fA-F0-9]*$")
+    @classmethod
+    def _try_decode_psbt(cls, s):
+        psbt_magic_bytes = b"psbt\xff"
 
-        # Check if the input string matches the pattern for a serialized transaction
-        if serialized_transaction_pattern.fullmatch(s):
-            # Check if it's a txid
-            if is_valid_bitcoin_hash(s):
-                return Data(s, DataType.Txid)
-            # Check if it's a PSBT
-            elif s.lower().startswith("70736274ff"):
-                try:
-                    base64string = base64.b64encode(bytes.fromhex(s)).decode("utf-8")
-                    return Data(
-                        bdk.PartiallySignedTransaction(base64string), DataType.PSBT
+        # Try each decoding strategy in the loop
+        for decode in cls._decoding_strategies():
+            try:
+                decoded = decode(s)
+                if decoded[:5] == psbt_magic_bytes:
+                    return bdk.PartiallySignedTransaction(
+                        base64.b64encode(decoded).decode()
                     )
-                except:
-                    pass
-            # Check if it's a serialized transaction
-            elif len(s) > 40:
-                try:
-                    return Data(bdk.Transaction(hex_to_serialized(s)), DataType.Tx)
-                except:
-                    pass
+            except Exception:
+                continue  # If one strategy fails, try the next
 
-        # Check for base64 PSBT
-        elif s.startswith("cHNidP"):
+        return None
+
+    @classmethod
+    def _try_decode_serialized_transaction(cls, s):
+        # Try each decoding strategy in the loop
+        for decode in cls._decoding_strategies():
             try:
-                # Attempt to decode the base64 string
-                decoded = base64.b64decode(s)
-                # Check if decoded string starts with the magic bytes for PSBT
-                if decoded[:5] == b"psbt\xff":
-                    return Data(bdk.PartiallySignedTransaction(s), DataType.PSBT)
-            except:
-                pass
-        # check hex
-        elif s[:5] == b"psbt\xff":
-            try:
-                return Data(bdk.PartiallySignedTransaction(s), DataType.PSBT)
-            except:
-                pass
-        else:
-            # try base43 encoding (electrum uses that)
-            for base in [43, 58]:
-                try:
-                    # Attempt to decode
-                    tx_bytes = base_decode(s.encode(), base=base)
-                    # Check if decoded string starts with the magic bytes for PSBT
-                    if tx_bytes[:5] == b"psbt\xff":
-                        return Data(
-                            bdk.PartiallySignedTransaction(
-                                base64.b64encode(tx_bytes).decode()
-                            ),
-                            DataType.PSBT,
-                        )
+                decoded = decode(s)
+                return bdk.Transaction(decoded)
+            except Exception:
+                continue  # If one strategy fails, try the next
 
-                    # Check if decoded string starts with the magic bytes for PSBT
-                    return Data(bdk.Transaction(tx_bytes), DataType.Tx)
-                except:
-                    pass
+        return None
 
-        # try specter DIY partial descriptor
+    @classmethod
+    def _try_extract_keystore(cls, s, network):
         keystore_info = None
         try:
             keystore_info = extract_keystore(s)
@@ -493,17 +371,13 @@ class Data:
             pass
 
         if keystore_info:
-            print("detected keystore_info")
-
+            logger.debug("detected keystore_info")
             if is_slip132(keystore_info.get("xpub")):
                 keystore_info["xpub"] = convert_slip132_to_bip32(
                     keystore_info.get("xpub")
                 )
-            return Data(keystore_info, DataType.KeyStoreInfo)
+            return keystore_info
 
-        # tries to use json to decode and recognize keystore infos
-        # used by cobo vault
-        # s = """{"xfp":"7cf42c8e","xpub":"tpubDE5U4jVviWBZ9iXA7ZEpYR8FM1oce2N2Pv16mfVjr7q9WRR2DJva6co8acMLAmhm8kkMJsFMRmaHL8v6rzc81hsvgcVzc3MTSfnrtwYZMMy","path":"m\/48'\/0'\/0'\/2'"}"""
         try:
             cobo_dict = json.loads(s)
             keystore_info = {}
@@ -514,9 +388,42 @@ class Data:
                 if key in cobo_dict:
                     keystore_info[key] = cobo_dict[key]
             if keystore_info:
-                return Data(keystore_info, DataType.KeyStoreInfo)
-        except:
+                return keystore_info
+        except Exception:
             pass
+
+        return None
+
+    @classmethod
+    def from_str(cls, s, network):
+        s = s.strip()
+        data = None
+
+        # Sequence of checks to identify the type of data in `s`
+        if decoded_bip21 := cls._try_decode_bip21(s):
+            return Data(decoded_bip21, DataType.Bip21)
+
+        if is_xpub(s):
+            data = convert_slip132_to_bip32(s) if is_slip132(s) else s
+            return Data(data, DataType.Xpub)
+
+        if descriptor := cls._try_get_descriptor(s, network):
+            return Data(descriptor, DataType.Descriptor)
+
+        if is_valid_bitcoin_hash(s):
+            return Data(s, DataType.Txid)
+
+        if is_valid_wallet_fingerprint(s):
+            return Data(s, DataType.Fingerprint)
+
+        if psbt := cls._try_decode_psbt(s):
+            return Data(psbt, DataType.PSBT)
+
+        if tx := cls._try_decode_serialized_transaction(s):
+            return Data(tx, DataType.Tx)
+
+        if keystore_info := cls._try_extract_keystore(s, network):
+            return Data(keystore_info, DataType.KeyStoreInfo)
 
         raise Exception(f"{s} Could not be decoded")
 
@@ -659,12 +566,14 @@ class URCollector(BaseCollector):
 
     def add(self, s: str):
         self.decoder.receive_part(s)
-        print(f"{round(self.decoder.estimated_percent_complete()*100)}% complete")
+        logger.debug(
+            f"{round(self.decoder.estimated_percent_complete()*100)}% complete"
+        )
 
         # if the decoder is stuck for some reason. reset it
         # this part must be done AFTER receive_part(s)
         if self.received_parts > self.decoder.expected_part_count() * 2:
-            print(
+            logger.debug(
                 f"{self.received_parts}/{self.decoder.expected_part_count()} parts received, but incomplete. Resetting"
             )
             self.clear()
