@@ -10,6 +10,8 @@ from urtypes.bytes import Bytes as UR_BYTES
 import hashlib
 import base58
 import logging
+import enum
+from .multipath_descriptor import MultipathDescriptor
 
 BITCOIN_BIP21_URI_SCHEME = "bitcoin"
 logger = logging.getLogger(__name__)
@@ -254,12 +256,10 @@ def is_slip132(key):
     return get_version_bytes(key) in version_bytes_map
 
 
-import enum
-
-
 class DataType(enum.Enum):
     Bip21 = enum.auto()  # https://bips.dev/21/
     Descriptor = enum.auto()
+    MultiPathDescriptor = enum.auto()
     Xpub = enum.auto()
     Fingerprint = enum.auto()
     KeyStoreInfo = enum.auto()  # FingerPrint, Derivation path, Xpub
@@ -284,6 +284,8 @@ class Data:
             return str(self.data)
         if self.data_type == DataType.Descriptor:
             return self.data.as_string_private() if self.data else self.data
+        if self.data_type == DataType.MultiPathDescriptor:
+            return self.data.as_string_private() if self.data else self.data
         if self.data_type == DataType.KeyStoreInfo:
             return str(self.data)
         if self.data_type == DataType.PSBT:
@@ -301,7 +303,7 @@ class Data:
         try:
             return decode_bip21_uri(s)
         except Exception:
-            return None
+            pass
 
     @classmethod
     def _try_get_descriptor(cls, s, network):
@@ -322,7 +324,15 @@ class Data:
         except Exception:
             pass
 
-        return None
+    @classmethod
+    def _try_get_multipath_descriptor(cls, s, network):
+        try:
+            multipath_descriptor = MultipathDescriptor.from_descriptor_str(s, network)
+            if multipath_descriptor:
+                logger.debug("detected descriptor")
+                return multipath_descriptor
+        except Exception:
+            pass
 
     @classmethod
     def _decoding_strategies(cls):
@@ -409,6 +419,9 @@ class Data:
 
         if descriptor := cls._try_get_descriptor(s, network):
             return Data(descriptor, DataType.Descriptor)
+
+        if descriptor := cls._try_get_multipath_descriptor(s, network):
+            return Data(descriptor, DataType.MultiPathDescriptor)
 
         if is_valid_bitcoin_hash(s):
             return Data(s, DataType.Txid)

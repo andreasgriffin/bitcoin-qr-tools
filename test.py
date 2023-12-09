@@ -1,4 +1,5 @@
 from bitcoin_qrreader.bitcoin_qr import *
+from bitcoin_qrreader.multipath_descriptor import *
 
 
 # test descriptor
@@ -189,4 +190,57 @@ assert data.data_type == DataType.Tx
 assert (
     serialized_to_hex(data.data.serialize())
     == "0100000000010177ff6b4de45caf689a95367958ff6b912c2385d4d7563a09ba41cb0a2c30f5220000000000fdffffff02a0cee90100000000160014f22e4b1c92222a38b286fdd39ee2e35d4b581c47d62019930000000016001412c9e0c94dd6c71cfec7bcff16feea0a0fb8bc5d0247304402205c88d4d7e3059f16c6f74debb9754efeba89f92a237b7d09d9732e59b8a7d6de02202ce0ef338af77ebd8c14ae88f7e83116e0ba27a89aee7829ef70d1fc8d99af06012102802e1fda05b62b1f071d35bcd129fc0f9cf3517c6af7b3bb0ce76d76c7de068d00000000"
+)
+
+
+# checksum test
+descriptor = "raw(deadbeef)"
+assert add_checksum_to_descriptor(descriptor).split("#")[1] == "89f8spxm"
+
+
+# checksum test
+descriptor = "wpkh([189cf85e/84'/1'/0']tpubDDkYCWGii5pUuqqqvh9vRqyChQ88aEGZ7z7xpwDzAQ87SpNrii9MumksW8WSqv2aYEBssKYF5KVeY9kmoreJrvQSB2dgCz11TXu81YhyaqP/0/*)"
+assert add_checksum_to_descriptor(descriptor).split("#")[1] == "arpc0qa2"
+
+
+# checksum test
+parts = [
+    "wsh(sortedmulti(2,tprv8ZgxMBicQKsPeXkN69E47nqEZhrdWZkRBrzsZjzYQGjbr85QApCLuRCgKHTnfaiB9BZCDHrewdC8cTsyd54yGHZJxsvVvuB719VqYVu8eSz/84'/1'/0'/0/*,tprv8ZgxMBicQKsPeVD8mgZXgNgqTgGUhsv9qtHiRjhrvHL2ecXWhiCd4okHeC6sdFvs1rNYmwWf5Sa3B2PvhrZ1MHcCK8qPJqTSnZ9nLnywUGA/84'/1'/0'/0/*,tprv8ZgxMBicQKsPe3ca8xqj6BNa3Lb9pfyNyYaUy1y4AUCqTSAYwmhAMNnEHnBYtLgggRGrYt8BxcBwedNMnXFbWSxrtEzcJGu9L3k1BBVTNzD/84'/1'/0'/0/*))"
+]
+meta_data_handler = MetaDataHandler(bdk.Network.REGTEST)
+for part in parts:
+    meta_data_handler.add(part)
+assert meta_data_handler.is_complete()
+data = meta_data_handler.get_complete_data()
+assert data.data_type == DataType.Descriptor, "Wrong type"
+assert (
+    data.data_as_string()
+    == "wsh(sortedmulti(2,tprv8ZgxMBicQKsPeXkN69E47nqEZhrdWZkRBrzsZjzYQGjbr85QApCLuRCgKHTnfaiB9BZCDHrewdC8cTsyd54yGHZJxsvVvuB719VqYVu8eSz/84'/1'/0'/0/*,tprv8ZgxMBicQKsPeVD8mgZXgNgqTgGUhsv9qtHiRjhrvHL2ecXWhiCd4okHeC6sdFvs1rNYmwWf5Sa3B2PvhrZ1MHcCK8qPJqTSnZ9nLnywUGA/84'/1'/0'/0/*,tprv8ZgxMBicQKsPe3ca8xqj6BNa3Lb9pfyNyYaUy1y4AUCqTSAYwmhAMNnEHnBYtLgggRGrYt8BxcBwedNMnXFbWSxrtEzcJGu9L3k1BBVTNzD/84'/1'/0'/0/*))#5j8fff0h"
+)
+
+
+# checksum test (sparrow)
+descriptor = "wpkh([7d315cd9/84h/1h/0h]tpubDCUCSorYswSAurXv7ZcwfkPR8ms2fmxkEW7LFHuLs85wsCngaNAEVFkAvZSabsnz2VH6NvH4uFd4tZ8J3PSaVaxchE8QCd9wxak5Sugnd9p/<0;1>/*)"
+assert add_checksum_to_descriptor(descriptor).split("#")[1] == "3gahv2xk"
+
+
+# checksum test multipath_descriptor (created with sparrow pdf)
+parts = [
+    "wpkh([7d315cd9/84h/1h/0h]tpubDCUCSorYswSAurXv7ZcwfkPR8ms2fmxkEW7LFHuLs85wsCngaNAEVFkAvZSabsnz2VH6NvH4uFd4tZ8J3PSaVaxchE8QCd9wxak5Sugnd9p/<0;1>/*)"
+]
+meta_data_handler = MetaDataHandler(bdk.Network.REGTEST)
+for part in parts:
+    meta_data_handler.add(part)
+assert meta_data_handler.is_complete()
+data = meta_data_handler.get_complete_data()
+assert data.data_type == DataType.MultiPathDescriptor, "Wrong type"
+# bdk returns '  instead of h  (which sparrrow does), so the checksum is different
+assert (
+    data.data_as_string()
+    == "wpkh([7d315cd9/84'/1'/0']tpubDCUCSorYswSAurXv7ZcwfkPR8ms2fmxkEW7LFHuLs85wsCngaNAEVFkAvZSabsnz2VH6NvH4uFd4tZ8J3PSaVaxchE8QCd9wxak5Sugnd9p/<0;1>/*)#xqqeqtvt"
+)
+# however if one replaces again the h by ', one gets the sparrow checksum
+assert (
+    replace_in_descriptor(data.data_as_string(), "'", "h")
+    == "wpkh([7d315cd9/84h/1h/0h]tpubDCUCSorYswSAurXv7ZcwfkPR8ms2fmxkEW7LFHuLs85wsCngaNAEVFkAvZSabsnz2VH6NvH4uFd4tZ8J3PSaVaxchE8QCd9wxak5Sugnd9p/<0;1>/*)#3gahv2xk"
 )

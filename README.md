@@ -6,6 +6,7 @@
   * PSBT
   * Xpub
   * Descriptor
+  * Multipath Descriptor (like Sparrow)
   * Partial descriptors (Specter DIY) ( finger print , derivation, xpub)
   * TxId
   * Animated QR Codes ([UR](https://github.com/BlockchainCommons/Research/blob/master/papers/bcr-2020-005-ur.md)) (Transactions and Descriptors)
