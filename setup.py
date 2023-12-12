@@ -18,7 +18,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="bitcoin_qrreader",
-    version="0.4.0",
+    version="0.5.0",
     author="Andreas Griffin",
     author_email="andreasgriffin@proton.me",
     description="Bitcoin qr reader",

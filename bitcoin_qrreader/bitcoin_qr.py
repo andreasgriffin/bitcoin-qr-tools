@@ -13,6 +13,10 @@ import logging
 import enum
 from .multipath_descriptor import MultipathDescriptor
 
+from ur.fountain_encoder import CBOREncoder
+from ur.ur import UR
+from ur.ur_encoder import UREncoder
+
 BITCOIN_BIP21_URI_SCHEME = "bitcoin"
 logger = logging.getLogger(__name__)
 
@@ -20,10 +24,11 @@ logger = logging.getLogger(__name__)
 def is_bitcoin_address(s):
     if re.search(r"^bitcoin\:.*", s, re.IGNORECASE):
         return True
-    elif re.search(r"^((bc1|tb1|bcr|[123]|[mn])[a-zA-HJ-NP-Z0-9]{25,62})$", s):
-        # TODO: Handle regtest bcrt?
+
+    try:
+        bdk.Address(s)
         return True
-    else:
+    except:
         return False
 
 
@@ -33,6 +38,10 @@ class InvalidBitcoinURI(Exception):
 
 def serialized_to_hex(serialized):
     return bytes(serialized).hex()
+
+
+def hex_to_serialized(hex_string):
+    return bytes.fromhex(hex_string)
 
 
 def decode_bip21_uri(uri: str) -> dict:
@@ -440,6 +449,28 @@ class Data:
 
         raise Exception(f"{s} Could not be decoded")
 
+    def generate_fragments_for_qr(self, max_qr_size=100):
+        serialized = self.data_as_string()
+
+        if len(serialized) <= max_qr_size:
+            return [serialized]
+
+        if self.data_type == DataType.Tx:
+            bcor_encoder = CBOREncoder()
+            bcor_encoder.encodeBytes(hex_to_serialized(serialized))
+            ur = UR("bytes", bcor_encoder.get_bytes())
+        elif self.data_type == DataType.PSBT:
+            bcor_encoder = CBOREncoder()
+            bcor_encoder.encodeBytes(base64.b64decode(serialized.encode()))
+            ur = UR("crypto-psbt", bcor_encoder.get_bytes())
+
+        encoder = UREncoder(ur, max_fragment_len=max_qr_size)
+        fragments = []
+        while not encoder.is_complete():
+            part = encoder.next_part()
+            fragments.append(part)
+        return fragments
+
 
 class BaseCollector:
     def __init__(self, network) -> None:
@@ -603,7 +634,10 @@ class URCollector(BaseCollector):
         self.last_received_part = None
 
     def estimated_percent_complete(self):
-        return self.decoder.estimated_percent_complete()
+        return (
+            len(self.decoder.received_part_indexes())
+            / self.decoder.expected_part_count()
+        )
 
 
 class MetaDataHandler:

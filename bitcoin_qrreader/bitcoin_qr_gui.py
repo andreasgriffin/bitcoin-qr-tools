@@ -41,23 +41,16 @@ class BitcoinVideoWidget(VideoWidget):
             if self.result_callback:
                 self.result_callback(self.meta_data_handler.get_complete_data())
 
-    def on_draw_surface(self, surface, barcode):
-        super().on_draw_surface(surface, barcode)
-
-        estimated_percent_complete = self.meta_data_handler.estimated_percent_complete()
-        if 0 == estimated_percent_complete:
-            return
-
-        x, y, w, h = barcode.rect
-        y_new = x
-        x_new = y
+    def draw_pie_progress_bar(self, surface, rect, percentage, color):
+        x, y, w, h = rect
+        # Calculate the center and radius based on the barcode rectangle
+        center_x, center_y = x + w / 2, y + h / 2
+        radius = min(w, h) / 2  # Adjust the divisor as needed
 
         # Draw a filled arc (which is actually a filled pie slice)
-        center_x = x_new + w // 2
-        center_y = y_new + h // 2
         radius = min(w, h) // 4  # Radius should not exceed the rectangle
         start_angle = -math.pi  # For example
-        stop_angle = -math.pi - math.pi * 2 * estimated_percent_complete
+        stop_angle = -math.pi - math.pi * 2 * percentage
 
         # Draw lots of small lines to create the filled arc
         num_segments = 100  # Increase this for a smoother arc
@@ -71,6 +64,18 @@ class BitcoinVideoWidget(VideoWidget):
 
         # Use pygame.draw.polygon to draw the filled arc
         pygame.draw.polygon(surface, (0, 255, 0), points)
+
+    def _on_draw_surface(self, surface, barcode):
+        super()._on_draw_surface(surface, barcode)
+
+        estimated_percent_complete = self.meta_data_handler.estimated_percent_complete()
+        print(estimated_percent_complete)
+        if 0 == estimated_percent_complete:
+            return
+
+        self.draw_pie_progress_bar(
+            surface, barcode.rect, estimated_percent_complete, (0, 255, 0)
+        )
 
 
 class DemoBitcoinVideoWidget(BitcoinVideoWidget):
