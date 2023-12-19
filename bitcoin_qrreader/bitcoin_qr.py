@@ -1,3 +1,4 @@
+from os import fdopen
 import re, urllib
 from typing import List, Callable, Union, Optional, Tuple, Dict
 from decimal import Decimal
@@ -470,6 +471,27 @@ class Data:
             part = encoder.next_part()
             fragments.append(part)
         return fragments
+
+    def write_to_filedescriptor(self, fd):
+        """
+
+        This is useful for a temporary file
+        fd, file_path = tempfile.mkstemp(
+            suffix=f"_{key}.{self.file_extension}", prefix=""
+        )
+
+        a file descriptor for a normal file can be created with
+                fd = os.open(filename, os.O_CREAT | os.O_WRONLY)
+        """
+        if self.data_type == DataType.Tx:
+            with fdopen(fd, "wb") as file:
+                file.write(bytes(self.data.serialize()))
+        elif self.data_type == DataType.PSBT:
+            with fdopen(fd, "wb") as file:
+                file.write(base64.b64decode(self.data.serialize()))
+        else:
+            with fdopen(fd, "w") as file:
+                file.write(self.data_as_string())
 
 
 class BaseCollector:
