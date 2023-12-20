@@ -45,6 +45,15 @@ pip install dist/bitcoin_qrreader*.whl
 
 
 
+### Development to change requirements
+
+```shell
+pip-compile --generate-hashes --resolver=backtracking   requirements.in
+pip install -r requirements.txt
+```
+
+
+
 
 
 # Licences
