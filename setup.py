@@ -28,7 +28,6 @@ setup(
     packages=find_packages(),
     install_requires=reqs,
     classifiers=[
-        "Development Status :: 3 - Alpha",  # Replace with the appropriate development status
         "Intended Audience :: Developers",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
