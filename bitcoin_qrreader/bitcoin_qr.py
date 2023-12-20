@@ -336,6 +336,30 @@ class Data:
 
     @classmethod
     def _try_get_multipath_descriptor(cls, s, network):
+        # if new lines are presnt, try checking if there are descriptors in the lines
+        if "\n" in s:
+            results = [
+                cls._try_get_multipath_descriptor(line, network)
+                for line in s.split("\n")
+            ]
+            # remove the empty entries
+            results = [r for r in results if r]
+            # check that all entries return the same multipath descriptor
+            if results:
+                all_identical = all(
+                    element.as_string_private() == results[0].as_string_private()
+                    for element in results
+                )
+                if all_identical:
+                    return results[0]
+                else:
+                    # the string contins multiple inconsitent descriptors.
+                    # Don't know how to handle this properly.
+                    return None
+            else:
+                # if splitting lines didnt work, then remove the \n and try to recognize all as 1 descriptor
+                s = s.replace("\n", "")
+
         try:
             multipath_descriptor = MultipathDescriptor.from_descriptor_str(s, network)
             if multipath_descriptor:
