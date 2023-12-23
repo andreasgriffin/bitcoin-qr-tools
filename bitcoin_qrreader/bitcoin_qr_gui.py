@@ -33,7 +33,10 @@ class BitcoinVideoWidget(VideoWidget):
         self.meta_data_handler.set_network(networks[idx])
 
     def qr_data_callback(self, qr_data):
-        self.meta_data_handler.add(qr_data.decode("utf-8"))
+        try:
+            self.meta_data_handler.add(qr_data.decode("utf-8"))
+        except DecodingException as e:
+            logger.warning(str(e))
 
         if self.meta_data_handler.is_complete():
             if self.close_on_result:
