@@ -62,10 +62,7 @@ class Output(RegistryItem):
         self.crypto_key = crypto_key
 
     def __eq__(self, o):
-        return (
-            self.script_expressions == o.script_expressions
-            and self.crypto_key == o.crypto_key
-        )
+        return self.script_expressions == o.script_expressions and self.crypto_key == o.crypto_key
 
     @classmethod
     def registry_type(cls):
@@ -170,7 +167,9 @@ def polymod(c, val):
     return c
 
 
-INPUT_CHARSET = "0123456789()[],'/*abcdefgh@:$%{}IJKLMNOPQRSTUVWXYZ&+-.;<=>?!^_|~ijklmnopqrstuvwxyzABCDEFGH`#\"\\ "
+INPUT_CHARSET = (
+    "0123456789()[],'/*abcdefgh@:$%{}IJKLMNOPQRSTUVWXYZ&+-.;<=>?!^_|~ijklmnopqrstuvwxyzABCDEFGH`#\"\\ "
+)
 CHECKSUM_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 
 

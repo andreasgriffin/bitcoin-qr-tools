@@ -138,9 +138,7 @@ class VideoWidget(QtWidgets.QWidget):
         array3d = pygame.surfarray.array3d(surface)
         height, width, _ = array3d.shape
         bytes_per_line = 3 * width
-        q_image = QtGui.QImage(
-            array3d.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888
-        )
+        q_image = QtGui.QImage(array3d.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888)
 
         # Convert QImage to QPixmap
         pixmap = QtGui.QPixmap.fromImage(q_image)

@@ -32,11 +32,7 @@ class Tagging(object):
         self.obj = obj
 
     def __eq__(self, other):
-        return (
-            isinstance(other, Tagging)
-            and self.tag == other.tag
-            and self.obj == other.obj
-        )
+        return isinstance(other, Tagging) and self.tag == other.tag and self.obj == other.obj
 
 
 class Mapping(object):

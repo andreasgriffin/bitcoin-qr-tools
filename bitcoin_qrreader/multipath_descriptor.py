@@ -2,11 +2,12 @@ import logging
 import bdkpython as bdk
 
 logger = logging.getLogger(__name__)
-import hashlib
 
 
 # Character sets used in the functions
-INPUT_CHARSET = "0123456789()[],'/*abcdefgh@:$%{}IJKLMNOPQRSTUVWXYZ&+-.;<=>?!^_|~ijklmnopqrstuvwxyzABCDEFGH`#\"\\ "
+INPUT_CHARSET = (
+    "0123456789()[],'/*abcdefgh@:$%{}IJKLMNOPQRSTUVWXYZ&+-.;<=>?!^_|~ijklmnopqrstuvwxyzABCDEFGH`#\"\\ "
+)
 CHECKSUM_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 
 # Generators for the polymod function
@@ -95,9 +96,7 @@ def strip_checksum(descriptor_str: str):
 
 def replace_in_descriptor(descriptor_str, search_str, replace_str):
     assert is_valid_descriptor_checksum(descriptor_str), "Checksum is not valid"
-    return add_checksum_to_descriptor(
-        strip_checksum(descriptor_str).replace(search_str, replace_str)
-    )
+    return add_checksum_to_descriptor(strip_checksum(descriptor_str).replace(search_str, replace_str))
 
 
 def split_wallet_descriptor(multipath_descriptor_str: str):
@@ -121,15 +120,11 @@ class MultipathDescriptor:
     This is a temporary class, that can be removed once https://github.com/bitcoindevkit/bdk/issues/1021  is done.
     """
 
-    def __init__(
-        self, bdk_descriptor: bdk.Descriptor, change_descriptor: bdk.Descriptor
-    ) -> None:
+    def __init__(self, bdk_descriptor: bdk.Descriptor, change_descriptor: bdk.Descriptor) -> None:
         self.bdk_descriptors = [bdk_descriptor, change_descriptor]
 
     @classmethod
-    def from_descriptor_str(
-        cls, descriptor_str: str, network: bdk.Network
-    ) -> "MultipathDescriptor":
+    def from_descriptor_str(cls, descriptor_str: str, network: bdk.Network) -> "MultipathDescriptor":
         def count_closing_brackets(s):
             count = 0
             for char in reversed(s):
@@ -143,16 +138,10 @@ class MultipathDescriptor:
 
         # check if the descriptor_str is a combined one:
         if "/<0;1>/*" in descriptor_str:
-            receive_descriptor_str, change_descriptor_str = split_wallet_descriptor(
-                descriptor_str
-            )
+            receive_descriptor_str, change_descriptor_str = split_wallet_descriptor(descriptor_str)
         elif "/0/*" in descriptor_str or "/1/*" in descriptor_str:
-            receive_descriptor_str = replace_in_descriptor(
-                descriptor_str, "/1/*", "/0/*"
-            )
-            change_descriptor_str = replace_in_descriptor(
-                descriptor_str, "/0/*", "/1/*"
-            )
+            receive_descriptor_str = replace_in_descriptor(descriptor_str, "/1/*", "/0/*")
+            change_descriptor_str = replace_in_descriptor(descriptor_str, "/0/*", "/1/*")
         else:
             # sparrow qr code misses the change derivation path completely
 
@@ -160,12 +149,8 @@ class MultipathDescriptor:
             stripped = strip_checksum(descriptor_str)
 
             count_brackets = count_closing_brackets(stripped)
-            receive_descriptor_str = (
-                stripped[:-count_brackets] + "/0/*" + stripped[-count_brackets:]
-            )
-            change_descriptor_str = (
-                stripped[:-count_brackets] + "/1/*" + stripped[-count_brackets:]
-            )
+            receive_descriptor_str = stripped[:-count_brackets] + "/0/*" + stripped[-count_brackets:]
+            change_descriptor_str = stripped[:-count_brackets] + "/1/*" + stripped[-count_brackets:]
 
         return MultipathDescriptor(
             bdk.Descriptor(receive_descriptor_str, network=network),
@@ -184,17 +169,9 @@ class MultipathDescriptor:
         )
         assert len(self.bdk_descriptors) == 2
 
-        descriptors = [
-            d.as_string() if only_public else d.as_string_private()
-            for d in self.bdk_descriptors
-        ]
+        descriptors = [d.as_string() if only_public else d.as_string_private() for d in self.bdk_descriptors]
         # check that these are really just the paths "/0/*" and "/1/*"
-        assert all(
-            [
-                strip_checksum(d).count(f"/{i}/*)") == 1
-                for i, d in enumerate(descriptors)
-            ]
-        )
+        assert all([strip_checksum(d).count(f"/{i}/*)") == 1 for i, d in enumerate(descriptors)])
 
         # only take the 1 descriptor, and put the /<0;1>/ in there
         return replace_in_descriptor(descriptors[0], f"/{0}/*", f"/<0;1>/*")

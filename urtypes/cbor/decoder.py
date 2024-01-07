@@ -191,9 +191,7 @@ class Decoder(object):
     def _read(self, n):
         m = self.input.read(n)
         if len(m) != n:
-            raise InvalidCborError(
-                "Expected {} bytes, got {} bytes instead".format(n, len(m))
-            )
+            raise InvalidCborError("Expected {} bytes, got {} bytes instead".format(n, len(m)))
         return m
 
 

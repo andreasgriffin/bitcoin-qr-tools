@@ -96,24 +96,18 @@ class Encoder(object):
             try:
                 self._write(_encode_ibyte(1, integer))
             except TypeError:
-                raise EncoderError(
-                    "Encoding integers lower than -18446744073709551616 is not supported"
-                )
+                raise EncoderError("Encoding integers lower than -18446744073709551616 is not supported")
         else:
             try:
                 self._write(_encode_ibyte(0, integer))
             except TypeError:
-                raise EncoderError(
-                    "Encoding integers larger than 18446744073709551615 is not supported"
-                )
+                raise EncoderError("Encoding integers larger than 18446744073709551615 is not supported")
 
     def encode_tagging(self, tagging):
         try:
             self._write(_encode_ibyte(6, tagging.tag))
         except TypeError:
-            raise EncoderError(
-                "Encoding tag larger than 18446744073709551615 is not supported"
-            )
+            raise EncoderError("Encoding tag larger than 18446744073709551615 is not supported")
         self.encode(tagging.obj)
 
     def encode_boolean(self, boolean):

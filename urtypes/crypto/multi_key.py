@@ -34,11 +34,7 @@ class MultiKey(RegistryItem):
         self.hd_keys = hd_keys
 
     def __eq__(self, o):
-        return (
-            self.threshold == o.threshold
-            and self.ec_keys == o.ec_keys
-            and self.hd_keys == o.hd_keys
-        )
+        return self.threshold == o.threshold and self.ec_keys == o.ec_keys and self.hd_keys == o.hd_keys
 
     @classmethod
     def registry_type(cls):

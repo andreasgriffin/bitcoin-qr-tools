@@ -79,18 +79,14 @@ class HDKey(RegistryItem):
         self.use_info = props["use_info"] if "use_info" in props else None
         self.origin = props["origin"] if "origin" in props else None
         self.children = props["children"] if "children" in props else None
-        self.parent_fingerprint = (
-            props["parent_fingerprint"] if "parent_fingerprint" in props else None
-        )
+        self.parent_fingerprint = props["parent_fingerprint"] if "parent_fingerprint" in props else None
         self.name = props["name"] if "name" in props else None
         self.note = props["note"] if "note" in props else None
 
     def bip32_key(self, include_derivation_path=False):
         parent_fingerprint = (0).to_bytes(4, "big")
         source_is_parent = False
-        chain_code = (
-            self.chain_code if self.chain_code is not None else (0).to_bytes(32, "big")
-        )
+        chain_code = self.chain_code if self.chain_code is not None else (0).to_bytes(32, "big")
         key = self.key
         if len(key) == 32:
             key = 0x00 + key
@@ -98,30 +94,20 @@ class HDKey(RegistryItem):
         index = 0
         if self.master:
             version = binascii.unhexlify(
-                "0488ADE4"
-                if not self.use_info or self.use_info.network == 0
-                else "04358394"
+                "0488ADE4" if not self.use_info or self.use_info.network == 0 else "04358394"
             )
         else:
             if self.private_key:
                 version = binascii.unhexlify(
-                    "0488ADE4"
-                    if not self.use_info or self.use_info.network == 0
-                    else "04358394"
+                    "0488ADE4" if not self.use_info or self.use_info.network == 0 else "04358394"
                 )
             else:
                 version = binascii.unhexlify(
-                    "0488B21E"
-                    if not self.use_info or self.use_info.network == 0
-                    else "043587CF"
+                    "0488B21E" if not self.use_info or self.use_info.network == 0 else "043587CF"
                 )
             if self.parent_fingerprint is not None:
                 parent_fingerprint = self.parent_fingerprint
-            depth = (
-                self.origin.depth
-                if self.origin.depth is not None
-                else len(self.origin.components)
-            )
+            depth = self.origin.depth if self.origin.depth is not None else len(self.origin.components)
             paths = self.origin.components
             if len(paths) > 0:
                 last_path = paths[len(paths) - 1]
@@ -137,17 +123,10 @@ class HDKey(RegistryItem):
                     source_is_parent = True
         depth = depth.to_bytes(1, "big")
         index = index.to_bytes(4, "big")
-        key = encode_check(
-            version + depth + parent_fingerprint + index + chain_code + key
-        )
+        key = encode_check(version + depth + parent_fingerprint + index + chain_code + key)
         if include_derivation_path:
             derivation = ""
-            if (
-                self.origin
-                and self.origin.path()
-                and self.origin.source_fingerprint
-                and not source_is_parent
-            ):
+            if self.origin and self.origin.path() and self.origin.source_fingerprint and not source_is_parent:
                 derivation = "[%s/%s]" % (
                     binascii.hexlify(self.origin.source_fingerprint).decode("utf-8"),
                     self.origin.path(),
@@ -176,17 +155,11 @@ class HDKey(RegistryItem):
             if self.chain_code is not None:
                 map[4] = self.chain_code
             if self.use_info is not None:
-                map[5] = DataItem(
-                    self.use_info.registry_type().tag, self.use_info.to_data_item()
-                )
+                map[5] = DataItem(self.use_info.registry_type().tag, self.use_info.to_data_item())
             if self.origin is not None:
-                map[6] = DataItem(
-                    self.origin.registry_type().tag, self.origin.to_data_item()
-                )
+                map[6] = DataItem(self.origin.registry_type().tag, self.origin.to_data_item())
             if self.children is not None:
-                map[7] = DataItem(
-                    self.children.registry_type().tag, self.children.to_data_item()
-                )
+                map[7] = DataItem(self.children.registry_type().tag, self.children.to_data_item())
             if self.parent_fingerprint is not None:
                 map[8] = int.from_bytes(self.parent_fingerprint, "big")
             if self.name is not None:

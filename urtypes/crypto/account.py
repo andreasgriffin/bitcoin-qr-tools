@@ -47,9 +47,7 @@ class Account(RegistryItem):
         if self.master_fingerprint is not None:
             map[1] = int.from_bytes(self.master_fingerprint, "big")
         if self.output_descriptors is not None:
-            map[2] = [
-                descriptor.to_data_item() for descriptor in self.output_descriptors
-            ]
+            map[2] = [descriptor.to_data_item() for descriptor in self.output_descriptors]
         return map
 
     @classmethod

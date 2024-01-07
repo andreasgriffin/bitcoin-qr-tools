@@ -48,8 +48,7 @@ class Keypath(RegistryItem):
             return ""
         return "/".join(
             [
-                ("*" if component.wildcard else str(component.index))
-                + ("'" if component.hardened else "")
+                ("*" if component.wildcard else str(component.index)) + ("'" if component.hardened else "")
                 for component in self.components
             ]
         )
@@ -97,8 +96,4 @@ class PathComponent:
             raise ValueError("Invalid index - most significant bit cannot be set")
 
     def __eq__(self, o):
-        return (
-            self.index == o.index
-            and self.hardened == o.hardened
-            and self.wildcard == o.wildcard
-        )
+        return self.index == o.index and self.hardened == o.hardened and self.wildcard == o.wildcard

@@ -1,6 +1,8 @@
+from abc import ABC, abstractmethod
 from os import fdopen
-import re, urllib
-from typing import List, Callable, Union, Optional, Tuple, Dict
+import re
+import urllib.parse
+from typing import List, Optional, Tuple, Dict
 from decimal import Decimal
 import bdkpython as bdk
 import base64, json
@@ -85,8 +87,7 @@ def decode_bip21_uri(uri: str) -> dict:
         try:
             m = re.match(r"([0-9.]+)X([0-9])", am)
             if m:
-                k = int(m.group(2)) - 8
-                amount = Decimal(m.group(1)) * pow(Decimal(10), k)
+                amount = Decimal(m.group(1)) * pow(Decimal(10), int(m.group(2)) - 8)
             else:
                 amount = Decimal(am) * COIN
             if amount > TOTAL_COIN_SUPPLY_LIMIT_IN_BTC * COIN:
@@ -261,9 +262,7 @@ def convert_slip132_to_bip32(slip132_key):
     replaced_version_key = bip32_version_bytes + raw_extended_key[4:]
 
     # Calculate the checksum of the replaced version key
-    check_sum = hashlib.sha256(hashlib.sha256(replaced_version_key).digest()).digest()[
-        :4
-    ]
+    check_sum = hashlib.sha256(hashlib.sha256(replaced_version_key).digest()).digest()[:4]
 
     # Encode the replaced version key + checksum into Base58
     bip32_key = base58.b58encode(replaced_version_key + check_sum).decode()
@@ -296,6 +295,10 @@ class InconsistentDescriptors(Exception):
     pass
 
 
+class WrongNetwork(Exception):
+    pass
+
+
 class Data:
     """
     Recognized bitcoin data in a string, gives the data and the DataType
@@ -315,6 +318,8 @@ class Data:
         if self.data_type == DataType.MultiPathDescriptor:
             return self.data.as_string_private() if self.data else self.data
         if self.data_type == DataType.SignerInfo:
+            return str(self.data)
+        if self.data_type == DataType.SignerInfos:
             return str(self.data)
         if self.data_type == DataType.PSBT:
             return str(self.data.serialize())
@@ -357,25 +362,19 @@ class Data:
         # if new lines are presnt, try checking if there are descriptors in the lines
         if "\n" in s:
             splitted_lines = s.split("\n")
-            results = [
-                cls._try_get_multipath_descriptor(line.strip(), network)
-                for line in splitted_lines
-            ]
+            results = [cls._try_get_multipath_descriptor(line.strip(), network) for line in splitted_lines]
             # check that all entries return the same multipath descriptor
             # "None" entries are disallowed, to ensure that no depection is possible
             if all(results):
                 all_identical = all(
-                    element.as_string_private() == results[0].as_string_private()
-                    for element in results
+                    element.as_string_private() == results[0].as_string_private() for element in results
                 )
                 if all_identical:
                     return results[0]
                 else:
                     # the string contins multiple inconsitent descriptors.
                     # Don't know how to handle this properly.
-                    raise InconsistentDescriptors(
-                        f"The descriptors {splitted_lines} are inconsistent."
-                    )
+                    raise InconsistentDescriptors(f"The descriptors {splitted_lines} are inconsistent.")
             else:
                 # if splitting lines didnt work, then remove the \n and try to recognize all as 1 descriptor
                 s = s.replace("\n", "")
@@ -406,9 +405,7 @@ class Data:
             try:
                 decoded = decode(s)
                 if decoded[:5] == psbt_magic_bytes:
-                    return bdk.PartiallySignedTransaction(
-                        base64.b64encode(decoded).decode()
-                    )
+                    return bdk.PartiallySignedTransaction(base64.b64encode(decoded).decode())
             except Exception:
                 continue  # If one strategy fails, try the next
 
@@ -427,7 +424,7 @@ class Data:
         return None
 
     @classmethod
-    def _try_extract_keystore(cls, s, network):
+    def _try_extract_signer_info(cls, s, network):
         signer_info = None
         try:
             signer_info = extract_signer_info(s)
@@ -435,7 +432,7 @@ class Data:
             pass
 
         if signer_info:
-            logger.debug("detected keystore_info")
+            logger.debug("detected signer_info")
             if is_slip132(signer_info.xpub):
                 signer_info.xpub = convert_slip132_to_bip32(signer_info.xpub)
             return signer_info
@@ -458,13 +455,57 @@ class Data:
             if d.get("xpub"):
                 xpub = d.get("xpub")
             if fingerprint and key_origin and xpub:
-                return SignerInfo(
-                    fingerprint=fingerprint, key_origin=key_origin, xpub=xpub
-                )
+                return SignerInfo(fingerprint=fingerprint, key_origin=key_origin, xpub=xpub)
         except Exception:
             pass
 
         return None
+
+    @classmethod
+    def _try_extract_signer_infos(cls, s, network):
+        # if it is a json
+        json_data = None
+        try:
+            json_data = json.loads(s)
+
+            # check if it is in coldcard export format
+
+            assert "chain" in json_data
+            assert "xfp" in json_data
+            assert "xpub" in json_data
+
+        except:
+            return None
+
+        if network == bdk.Network.BITCOIN:
+            if json_data["chain"] != "BTC":
+                raise WrongNetwork()
+        if network == bdk.Network.REGTEST:
+            if json_data["chain"] != "XRT":
+                raise WrongNetwork()
+        if network == bdk.Network.TESTNET:
+            if json_data["chain"] != "XTN":
+                raise WrongNetwork()
+        if network == bdk.Network.SIGNET:
+            # unclear which chain value is used for signet in coldcard
+            # https://coldcard.com/docs/upgrade/#mk4-version-511-feb-27-2023
+            if json_data["chain"] not in ["XTN", "XRT"]:
+                raise WrongNetwork()
+
+        # the fingerprint in the top level is the relevant one
+        fingerprint = json_data["xfp"]
+
+        return [
+            SignerInfo(
+                xpub=v["xpub"],
+                fingerprint=fingerprint,
+                key_origin=v["deriv"],
+                first_address=v["first"] if "first" in v else None,
+                name=v["name"],
+            )
+            for k, v in json_data.items()
+            if k.lower().startswith("bip")
+        ]
 
     @classmethod
     def from_str(cls, s, network) -> "Data":
@@ -497,8 +538,11 @@ class Data:
         if tx := cls._try_decode_serialized_transaction(s):
             return Data(tx, DataType.Tx)
 
-        if keystore_info := cls._try_extract_keystore(s, network):
-            return Data(keystore_info, DataType.SignerInfo)
+        if signer_info := cls._try_extract_signer_info(s, network):
+            return Data(signer_info, DataType.SignerInfo)
+
+        if signer_infos := cls._try_extract_signer_infos(s, network):
+            return Data(signer_infos, DataType.SignerInfos)
 
         raise DecodingException(f"{s} Could not be decoded")
 
@@ -546,26 +590,31 @@ class Data:
                 file.write(self.data_as_string())
 
 
-class BaseCollector:
+class BaseCollector(ABC):
     def __init__(self, network) -> None:
-        self.data: Data = None
+        self.data: Optional[Data] = None
         self.network = network
 
+    @abstractmethod
     def is_correct_data_format(self, s):
         pass
 
+    @abstractmethod
     def is_complete(self) -> bool:
         pass
 
-    def get_complete_data(self) -> Data:
+    @abstractmethod
+    def get_complete_data(self) -> Optional[Data]:
         pass
 
+    @abstractmethod
     def add(self, s: str):
         pass
 
     def clear(self):
         self.data = None
 
+    @abstractmethod
     def estimated_percent_complete(self):
         pass
 
@@ -577,10 +626,10 @@ class SinglePassCollector(BaseCollector):
     def is_complete(self) -> bool:
         return bool(self.data)
 
-    def get_complete_data(self) -> Data:
+    def get_complete_data(self) -> Optional[Data]:
         return self.data
 
-    def add(self, s: str):
+    def add(self, s: str) -> Data:
         self.data = Data.from_str(s, network=self.network)
         return self.data
 
@@ -592,6 +641,7 @@ class SpecterDIYCollector(BaseCollector):
     def __init__(self, network) -> None:
         super().__init__(network)
         self.clear()
+        self.total_parts: int = 0
 
     def is_correct_data_format(self, s):
         return self.extract_specter_diy_qr_part(s) is not None
@@ -599,7 +649,7 @@ class SpecterDIYCollector(BaseCollector):
     def is_complete(self) -> bool:
         return len(self.parts) == self.total_parts
 
-    def get_complete_data(self) -> Data:
+    def get_complete_data(self) -> Optional[Data]:
         if not self.is_complete():
             return None
 
@@ -608,17 +658,19 @@ class SpecterDIYCollector(BaseCollector):
             total_s += self.parts[i]
         return Data.from_str(total_s, network=self.network)
 
-    def extract_specter_diy_qr_part(self, s) -> Tuple[int, int, str]:
+    def extract_specter_diy_qr_part(self, s) -> Optional[Tuple[int, int, str]]:
         "pMofM something  ->  (M,N,something)"
         pattern = r"^p(\d+)of(\d+)\s(.*)"
         match = re.match(pattern, s)
         if match:
             return int(match.group(1)), int(match.group(2)), match.group(3)
-        else:
-            return None
+        return None
 
-    def add(self, s: str):
-        m, n, data = self.extract_specter_diy_qr_part(s)
+    def add(self, s: str) -> Optional[str]:
+        specter_diy_qr_part = self.extract_specter_diy_qr_part(s)
+        if not specter_diy_qr_part:
+            return None
+        m, n, data = specter_diy_qr_part
         if (self.total_parts is not None) and n != self.total_parts:
             # if n != self.total_parts then, it appears we switched to a different qrcode
             self.clear()
@@ -644,12 +696,10 @@ class URCollector(BaseCollector):
     def __init__(self, network) -> None:
         super().__init__(network)
         self.clear()
+        self.last_received_part: Optional[str] = None
 
     def is_psbt(self, s: str):
         return re.search("^UR:CRYPTO-PSBT/", s, re.IGNORECASE)
-
-    def is_descriptor(self, s: str):
-        return re.search("^UR:CRYPTO-OUTPUT/", s, re.IGNORECASE)
 
     def is_descriptor(self, s: str):
         return re.search("^UR:CRYPTO-OUTPUT/", s, re.IGNORECASE)
@@ -682,11 +732,9 @@ class URCollector(BaseCollector):
 
         return Data.from_str(s, network=self.network)
 
-    def add(self, s: str):
+    def add(self, s: str) -> Optional[str]:
         self.decoder.receive_part(s)
-        logger.debug(
-            f"{round(self.decoder.estimated_percent_complete()*100)}% complete"
-        )
+        logger.debug(f"{round(self.decoder.estimated_percent_complete()*100)}% complete")
 
         # if the decoder is stuck for some reason. reset it
         # this part must be done AFTER receive_part(s)
@@ -708,10 +756,7 @@ class URCollector(BaseCollector):
         self.last_received_part = None
 
     def estimated_percent_complete(self):
-        return (
-            len(self.decoder.received_part_indexes())
-            / self.decoder.expected_part_count()
-        )
+        return len(self.decoder.received_part_indexes()) / self.decoder.expected_part_count()
 
 
 class MetaDataHandler:
@@ -725,26 +770,33 @@ class MetaDataHandler:
             SpecterDIYCollector(self.network),
             SinglePassCollector(self.network),
         ]
-        self.last_used_collector = None
+        self.last_used_collector: Optional[BaseCollector] = None
 
     def set_network(self, network: bdk.Network):
         self.network = network
         for collector in self.collectors:
             collector.network = network
 
-    def get_collector(self, s: str):
+    def get_collector(self, s: str) -> Optional[BaseCollector]:
         for collector in self.collectors:
             if collector.is_correct_data_format(s):
                 return collector
+        return None
 
     def add(self, s: str):
         self.last_used_collector = self.get_collector(s)
+        if not self.last_used_collector:
+            raise Exception("Could not get a fitting colletor")
         return self.last_used_collector.add(s)
 
     def is_complete(self) -> bool:
+        if not self.last_used_collector:
+            return False
         return self.last_used_collector.is_complete()
 
-    def get_complete_data(self) -> Data:
+    def get_complete_data(self) -> Optional[Data]:
+        if not self.last_used_collector:
+            return None
         data = self.last_used_collector.get_complete_data()
         self.last_used_collector.clear()
         return data

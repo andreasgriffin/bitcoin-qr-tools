@@ -13,9 +13,7 @@ except:
     try:
         import hashlib
     except:
-        sys.exit(
-            "ERROR: No hashlib or uhashlib implementation found (required for sha256)"
-        )
+        sys.exit("ERROR: No hashlib or uhashlib implementation found (required for sha256)")
 
 from ur.utils import string_to_bytes, int_to_bytes
 from ur.constants import MAX_UINT64

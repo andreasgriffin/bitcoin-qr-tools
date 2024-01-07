@@ -9,7 +9,7 @@ import sys
 def main():
 
     app = QApplication(sys.argv)
-    window = DemoBitcoinVideoWidget(  )
+    window = DemoBitcoinVideoWidget()
     window.show()
     app.exec_()
 

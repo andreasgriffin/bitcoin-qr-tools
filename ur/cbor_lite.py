@@ -118,11 +118,7 @@ class CBOREncoder:
             self.encodeTagAndAdditional(tag, value)
 
         else:
-            raise Exception(
-                "Unsupported byte length of {} for value in encodeTagAndValue()".format(
-                    length
-                )
-            )
+            raise Exception("Unsupported byte length of {} for value in encodeTagAndValue()".format(length))
 
         encoded_size = 1 + length
         return encoded_size
@@ -140,9 +136,7 @@ class CBOREncoder:
             return self.encodeNegative(value)
 
     def encodeBool(self, value):
-        return self.encodeTagAndValue(
-            Tag_Major_simple, Tag_Minor_true if value else Tag_Minor_false
-        )
+        return self.encodeTagAndValue(Tag_Major_simple, Tag_Minor_true if value else Tag_Minor_false)
 
     def encodeBytes(self, value):
         length = self.encodeTagAndValue(Tag_Major_byteString, len(value))
@@ -238,18 +232,14 @@ class CBORDecoder:
         (tag, value, length) = self.decodeTagAndValue(flags)
         if tag != Tag_Major_unsignedInteger:
             raise Exception(
-                "Expected Tag_Major_unsignedInteger ({}), but found {}".format(
-                    Tag_Major_unsignedInteger, tag
-                )
+                "Expected Tag_Major_unsignedInteger ({}), but found {}".format(Tag_Major_unsignedInteger, tag)
             )
         return (value, length)
 
     def decodeNegative(self, flags=Flag_None):
         (tag, value, length) = self.decodeTagAndValue(flags)
         if tag != Tag_Major_negativeInteger:
-            raise Exception(
-                "Expected Tag_Major_negativeInteger, but found {}".format(tag)
-            )
+            raise Exception("Expected Tag_Major_negativeInteger, but found {}".format(tag))
         return (value, length)
 
     def decodeInteger(self, flags=Flag_None):

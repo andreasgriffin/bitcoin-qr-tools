@@ -13,9 +13,7 @@ class UREncoder:
     # Start encoding a (possibly) multi-part UR.
     def __init__(self, ur, max_fragment_len, first_seq_num=0, min_fragment_len=10):
         self.ur = ur
-        self.fountain_encoder = FountainEncoder(
-            ur.cbor, max_fragment_len, first_seq_num, min_fragment_len
-        )
+        self.fountain_encoder = FountainEncoder(ur.cbor, max_fragment_len, first_seq_num, min_fragment_len)
 
     # Encode a single-part UR.
     @staticmethod

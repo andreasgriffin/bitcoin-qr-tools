@@ -1,7 +1,6 @@
 from .qr_qui import VideoWidget
 from .bitcoin_qr import *
 from PySide2 import QtWidgets
-from typing import Dict
 import pygame, math
 
 
@@ -76,9 +75,7 @@ class BitcoinVideoWidget(VideoWidget):
         if 0 == estimated_percent_complete:
             return
 
-        self.draw_pie_progress_bar(
-            surface, barcode.rect, estimated_percent_complete, (0, 255, 0)
-        )
+        self.draw_pie_progress_bar(surface, barcode.rect, estimated_percent_complete, (0, 255, 0))
 
 
 class DemoBitcoinVideoWidget(BitcoinVideoWidget):

@@ -6,7 +6,7 @@
 #
 
 from .fountain_utils import choose_fragments, contains, is_strict_subset, set_difference
-from .utils import join_lists, join_bytes, crc32_int, xor_with, take_first
+from .utils import join_bytes, crc32_int, xor_with, take_first
 
 
 class InvalidPart(Exception):
@@ -267,9 +267,7 @@ class FountainDecoder:
         print("part indexes: {}".format(self.indexes_to_string(p.indexes)))
 
     def print_part_end(self):
-        expected = (
-            self.expected_part_count() if self.expected_part_indexes != None else "None"
-        )
+        expected = self.expected_part_count() if self.expected_part_indexes != None else "None"
         percent = int(round(self.estimated_percent_complete() * 100))
         print(
             "processed: {}, expected: {}, received: {}, percent: {}%".format(
@@ -281,9 +279,7 @@ class FountainDecoder:
         )
 
     def print_state(self):
-        parts = (
-            self.expected_part_count() if self.expected_part_indexes != None else "None"
-        )
+        parts = self.expected_part_count() if self.expected_part_indexes != None else "None"
         received = self.indexes_to_string(self.received_part_indexes)
         mixed = []
         for indexes, p in self.mixed_parts.items():

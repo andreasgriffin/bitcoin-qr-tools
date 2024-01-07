@@ -34,11 +34,7 @@ class ECKey(RegistryItem):
         self.private_key = private_key
 
     def __eq__(self, o):
-        return (
-            self.data == o.data
-            and self.curve == o.curve
-            and self.private_key == o.private_key
-        )
+        return self.data == o.data and self.curve == o.curve and self.private_key == o.private_key
 
     @classmethod
     def registry_type(cls):
