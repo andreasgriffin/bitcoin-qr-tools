@@ -12,8 +12,9 @@ import hashlib
 import base58
 import logging
 import enum
-from .multipath_descriptor import MultipathDescriptor
+from dataclasses import dataclass
 
+from .multipath_descriptor import MultipathDescriptor
 from ur.fountain_encoder import CBOREncoder
 from ur.ur import UR
 from ur.ur_encoder import UREncoder
@@ -111,8 +112,6 @@ def decode_bip21_uri(uri: str) -> dict:
             out["sig"] = serialized_to_hex(out["sig"])
         except Exception as e:
             raise InvalidBitcoinURI(f"failed to parse 'sig' field: {repr(e)}") from e
-    if "lightning" in out:
-        raise InvalidBitcoinURI(f"Failed to decode 'lightning' field: {e!r}") from e
 
     return out
 
@@ -124,14 +123,24 @@ def is_xpub(s):
     return first_four_letters.endswith("pub")
 
 
-def extract_keystore(s):
+@dataclass
+class SignerInfo:
+    fingerprint: str
+    key_origin: str
+    xpub: str
+    derivation_path: Optional[str] = None
+    name: Optional[str] = None
+    first_address: Optional[str] = None
+
+
+def extract_signer_info(s: str) -> SignerInfo:
     """
     Splits 1 keystore,e.g. "[a42c6dd3/84'/1'/0']xpub/0/*"
-    into fingerprint, derivation_path, xpub, wallet_path
+    into fingerprint, key_origin, xpub, wallet_path
 
     It also replaces the "'" into "h"
 
-    It overwrites fingerprint, derivation_path, xpub  in default_keystore.
+    It overwrites fingerprint, key_origin, xpub  in default_keystore.
     """
 
     def extract_groups(string, pattern):
@@ -142,12 +151,12 @@ def extract_keystore(s):
 
     groups = extract_groups(s, r"\[(.*?)\/(.*?)\](.*?)(\/.*?)?$")
 
-    return {
-        "fingerprint": groups[0],
-        "derivation_path": "m/" + groups[1].replace("h", "'"),
-        "xpub": groups[2],
-        "further_derivation_path": groups[3],
-    }
+    return SignerInfo(
+        fingerprint=groups[0],
+        key_origin="m/" + groups[1].replace("h", "'"),
+        xpub=groups[2],
+        derivation_path=groups[3],
+    )
 
 
 def is_valid_bitcoin_hash(hash):
@@ -272,10 +281,11 @@ class DataType(enum.Enum):
     MultiPathDescriptor = enum.auto()
     Xpub = enum.auto()
     Fingerprint = enum.auto()
-    KeyStoreInfo = enum.auto()  # FingerPrint, Derivation path, Xpub
+    SignerInfo = enum.auto()  # FingerPrint, Derivation path, Xpub
     PSBT = enum.auto()
     Txid = enum.auto()
     Tx = enum.auto()
+    SignerInfos = enum.auto()  # a list of SignerInfo
 
 
 class DecodingException(Exception):
@@ -304,7 +314,7 @@ class Data:
             return self.data.as_string_private() if self.data else self.data
         if self.data_type == DataType.MultiPathDescriptor:
             return self.data.as_string_private() if self.data else self.data
-        if self.data_type == DataType.KeyStoreInfo:
+        if self.data_type == DataType.SignerInfo:
             return str(self.data)
         if self.data_type == DataType.PSBT:
             return str(self.data.serialize())
@@ -418,38 +428,46 @@ class Data:
 
     @classmethod
     def _try_extract_keystore(cls, s, network):
-        keystore_info = None
+        signer_info = None
         try:
-            keystore_info = extract_keystore(s)
+            signer_info = extract_signer_info(s)
         except:
             pass
 
-        if keystore_info:
+        if signer_info:
             logger.debug("detected keystore_info")
-            if is_slip132(keystore_info.get("xpub")):
-                keystore_info["xpub"] = convert_slip132_to_bip32(
-                    keystore_info.get("xpub")
-                )
-            return keystore_info
+            if is_slip132(signer_info.xpub):
+                signer_info.xpub = convert_slip132_to_bip32(signer_info.xpub)
+            return signer_info
 
+        # try to load from a generic json (and cobo)
         try:
-            cobo_dict = json.loads(s)
-            keystore_info = {}
-            key_map = {"fingerprint": "xfp", "derivation_path": "path", "xpub": "xpub"}
-            for key, cobo_key in key_map.items():
-                if cobo_key in cobo_dict:
-                    keystore_info[key] = cobo_dict[cobo_key]
-                if key in cobo_dict:
-                    keystore_info[key] = cobo_dict[key]
-            if keystore_info:
-                return keystore_info
+            d = json.loads(s)
+            fingerprint = None
+            key_origin = None
+            xpub = None
+            if d.get("fingerprint"):
+                fingerprint = d.get("fingerprint")
+            if d.get("xfp"):
+                fingerprint = d.get("xfp")
+            if d.get("key_origin"):
+                key_origin = d.get("key_origin")
+            if d.get("path"):
+                # cobo convention
+                key_origin = d.get("path")
+            if d.get("xpub"):
+                xpub = d.get("xpub")
+            if fingerprint and key_origin and xpub:
+                return SignerInfo(
+                    fingerprint=fingerprint, key_origin=key_origin, xpub=xpub
+                )
         except Exception:
             pass
 
         return None
 
     @classmethod
-    def from_str(cls, s, network):
+    def from_str(cls, s, network) -> "Data":
         s = s.strip()
         data = None
 
@@ -480,7 +498,7 @@ class Data:
             return Data(tx, DataType.Tx)
 
         if keystore_info := cls._try_extract_keystore(s, network):
-            return Data(keystore_info, DataType.KeyStoreInfo)
+            return Data(keystore_info, DataType.SignerInfo)
 
         raise DecodingException(f"{s} Could not be decoded")
 

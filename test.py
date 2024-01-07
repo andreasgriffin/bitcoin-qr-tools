@@ -25,59 +25,69 @@ assert isinstance(data.data, bdk.Descriptor)
 # test KeyStoreInfo
 s = "[a42c6dd3/84'/1'/0']tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks"
 data = Data.from_str(s, network=bdk.Network.REGTEST)
-assert data.data_type == DataType.KeyStoreInfo
-assert data.data == {
-    "xpub": "tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks",
-    "fingerprint": "a42c6dd3",
-    "derivation_path": "m/84'/1'/0'",
-    "further_derivation_path": None,
-}
+assert data.data_type == DataType.SignerInfo
+assert data.data == SignerInfo(
+    **{
+        "xpub": "tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks",
+        "fingerprint": "a42c6dd3",
+        "key_origin": "m/84'/1'/0'",
+        "derivation_path": None,
+    }
+)
 
 # test KeyStoreInfo with h instead of '
 s = "[a42c6dd3/84h/1h/0h]tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks"
 data = Data.from_str(s, network=bdk.Network.REGTEST)
-assert data.data_type == DataType.KeyStoreInfo
-assert data.data == {
-    "xpub": "tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks",
-    "fingerprint": "a42c6dd3",
-    "derivation_path": "m/84'/1'/0'",
-    "further_derivation_path": None,
-}
+assert data.data_type == DataType.SignerInfo
+assert data.data == SignerInfo(
+    **{
+        "xpub": "tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks",
+        "fingerprint": "a42c6dd3",
+        "key_origin": "m/84'/1'/0'",
+        "derivation_path": None,
+    }
+)
 
-# test KeyStoreInfo with further_derivation_path
+# test KeyStoreInfo with derivation_path
 s = "[a42c6dd3/84'/1'/0']tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks/0/*"
 data = Data.from_str(s, network=bdk.Network.REGTEST)
-assert data.data_type == DataType.KeyStoreInfo
-assert data.data == {
-    "xpub": "tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks",
-    "fingerprint": "a42c6dd3",
-    "derivation_path": "m/84'/1'/0'",
-    "further_derivation_path": "/0/*",
-}
+assert data.data_type == DataType.SignerInfo
+assert data.data == SignerInfo(
+    **{
+        "xpub": "tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks",
+        "fingerprint": "a42c6dd3",
+        "key_origin": "m/84'/1'/0'",
+        "derivation_path": "/0/*",
+    }
+)
 
 
 # test slip132
 s = "[7cf42c8e/84h/1h/0h]vpub5ZfBcsqfiq4GvTyyYpJW13W9KyZTT1TXNd4bvVk8TZ5ShYh2Bjfm5PyVhcSoLwAr23iRUvYtpza8wmCKPYu8ECKyZPAfwDaFniMjpzACeqJ"
 data = Data.from_str(s, network=bdk.Network.REGTEST)
-assert data.data_type == DataType.KeyStoreInfo
-assert data.data == {
-    "xpub": "tpubDDhLkT1BjU6gtrZ4firqd92X12x1KdwakUhLqqb3ZUb6Z2zBmGqyTxxbz4SksFRvdEUwbTFtHR7HQWv4DoaPi79UMfJpnZsTv85SNCfeePi",
-    "fingerprint": "7cf42c8e",
-    "derivation_path": "m/84'/1'/0'",
-    "further_derivation_path": None,
-}
+assert data.data_type == DataType.SignerInfo
+assert data.data == SignerInfo(
+    **{
+        "xpub": "tpubDDhLkT1BjU6gtrZ4firqd92X12x1KdwakUhLqqb3ZUb6Z2zBmGqyTxxbz4SksFRvdEUwbTFtHR7HQWv4DoaPi79UMfJpnZsTv85SNCfeePi",
+        "fingerprint": "7cf42c8e",
+        "key_origin": "m/84'/1'/0'",
+        "derivation_path": None,
+    }
+)
 
 
 # test slip132 multisig (the xpub is at a different derivation path)
 s = "[7cf42c8e/48h/1h/0h/2h]Vpub5kwQ4Q4rGphWbu7SwK9TkPwgPkTKykZZLL22mavN7y9uH7gmQB8doAfx6sJrCtfam33p4vYUrZRdzYp8Ky5ogHB6ioUFA6XFCzM2wkeko6v"
 data = Data.from_str(s, network=bdk.Network.REGTEST)
-assert data.data_type == DataType.KeyStoreInfo
-assert data.data == {
-    "xpub": "tpubDE5U4jVviWBZ9iXA7ZEpYR8FM1oce2N2Pv16mfVjr7q9WRR2DJva6co8acMLAmhm8kkMJsFMRmaHL8v6rzc81hsvgcVzc3MTSfnrtwYZMMy",
-    "fingerprint": "7cf42c8e",
-    "derivation_path": "m/48'/1'/0'/2'",
-    "further_derivation_path": None,
-}
+assert data.data_type == DataType.SignerInfo
+assert data.data == SignerInfo(
+    **{
+        "xpub": "tpubDE5U4jVviWBZ9iXA7ZEpYR8FM1oce2N2Pv16mfVjr7q9WRR2DJva6co8acMLAmhm8kkMJsFMRmaHL8v6rzc81hsvgcVzc3MTSfnrtwYZMMy",
+        "fingerprint": "7cf42c8e",
+        "key_origin": "m/48'/1'/0'/2'",
+        "derivation_path": None,
+    }
+)
 
 # test xpub
 s = "tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks"
@@ -134,11 +144,22 @@ assert (
 # cobo
 s = """{"xfp":"7cf42c8e","xpub":"tpubDE5U4jVviWBZ9iXA7ZEpYR8FM1oce2N2Pv16mfVjr7q9WRR2DJva6co8acMLAmhm8kkMJsFMRmaHL8v6rzc81hsvgcVzc3MTSfnrtwYZMMy","path":"m\/48'\/0'\/0'\/2'"}"""
 data = Data.from_str(s, network=bdk.Network.REGTEST)
-assert data.data_type == DataType.KeyStoreInfo
-assert (
-    str(data.data)
-    == """{'fingerprint': '7cf42c8e', 'derivation_path': "m/48'/0'/0'/2'", 'xpub': 'tpubDE5U4jVviWBZ9iXA7ZEpYR8FM1oce2N2Pv16mfVjr7q9WRR2DJva6co8acMLAmhm8kkMJsFMRmaHL8v6rzc81hsvgcVzc3MTSfnrtwYZMMy'}"""
+assert data.data_type == DataType.SignerInfo
+assert data.data == SignerInfo(
+    **{
+        "fingerprint": "7cf42c8e",
+        "key_origin": "m/48'/0'/0'/2'",
+        "xpub": "tpubDE5U4jVviWBZ9iXA7ZEpYR8FM1oce2N2Pv16mfVjr7q9WRR2DJva6co8acMLAmhm8kkMJsFMRmaHL8v6rzc81hsvgcVzc3MTSfnrtwYZMMy",
+    }
 )
+assert data.data.__dict__ == {
+    "fingerprint": "7cf42c8e",
+    "key_origin": "m/48'/0'/0'/2'",
+    "xpub": "tpubDE5U4jVviWBZ9iXA7ZEpYR8FM1oce2N2Pv16mfVjr7q9WRR2DJva6co8acMLAmhm8kkMJsFMRmaHL8v6rzc81hsvgcVzc3MTSfnrtwYZMMy",
+    "derivation_path": None,
+    "name": None,
+    "first_address": None,
+}
 
 
 # psbt , splitted according to specter
@@ -292,3 +313,61 @@ try:
 except InconsistentDescriptors as e:
     exceptionwas_raised = True
 assert exceptionwas_raised
+
+
+#
+coldcard_sparrow_export = """{
+    "chain": "XRT",
+    "xfp": "0F056943",
+    "account": 0,
+    "xpub": "tpubD6NzVbkrYhZ4XzL5Dhayo67Gorv1YMS7j8pRUvVMd5odC2LBPLAygka9p7748JtSq82FNGPppFEz5xxZUdasBRCqJqXvUHq6xpnsMcYJzeh",
+    "bip44": {
+        "name": "p2pkh",
+        "xfp": "92B53FD2",
+        "deriv": "m/44'/1'/0'",
+        "xpub": "tpubDCiHGUNYdRRBPNYm7CqeeLwPWfeb2ZT2rPsk4aEW3eUoJM93jbBa7hPpB1T9YKtigmjpxHrB1522kSsTxGm9V6cqKqrp1EDaYaeJZqcirYB",
+        "desc": "pkh([0f056943/44h/1h/0h]tpubDCiHGUNYdRRBPNYm7CqeeLwPWfeb2ZT2rPsk4aEW3eUoJM93jbBa7hPpB1T9YKtigmjpxHrB1522kSsTxGm9V6cqKqrp1EDaYaeJZqcirYB/<0;1>/*)#gx9efxnj",
+        "first": "mtHSVByP9EYZmB26jASDdPVm19gvpecb5R"
+    },
+    "bip49": {
+        "name": "p2sh-p2wpkh",
+        "xfp": "FD3E8548",
+        "deriv": "m/49'/1'/0'",
+        "xpub": "tpubDCDqt7XXvhAYY9HSwrCXB7BXqYM4RXB8WFtKgtTXGa6u3U6EV1NJJRFTcuTRyhSY5Vreg1LP8aPdyiAPQGrDJLikkHoc7VQg6DA9NtUxHtj",
+        "desc": "sh(wpkh([0f056943/49h/1h/0h]tpubDCDqt7XXvhAYY9HSwrCXB7BXqYM4RXB8WFtKgtTXGa6u3U6EV1NJJRFTcuTRyhSY5Vreg1LP8aPdyiAPQGrDJLikkHoc7VQg6DA9NtUxHtj/<0;1>/*))#7trzzmgc",
+        "_pub": "upub5DMRSsh6mNaeiTXEzarZLvZezWp4cGhaDHjMz9iineDN8syqep2XHncDKFVtTUXY4fyKp12qDVVwdfq5rKkw2CDf5fy2gEHyh5NoTC6fiwm",
+        "first": "2NCAJ5wD4GvmW32GFLVybKPNphNU8UYoEJv"
+    },
+    "bip84": {
+        "name": "p2wpkh",
+        "xfp": "AB82D43E",
+        "deriv": "m/84'/1'/0'",
+        "xpub": "tpubDC7jGaaSE66Pn4dgtbAAstde4bCyhSUs4r3P8WhMVvPByvcRrzrwqSvpF9Ghx83Z1LfVugGRrSBko5UEKELCz9HoMv5qKmGq3fqnnbS5E9r",
+        "desc": "wpkh([0f056943/84h/1h/0h]tpubDC7jGaaSE66Pn4dgtbAAstde4bCyhSUs4r3P8WhMVvPByvcRrzrwqSvpF9Ghx83Z1LfVugGRrSBko5UEKELCz9HoMv5qKmGq3fqnnbS5E9r/<0;1>/*)#sjuyyvve",
+        "_pub": "vpub5Y5a91QvDT3yog4bmgbqFo7GPXpRpozogzQeDArSPzsY8SKGHTgjSswhxhGkRonUQ9tyo9ZSQ1ecLKkVUyewWEUJZdwgUQycvG86FV7sdhZ",
+        "first": "bcrt1qupyd58ndsh7lut0et0vtrq432jvu9jtdx8fgyv"
+    },
+    "bip48_1": {
+        "name": "p2sh-p2wsh",
+        "xfp": "43BD4CE2",
+        "deriv": "m/48'/1'/0'/1'",
+        "xpub": "tpubDF2rnouQaaYrUEy2JM1YD3RFzew4onawGM4X2Re67gguTf5CbHonBRiFGe3Xjz7DK88dxBFGf2i7K1hef3PM4cFKyUjcbJXddaY9F5tJBoP",
+        "desc": "sh(wsh(sortedmulti(M,[0f056943/48'/1'/0'/1']tpubDF2rnouQaaYrUEy2JM1YD3RFzew4onawGM4X2Re67gguTf5CbHonBRiFGe3Xjz7DK88dxBFGf2i7K1hef3PM4cFKyUjcbJXddaY9F5tJBoP/0/*,...)))",
+        "_pub": "Upub5T4XUooQzDXL58NCHk8ZCw9BsRSLCtnyHeZEExAq1XdnBFXiXVrHFuvvmh3TnCR7XmKHxkwqdACv68z7QKT1vwru9L1SZSsw8B2fuBvtSa6"
+    },
+    "bip48_2": {
+        "name": "p2wsh",
+        "xfp": "B5EE2F16",
+        "deriv": "m/48'/1'/0'/2'",
+        "xpub": "tpubDF2rnouQaaYrXF4noGTv6rQYmx87cQ4GrUdhpvXkhtChwQPbdGTi8GA88NUaSrwZBwNsTkC9bFkkC8vDyGBVVAQTZ2AS6gs68RQXtXcCvkP",
+        "desc": "wsh(sortedmulti(M,[0f056943/48'/1'/0'/2']tpubDF2rnouQaaYrXF4noGTv6rQYmx87cQ4GrUdhpvXkhtChwQPbdGTi8GA88NUaSrwZBwNsTkC9bFkkC8vDyGBVVAQTZ2AS6gs68RQXtXcCvkP/0/*,...))",
+        "_pub": "Vpub5mtnnUUL8u4oyRf5d2NZJqDypgmpx8FontedpqxNyjXTi6fLp8fmpp2wedS6UyuNpDgLDoVH23c6rYpFSEfB9jhdbD8gek2stjxhwJeE1Eq"
+    },
+    "bip45": {
+        "name": "p2sh",
+        "xfp": "9222584E",
+        "deriv": "m/45'",
+        "xpub": "tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n",
+        "desc": "sh(sortedmulti(M,[0f056943/45']tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n/0/*,...))"
+    }
+}"""
