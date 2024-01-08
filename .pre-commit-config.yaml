@@ -19,13 +19,3 @@ repos:
       - id: mypy
         # Additional arguments to MyPy can be added here
         args: [ ]
-  - repo: local
-    hooks:
-    - id: pytest
-      name: pytest
-      entry: python -m pytest
-      language: system
-      types: [python]
-      pass_filenames: false
-      args:
-      - --verbose  # optional: increase verbosity

@@ -22,8 +22,8 @@
 
 import binascii
 import hashlib
-from urtypes import RegistryType, RegistryItem
-from urtypes.cbor import DataItem
+from ...urtypes import RegistryType, RegistryItem
+from ...urtypes.cbor import DataItem
 from .coin_info import CoinInfo
 from .keypath import Keypath
 

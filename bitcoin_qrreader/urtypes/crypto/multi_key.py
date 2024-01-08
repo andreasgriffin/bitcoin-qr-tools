@@ -20,42 +20,46 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import binascii
-from urtypes import RegistryType, RegistryItem
+from ...urtypes import RegistryItem
+from ...urtypes.cbor import DataItem
+from .hd_key import HDKey, CRYPTO_HDKEY
+from .ec_key import ECKey, CRYPTO_ECKEY
 
-CRYPTO_ECKEY = RegistryType("crypto-eckey", 306)
 
-
-class ECKey(RegistryItem):
-    def __init__(self, data, curve, private_key):
+class MultiKey(RegistryItem):
+    def __init__(self, threshold, ec_keys, hd_keys):
         super().__init__()
-        self.data = data
-        self.curve = curve
-        self.private_key = private_key
+        self.threshold = threshold
+        self.ec_keys = ec_keys
+        self.hd_keys = hd_keys
 
     def __eq__(self, o):
-        return self.data == o.data and self.curve == o.curve and self.private_key == o.private_key
+        return self.threshold == o.threshold and self.ec_keys == o.ec_keys and self.hd_keys == o.hd_keys
 
     @classmethod
     def registry_type(cls):
-        return CRYPTO_ECKEY
+        return None
 
     def to_data_item(self):
         map = {}
-        if self.curve is not None:
-            map[1] = self.curve
-        if self.private_key is not None:
-            map[2] = self.private_key
-        map[3] = self.data
+        map[1] = self.threshold
+        combined_keys = self.ec_keys[:] + self.hd_keys[:]
+        keys = []
+        for key in combined_keys:
+            keys.append(DataItem(key.registry_type().tag, key.to_data_item()))
+        map[2] = keys
         return map
 
     @classmethod
     def from_data_item(cls, item):
-        map = cls.mapping(item)
-        data = map[3]
-        curve = map[1] if 1 in map else None
-        private_key = map[2] if 2 in map else None
-        return cls(data, curve, private_key)
-
-    def descriptor_key(self):
-        return binascii.hexlify(self.data).decode()
+        map = item.map
+        threshold = map[1]
+        keys = map[2]
+        ec_keys = []
+        hd_keys = []
+        for key in keys:
+            if key.tag == CRYPTO_HDKEY.tag:
+                hd_keys.append(HDKey.from_data_item(key))
+            elif key.tag == CRYPTO_ECKEY.tag:
+                ec_keys.append(ECKey.from_data_item(key))
+        return cls(threshold, ec_keys, hd_keys)

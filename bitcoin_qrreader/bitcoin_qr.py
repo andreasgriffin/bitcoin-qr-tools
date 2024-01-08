@@ -6,20 +6,19 @@ from typing import List, Optional, Tuple, Dict
 from decimal import Decimal
 import bdkpython as bdk
 import base64, json
-from urtypes.crypto import PSBT as UR_PSBT
-from urtypes.crypto import Output as US_OUTPUT
-from ur.ur_decoder import URDecoder
-from urtypes.bytes import Bytes as UR_BYTES
+from .urtypes.crypto import PSBT as UR_PSBT
+from .urtypes.crypto import Output as US_OUTPUT
+from .ur.ur_decoder import URDecoder
+from .urtypes.bytes import Bytes as UR_BYTES
 import hashlib
 import base58
 import logging
 import enum
-from dataclasses import dataclass
 
 from .multipath_descriptor import MultipathDescriptor
-from ur.fountain_encoder import CBOREncoder
-from ur.ur import UR
-from ur.ur_encoder import UREncoder
+from .ur.fountain_encoder import CBOREncoder
+from .ur.ur import UR
+from .ur.ur_encoder import UREncoder
 
 BITCOIN_BIP21_URI_SCHEME = "bitcoin"
 logger = logging.getLogger(__name__)
@@ -124,14 +123,35 @@ def is_xpub(s):
     return first_four_letters.endswith("pub")
 
 
-@dataclass
 class SignerInfo:
-    fingerprint: str
-    key_origin: str
-    xpub: str
-    derivation_path: Optional[str] = None
-    name: Optional[str] = None
-    first_address: Optional[str] = None
+    def __init__(
+        self,
+        fingerprint: str,
+        key_origin: str,
+        xpub: str,
+        derivation_path: Optional[str] = None,
+        name: Optional[str] = None,
+        first_address: Optional[str] = None,
+    ) -> None:
+        self.fingerprint = fingerprint
+        self.key_origin = self.format_key_origin(key_origin)
+        self.xpub = xpub
+        self.derivation_path = derivation_path
+        self.name = name
+        self.first_address = first_address
+
+    def format_key_origin(self, value):
+        assert value.startswith("m/"), "The value must start with m/"
+        return value.replace("'", "h")
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.__dict__})"
+
+    def __str__(self) -> str:
+        return f"{self.__dict__}"
+
+    def __eq__(self, other: object) -> bool:
+        return self.__dict__ == other.__dict__
 
 
 def extract_signer_info(s: str) -> SignerInfo:
@@ -144,6 +164,10 @@ def extract_signer_info(s: str) -> SignerInfo:
     It overwrites fingerprint, key_origin, xpub  in default_keystore.
     """
 
+    def key_origin_contains_valid_characters(s):
+        # Matches strings that consist of 'h', '/', digits, and optionally ends with a single quote
+        return re.fullmatch("[mh/0-9']*", s) is not None
+
     def extract_groups(string, pattern):
         match = re.match(pattern, string)
         if match is None:
@@ -152,9 +176,13 @@ def extract_signer_info(s: str) -> SignerInfo:
 
     groups = extract_groups(s, r"\[(.*?)\/(.*?)\](.*?)(\/.*?)?$")
 
+    key_origin = "m/" + groups[1].replace("'", "h")
+    # guard against false positive detections
+    assert key_origin_contains_valid_characters(key_origin)
+
     return SignerInfo(
         fingerprint=groups[0],
-        key_origin="m/" + groups[1].replace("h", "'"),
+        key_origin=key_origin,
         xpub=groups[2],
         derivation_path=groups[3],
     )
@@ -449,6 +477,8 @@ class Data:
                 fingerprint = d.get("xfp")
             if d.get("key_origin"):
                 key_origin = d.get("key_origin")
+            if d.get("deriv"):
+                key_origin = d.get("deriv")
             if d.get("path"):
                 # cobo convention
                 key_origin = d.get("path")

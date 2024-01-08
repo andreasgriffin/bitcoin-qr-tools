@@ -20,46 +20,42 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import io
-from urtypes.cbor import decoder, encoder, DataItem
+import binascii
+from ...urtypes import RegistryType, RegistryItem
+
+CRYPTO_ECKEY = RegistryType("crypto-eckey", 306)
 
 
-class RegistryType:
-    def __init__(self, type, tag):
-        self.type = type
-        self.tag = tag
+class ECKey(RegistryItem):
+    def __init__(self, data, curve, private_key):
+        super().__init__()
+        self.data = data
+        self.curve = curve
+        self.private_key = private_key
 
+    def __eq__(self, o):
+        return self.data == o.data and self.curve == o.curve and self.private_key == o.private_key
 
-class RegistryItem:
     @classmethod
     def registry_type(cls):
-        raise NotImplementedError()
+        return CRYPTO_ECKEY
 
-    @classmethod
-    def mapping(cls, item):
-        if isinstance(item, DataItem):
-            registry_type = cls.registry_type()
-            if (registry_type is None and item.tag is None) or (
-                registry_type is not None and registry_type.tag == item.tag
-            ):
-                return item.map
-        return item
+    def to_data_item(self):
+        map = {}
+        if self.curve is not None:
+            map[1] = self.curve
+        if self.private_key is not None:
+            map[2] = self.private_key
+        map[3] = self.data
+        return map
 
     @classmethod
     def from_data_item(cls, item):
-        raise NotImplementedError()
+        map = cls.mapping(item)
+        data = map[3]
+        curve = map[1] if 1 in map else None
+        private_key = map[2] if 2 in map else None
+        return cls(data, curve, private_key)
 
-    def to_data_item(self):
-        raise NotImplementedError()
-
-    @classmethod
-    def from_cbor(cls, cbor_payload):
-        cbor_decoder = decoder.Decoder(io.BytesIO(cbor_payload))
-        return cls.from_data_item(cbor_decoder.decode())
-
-    def to_cbor(self):
-        cbor_encoder = encoder.Encoder(io.BytesIO())
-        cbor_encoder.encode(self.to_data_item())
-        v = cbor_encoder.output.getvalue()
-        cbor_encoder.output.close()
-        return bytearray(v)
+    def descriptor_key(self):
+        return binascii.hexlify(self.data).decode()

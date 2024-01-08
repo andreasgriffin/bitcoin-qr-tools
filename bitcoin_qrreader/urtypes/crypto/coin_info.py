@@ -20,39 +20,35 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from urtypes import RegistryType, RegistryItem
-from .output import Output
+from ...urtypes import RegistryType, RegistryItem
 
-CRYPTO_ACCOUNT = RegistryType("crypto-account", 311)
+CRYPTO_COIN_INFO = RegistryType("crypto-coin-info", 305)
 
 
-class Account(RegistryItem):
-    def __init__(self, master_fingerprint, output_descriptors):
+class CoinInfo(RegistryItem):
+    def __init__(self, type, network):
         super().__init__()
-        self.master_fingerprint = master_fingerprint
-        self.output_descriptors = output_descriptors
+        self.type = type
+        self.network = network
 
     def __eq__(self, o):
-        return (
-            self.master_fingerprint == o.master_fingerprint
-            and self.output_descriptors == o.output_descriptors
-        )
+        return self.type == o.type and self.network == o.network
 
     @classmethod
     def registry_type(cls):
-        return CRYPTO_ACCOUNT
+        return CRYPTO_COIN_INFO
 
     def to_data_item(self):
         map = {}
-        if self.master_fingerprint is not None:
-            map[1] = int.from_bytes(self.master_fingerprint, "big")
-        if self.output_descriptors is not None:
-            map[2] = [descriptor.to_data_item() for descriptor in self.output_descriptors]
+        if self.type is not None:
+            map[1] = self.type
+        if self.network is not None:
+            map[2] = self.network
         return map
 
     @classmethod
     def from_data_item(cls, item):
         map = cls.mapping(item)
-        master_fingerprint = map[1].to_bytes(4, "big") if 1 in map else None
-        outputs = [Output.from_data_item(item) for item in map[2]] if 2 in map else None
-        return cls(master_fingerprint, outputs)
+        type = map[1] if 1 in map else None
+        network = map[2] if 2 in map else None
+        return cls(type, network)

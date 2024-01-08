@@ -20,46 +20,46 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from urtypes import RegistryItem
-from urtypes.cbor import DataItem
-from .hd_key import HDKey, CRYPTO_HDKEY
-from .ec_key import ECKey, CRYPTO_ECKEY
+import io
+from ..urtypes.cbor import decoder, encoder, DataItem
 
 
-class MultiKey(RegistryItem):
-    def __init__(self, threshold, ec_keys, hd_keys):
-        super().__init__()
-        self.threshold = threshold
-        self.ec_keys = ec_keys
-        self.hd_keys = hd_keys
+class RegistryType:
+    def __init__(self, type, tag):
+        self.type = type
+        self.tag = tag
 
-    def __eq__(self, o):
-        return self.threshold == o.threshold and self.ec_keys == o.ec_keys and self.hd_keys == o.hd_keys
 
+class RegistryItem:
     @classmethod
     def registry_type(cls):
-        return None
+        raise NotImplementedError()
 
-    def to_data_item(self):
-        map = {}
-        map[1] = self.threshold
-        combined_keys = self.ec_keys[:] + self.hd_keys[:]
-        keys = []
-        for key in combined_keys:
-            keys.append(DataItem(key.registry_type().tag, key.to_data_item()))
-        map[2] = keys
-        return map
+    @classmethod
+    def mapping(cls, item):
+        if isinstance(item, DataItem):
+            registry_type = cls.registry_type()
+            if (registry_type is None and item.tag is None) or (
+                registry_type is not None and registry_type.tag == item.tag
+            ):
+                return item.map
+        return item
 
     @classmethod
     def from_data_item(cls, item):
-        map = item.map
-        threshold = map[1]
-        keys = map[2]
-        ec_keys = []
-        hd_keys = []
-        for key in keys:
-            if key.tag == CRYPTO_HDKEY.tag:
-                hd_keys.append(HDKey.from_data_item(key))
-            elif key.tag == CRYPTO_ECKEY.tag:
-                ec_keys.append(ECKey.from_data_item(key))
-        return cls(threshold, ec_keys, hd_keys)
+        raise NotImplementedError()
+
+    def to_data_item(self):
+        raise NotImplementedError()
+
+    @classmethod
+    def from_cbor(cls, cbor_payload):
+        cbor_decoder = decoder.Decoder(io.BytesIO(cbor_payload))
+        return cls.from_data_item(cbor_decoder.decode())
+
+    def to_cbor(self):
+        cbor_encoder = encoder.Encoder(io.BytesIO())
+        cbor_encoder.encode(self.to_data_item())
+        v = cbor_encoder.output.getvalue()
+        cbor_encoder.output.close()
+        return bytearray(v)

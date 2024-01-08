@@ -21,8 +21,8 @@
 # THE SOFTWARE.
 
 import io
-from urtypes import RegistryType, RegistryItem
-from urtypes.cbor import DataItem
+from ...urtypes import RegistryType, RegistryItem
+from ...urtypes.cbor import DataItem
 from .multi_key import MultiKey
 from .hd_key import HDKey, CRYPTO_HDKEY
 from .ec_key import ECKey
