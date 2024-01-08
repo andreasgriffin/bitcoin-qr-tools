@@ -39,7 +39,7 @@ pip install bitcoin_qrreader
 ###  From git
 
 ```shell
-python setup.py sdist bdist_wheel
+poetry build
 pip install dist/bitcoin_qrreader*.whl  
 ```
 
