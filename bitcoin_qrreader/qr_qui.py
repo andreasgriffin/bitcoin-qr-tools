@@ -33,7 +33,6 @@ class VideoWidget(QtWidgets.QWidget):
         self.setLayout(layout)
 
         self.capture = None
-        self.switch_camera(0)
 
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update_frame)
@@ -42,6 +41,7 @@ class VideoWidget(QtWidgets.QWidget):
         # Add "Screen" option for screen capture
         self.combo_cameras.addItem("Screen")
         self.cameras.append("Screen")  # Adding "Screen" to the cameras list
+        self.switch_camera(0)
 
     def closeEvent(self, event: QEvent) -> None:
         self.timer.stop()

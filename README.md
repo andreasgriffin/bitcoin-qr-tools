@@ -34,25 +34,24 @@ python demo.py
 pip install bitcoin_qrreader
 ```
 
+### From git
+
+ * Setup poetry and install dependencies 
+
+   ```sh
+   curl -sSL https://install.python-poetry.org | python3 -  # see https://python-poetry.org/docs/master/#installing-with-the-official-installer
+   poetry config virtualenvs.in-project true
+   poetry install
+   ```
 
 
-###  From git
+ * Run  
 
-```shell
-poetry build
-pip install dist/bitcoin_qrreader*.whl  
-```
-
-
-
-### Development to change requirements
-
-```shell
-pip-compile --generate-hashes --resolver=backtracking   requirements.in
-pip install -r requirements.txt
-```
-
-
+   ```sh
+   poetry shell
+   python -m bitcoin_qrreader
+   ```
+   
 
 
 
