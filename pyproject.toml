@@ -11,21 +11,21 @@ disable_error_code = "assignment"
 
 [tool.poetry]
 name = "bitcoin-qrreader"
-version = "0.6.2"
+version = "0.6.3"
 authors = ["andreasgriffin <andreasgriffin@proton.me>"]
 license = "GPL-3.0"
 readme = "README.md"
 description = "A python bitcoin qr reader"
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.11"
+python = ">=3.8,<4.0"
+pyqt6 = "^6.6.1"
 base58 = "2.1.1"
-bdkpython ="0.30.0"
+bdkpython ="0.31.0"
 pygame ="2.5.0"
 pyzbar ="0.1.9"
+numpy = "^1.21.0"
 mss ="9.0.1"
-pyside2 = "^5.15.2.1"
-numpy = "^1.26.3"
 
 
 [tool.poetry.group.dev.dependencies]

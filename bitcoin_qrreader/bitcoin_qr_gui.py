@@ -1,6 +1,6 @@
 from .qr_qui import VideoWidget
 from .bitcoin_qr import *
-from PySide2 import QtWidgets
+from PyQt6 import QtWidgets
 import pygame, math
 
 

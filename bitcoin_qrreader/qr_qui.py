@@ -1,15 +1,16 @@
 import pygame
 import pygame.camera
-from PySide2 import QtCore, QtWidgets, QtGui
+from PyQt6 import QtCore, QtWidgets, QtGui
 from pyzbar import pyzbar
 import time
-from PySide2.QtCore import QEvent
+from PyQt6.QtCore import QEvent
 import mss
 import numpy as np
+from PyQt6.QtCore import pyqtSignal
 
 
 class VideoWidget(QtWidgets.QWidget):
-    signal_qr_data_callback = QtCore.Signal(object)
+    signal_qr_data_callback = pyqtSignal(object)
 
     def __init__(self, qr_data_callback=None, parent=None):
         super().__init__(parent)
@@ -36,7 +37,7 @@ class VideoWidget(QtWidgets.QWidget):
 
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update_frame)
-        self.timer.start(1000.0 / 30.0)  # 30 FPS
+        self.timer.start(int(1000.0 / 30.0))  # 30 FPS
 
         # Add "Screen" option for screen capture
         self.combo_cameras.addItem("Screen")
@@ -138,7 +139,7 @@ class VideoWidget(QtWidgets.QWidget):
         array3d = pygame.surfarray.array3d(surface)
         height, width, _ = array3d.shape
         bytes_per_line = 3 * width
-        q_image = QtGui.QImage(array3d.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888)
+        q_image = QtGui.QImage(array3d.data, width, height, bytes_per_line, QtGui.QImage.Format.Format_RGB888)
 
         # Convert QImage to QPixmap
         pixmap = QtGui.QPixmap.fromImage(q_image)
@@ -148,8 +149,8 @@ class VideoWidget(QtWidgets.QWidget):
             pixmap = pixmap.scaled(
                 scale_to[0],
                 scale_to[1],
-                QtCore.Qt.KeepAspectRatio,
-                QtCore.Qt.SmoothTransformation,
+                QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                QtCore.Qt.TransformationMode.SmoothTransformation,
             )
 
         self.label_image.setPixmap(pixmap)
