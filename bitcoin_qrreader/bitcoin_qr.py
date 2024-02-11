@@ -314,6 +314,16 @@ class DataType(enum.Enum):
     Tx = enum.auto()
     SignerInfos = enum.auto()  # a list of SignerInfo
 
+    @classmethod
+    def from_value(cls, value: int) -> "DataType":
+        min_value = min([member.value for member in cls])
+        return list(cls)[value - min_value]
+
+    @classmethod
+    def from_name(cls, value: str) -> "DataType":
+        names = [member.name for member in cls]
+        return list(cls)[names.index(value)]
+
 
 class DecodingException(Exception):
     pass
@@ -335,6 +345,16 @@ class Data:
     def __init__(self, data, data_type: DataType) -> None:
         self.data = data
         self.data_type = data_type
+
+    def dump(self) -> Dict:
+        return {"data": self.data_as_string(), "data_type": self.data_type.name}
+
+    @classmethod
+    def from_dump(cls, d: Dict, network: bdk.Network) -> "Data":
+        data = cls.from_str(d["data"], network=network)
+        d["data_type"] = DataType.from_name(d["data_type"])
+        assert d["data_type"] == data.data_type
+        return data
 
     def data_as_string(self):
         if isinstance(self.data, str):

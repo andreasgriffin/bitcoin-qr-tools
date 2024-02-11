@@ -11,11 +11,12 @@ disable_error_code = "assignment"
 
 [tool.poetry]
 name = "bitcoin-qrreader"
-version = "0.6.3"
+version = "0.6.4"
 authors = ["andreasgriffin <andreasgriffin@proton.me>"]
 license = "GPL-3.0"
 readme = "README.md"
 description = "A python bitcoin qr reader"
+homepage = "https://github.com/andreasgriffin/bitcoin-qrreader"
 
 [tool.poetry.dependencies]
 python = ">=3.8,<4.0"
