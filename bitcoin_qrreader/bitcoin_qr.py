@@ -24,12 +24,12 @@ BITCOIN_BIP21_URI_SCHEME = "bitcoin"
 logger = logging.getLogger(__name__)
 
 
-def is_bitcoin_address(s):
+def is_bitcoin_address(s, network: bdk.Network):
     if re.search(r"^bitcoin\:.*", s, re.IGNORECASE):
         return True
 
     try:
-        bdk.Address(s)
+        bdk.Address(s, network)
         return True
     except:
         return False
@@ -47,7 +47,7 @@ def hex_to_serialized(hex_string):
     return bytes.fromhex(hex_string)
 
 
-def decode_bip21_uri(uri: str) -> dict:
+def decode_bip21_uri(uri: str, network: bdk.Network) -> dict:
     """Raises InvalidBitcoinURI on malformed URI."""
     TOTAL_COIN_SUPPLY_LIMIT_IN_BTC = 21000000
     COIN = 100000000
@@ -56,7 +56,7 @@ def decode_bip21_uri(uri: str) -> dict:
         raise InvalidBitcoinURI(f"expected string, not {repr(uri)}")
 
     if ":" not in uri:
-        if not is_bitcoin_address(uri):
+        if not is_bitcoin_address(uri, network=network):
             raise InvalidBitcoinURI("Not a bitcoin address")
         return {"address": uri}
 
@@ -78,7 +78,7 @@ def decode_bip21_uri(uri: str) -> dict:
 
     out = {k: v[0] for k, v in pq.items()}
     if address:
-        if not is_bitcoin_address(address):
+        if not is_bitcoin_address(address, network=network):
             raise InvalidBitcoinURI(f"Invalid bitcoin address: {address}")
         out["address"] = address
     if "amount" in out:
@@ -302,6 +302,39 @@ def is_slip132(key):
     return get_version_bytes(key) in version_bytes_map
 
 
+def is_ndjson_with_keys(s: str, keys: List[str]):
+    """
+    Checks if the input string s is newline-delimited JSON and each JSON object contains the specified keys.
+
+    Args:
+    s (str): The input string to check.
+    keys (list of str): The keys that must be present in each JSON object.
+
+    Returns:
+    bool: True if the string is newline-delimited JSON and each object contains the specified keys, False otherwise.
+    """
+    lines = s.splitlines()
+
+    # Check if there's at least one line
+    if not lines:
+        return False
+
+    for line in lines:
+        try:
+            obj = json.loads(line)
+            # Check if all specified keys are present in the JSON object
+            if not all(key in obj for key in keys):
+                return False
+        except json.JSONDecodeError:
+            return False
+
+    return True
+
+
+def is_bip329(s: str):
+    return is_ndjson_with_keys(s, keys=["type", "ref", "label"])
+
+
 class DataType(enum.Enum):
     Bip21 = enum.auto()  # https://bips.dev/21/
     Descriptor = enum.auto()
@@ -313,6 +346,7 @@ class DataType(enum.Enum):
     Txid = enum.auto()
     Tx = enum.auto()
     SignerInfos = enum.auto()  # a list of SignerInfo
+    LabelsBip329 = enum.auto()
 
     @classmethod
     def from_value(cls, value: int) -> "DataType":
@@ -373,6 +407,8 @@ class Data:
             return str(self.data.serialize())
         if self.data_type == DataType.Tx:
             return str(serialized_to_hex(self.data.serialize()))
+        if self.data_type == DataType.LabelsBip329:
+            return str(self.data)
 
         return str(self.data)
 
@@ -380,15 +416,17 @@ class Data:
         return f"{self.data_type.name}: {self.data_as_string()}"
 
     @classmethod
-    def _try_decode_bip21(cls, s):
+    def _try_decode_bip21(cls, s, network: bdk.Network):
         try:
-            return decode_bip21_uri(s)
+            return decode_bip21_uri(s, network=network)
         except Exception:
             pass
 
     @classmethod
     def _try_get_descriptor(cls, s, network):
         try:
+            assert "<" not in s, "This contains characters of a multipath descriptor"
+            assert ">" not in s, "This contains characters of a multipath descriptor"
             descriptor = bdk.Descriptor(s, network)
             if descriptor:
                 logger.debug("detected descriptor")
@@ -399,9 +437,7 @@ class Data:
         try:
             specter_dict = json.loads(s)
             if "descriptor" in specter_dict:
-                descriptor = bdk.Descriptor(specter_dict["descriptor"], network)
-                logger.debug("detected descriptor")
-                return descriptor
+                return cls._try_get_descriptor(specter_dict["descriptor"], network=network)
         except Exception:
             pass
 
@@ -563,7 +599,7 @@ class Data:
         data = None
 
         # Sequence of checks to identify the type of data in `s`
-        if decoded_bip21 := cls._try_decode_bip21(s):
+        if decoded_bip21 := cls._try_decode_bip21(s, network=network):
             return Data(decoded_bip21, DataType.Bip21)
 
         if is_xpub(s):
@@ -593,6 +629,9 @@ class Data:
 
         if signer_infos := cls._try_extract_signer_infos(s, network):
             return Data(signer_infos, DataType.SignerInfos)
+
+        if is_bip329(s):
+            return Data(s, DataType.LabelsBip329)
 
         raise DecodingException(f"{s} Could not be decoded")
 
