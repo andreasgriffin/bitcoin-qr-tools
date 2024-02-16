@@ -25,12 +25,9 @@ logger = logging.getLogger(__name__)
 
 
 def is_bitcoin_address(s, network: bdk.Network):
-    if re.search(r"^bitcoin\:.*", s, re.IGNORECASE):
-        return True
-
     try:
-        bdk.Address(s, network)
-        return True
+        bdkaddress = bdk.Address(s, network)
+        return bool(bdkaddress) and bdkaddress.is_valid_for_network(network=network)
     except:
         return False
 
@@ -56,9 +53,10 @@ def decode_bip21_uri(uri: str, network: bdk.Network) -> dict:
         raise InvalidBitcoinURI(f"expected string, not {repr(uri)}")
 
     if ":" not in uri:
-        if not is_bitcoin_address(uri, network=network):
+        if is_bitcoin_address(uri, network=network):
+            return {"address": uri}
+        else:
             raise InvalidBitcoinURI("Not a bitcoin address")
-        return {"address": uri}
 
     u = urllib.parse.urlparse(uri)
     if u.scheme.lower() != BITCOIN_BIP21_URI_SCHEME:
