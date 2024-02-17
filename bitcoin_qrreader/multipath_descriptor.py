@@ -121,6 +121,10 @@ def replace_sparrow_signer_derivation_root_path(s):
     replacement = r"[\1]"
     # Perform the substitution
     transformed = re.sub(pattern, replacement, s)
+
+    # once there were ereplacements, then
+    if transformed != s:
+        transformed = add_checksum_to_descriptor(strip_checksum(transformed))
     return transformed
 
 
@@ -145,12 +149,12 @@ class MultipathDescriptor:
                     break
             return count
 
+        descriptor_str = add_checksum_to_descriptor(descriptor_str)
+
         # handle that root keys (software signers) in sparrow give
         # [fingerprint/m]tpub
         # which is not accepted by bdk
         descriptor_str = replace_sparrow_signer_derivation_root_path(descriptor_str)
-
-        descriptor_str = add_checksum_to_descriptor(descriptor_str)
 
         # check if the descriptor_str is a combined one:
         if "/<0;1>/*" in descriptor_str:

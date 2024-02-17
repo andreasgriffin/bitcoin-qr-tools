@@ -48,9 +48,9 @@ def test_descriptor_master_xpub():
     assert isinstance(data.data, bdk.Descriptor)
     assert data.data.as_string_private() == s
 
-    # sparrow format for root keys
+    # sparrow format for root keys (created by other wallets)
     # bdk.Descriptor cannot handle that but  MultipathDescriptor can
-    s = "wpkh([a42c6dd3/m]tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks/0/*)"
+    s = "wpkh([a42c6dd3/m]tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks/0/*)#lrp3pclf"
     data = Data.from_str(s, network=bdk.Network.REGTEST)
     assert data.data_type == DataType.MultiPathDescriptor
     assert isinstance(data.data, MultipathDescriptor)
