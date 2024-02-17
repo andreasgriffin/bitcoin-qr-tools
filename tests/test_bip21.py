@@ -17,12 +17,15 @@ def test_address():
         assert data.data_type == DataType.Bip21
         assert data.data == {"address": s}
 
+        # test it is not a bitcoin address for regtest
+        assert not is_bitcoin_address(s, bdk.Network.REGTEST)
+
     # test that it is only valid for this network
     for s in TEST_ADDRESSES:
         exception_raised = False
         try:
             data = Data.from_str(s, network=bdk.Network.REGTEST)
-        except:
+        except DecodingException:
             exception_raised = True
 
         assert exception_raised
@@ -60,7 +63,7 @@ def test_bip21():
             s = f"bitcoin:{address}?label=Luke-Jr"
             data = Data.from_str(s, network=bdk.Network.REGTEST)
 
-        except:
+        except DecodingException:
             exception_raised = True
 
         assert exception_raised
