@@ -75,7 +75,7 @@ def test_multipath_descriptor1():
     # bdk returns '  instead of h  (which sparrrow does), so the checksum is different
     assert (
         data.data_as_string()
-        == "wsh(sortedmulti(2,[45f35351/48'/1'/0'/2']tpubDEY3tNWvDs8J6xAmwoirxgff61gPN1V6U5numeb6xjvZRB883NPPpRYHt2A6fUE3YyzDLezFfuosBdXsdXJhJUcpqYWF9EEBmWqG3rG8sdy/<0;1>/*,[829074ff/48'/1'/0'/2']tpubDDx9arPwEvHGnnkKN1YJXFE4W6JZXyVX9HGjZW75nWe1FCsTYu2k3i7VtCwhGR9zj6UUYnseZUnwL7T6Znru3NmXkcjEQxMqRx7Rxz8rPp4/<0;1>/*,[d5b43540/48'/1'/0'/2']tpubDFnCcKU3iUF4sPeQC68r2ewDaBB7TvLmQBTs12hnNS8nu6CPjZPmzapp7Woz6bkFuLfSjSpg6gacheKBaWBhDnEbEpKtCnVFdQnfhYGkPQF/<0;1>/*))#62l47g2m"
+        == "wsh(sortedmulti(2,[829074ff/48'/1'/0'/2']tpubDDx9arPwEvHGnnkKN1YJXFE4W6JZXyVX9HGjZW75nWe1FCsTYu2k3i7VtCwhGR9zj6UUYnseZUnwL7T6Znru3NmXkcjEQxMqRx7Rxz8rPp4/<0;1>/*,[45f35351/48'/1'/0'/2']tpubDEY3tNWvDs8J6xAmwoirxgff61gPN1V6U5numeb6xjvZRB883NPPpRYHt2A6fUE3YyzDLezFfuosBdXsdXJhJUcpqYWF9EEBmWqG3rG8sdy/<0;1>/*,[d5b43540/48'/1'/0'/2']tpubDFnCcKU3iUF4sPeQC68r2ewDaBB7TvLmQBTs12hnNS8nu6CPjZPmzapp7Woz6bkFuLfSjSpg6gacheKBaWBhDnEbEpKtCnVFdQnfhYGkPQF/<0;1>/*))#2jxldwxn"
     )
 
     # mainnet
@@ -93,7 +93,7 @@ def test_multipath_descriptor1():
     # bdk returns '  instead of h  (which sparrrow does), so the checksum is different
     assert (
         data.data_as_string()
-        == "wsh(sortedmulti(2,[b4b8e8de/48'/0'/0'/2']xpub6DfgZZfpDv5JRrigvK9ce264NmRofrevrcmx1N5Y2yA9yPBQ7iSu2bmxVcW6yXT4g7GhaTe97nWTQifHLzksEWDC7va8dV5ygSGRqzDsUyW/<0;1>/*,[829074ff/48'/0'/0'/2']xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM/<0;1>/*,[c40fbbb2/48'/0'/0'/2']xpub6ESDx8itWPF2Evgg5WTrBJwXoz3KFAbrdFemct7452QMyXa9G2NKsyNPmi2HPCzAPDop44wGPYVGHBBAZ92o24H6aENRTgzhB9g7mVYfHWr/<0;1>/*))#6uw6zqx6"
+        == "wsh(sortedmulti(2,[b4b8e8de/48'/0'/0'/2']xpub6DfgZZfpDv5JRrigvK9ce264NmRofrevrcmx1N5Y2yA9yPBQ7iSu2bmxVcW6yXT4g7GhaTe97nWTQifHLzksEWDC7va8dV5ygSGRqzDsUyW/<0;1>/*,[c40fbbb2/48'/0'/0'/2']xpub6ESDx8itWPF2Evgg5WTrBJwXoz3KFAbrdFemct7452QMyXa9G2NKsyNPmi2HPCzAPDop44wGPYVGHBBAZ92o24H6aENRTgzhB9g7mVYfHWr/<0;1>/*,[829074ff/48'/0'/0'/2']xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM/<0;1>/*))#hc239s8u"
     )
 
 

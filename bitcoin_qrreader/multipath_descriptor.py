@@ -1,5 +1,8 @@
-import logging, re
+import logging
 import bdkpython as bdk
+from hwilib.descriptor import (
+    parse_descriptor,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -113,21 +116,6 @@ def split_wallet_descriptor(multipath_descriptor_str: str):
     ]
 
 
-def replace_sparrow_signer_derivation_root_path(s):
-    "Replaces /m after the fingerprint hat occurs for sparrow signer-descriptors"
-    # Regex pattern to match "[a42c6dd3/m]" and capture the first 8 characters inside the brackets
-    pattern = r"\[([a-f0-9]{8})/m\]"
-    # Replacement pattern to keep the captured 8 characters and remove "/m"
-    replacement = r"[\1]"
-    # Perform the substitution
-    transformed = re.sub(pattern, replacement, s)
-
-    # once there were ereplacements, then
-    if transformed != s:
-        transformed = add_checksum_to_descriptor(strip_checksum(transformed))
-    return transformed
-
-
 class MultipathDescriptor:
     """
     Will create main+change BDK single and multisig descriptors, no matter if '/<0;1>/*' or '/0/*' or '/1/*' is specified
@@ -149,12 +137,8 @@ class MultipathDescriptor:
                     break
             return count
 
-        descriptor_str = add_checksum_to_descriptor(descriptor_str)
-
-        # handle that root keys (software signers) in sparrow give
-        # [fingerprint/m]tpub
-        # which is not accepted by bdk
-        descriptor_str = replace_sparrow_signer_derivation_root_path(descriptor_str)
+        # normalize the input string using hwi
+        descriptor_str = parse_descriptor(descriptor_str).to_string()
 
         # check if the descriptor_str is a combined one:
         if "/<0;1>/*" in descriptor_str:
