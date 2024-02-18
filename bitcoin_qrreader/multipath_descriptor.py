@@ -24,8 +24,9 @@ def get_adapted_hwi_descriptor(descriptor_str: str, new_derivation_path: str) ->
 class MultipathDescriptor:
     """
     Will create main+change BDK single and multisig descriptors, no matter if '/<0;1>/*' or '/0/*' or '/1/*' is specified
+    It also uses hwi to handle edge cases that bdk doesnt support yet.
 
-    This is a temporary class, that can be removed once https://github.com/bitcoindevkit/bdk/issues/1021  is done.
+    This is only necessary until https://github.com/bitcoindevkit/bdk/issues/1021  is done.
     """
 
     def __init__(self, bdk_descriptor: bdk.Descriptor, change_descriptor: bdk.Descriptor) -> None:
