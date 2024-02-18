@@ -114,7 +114,7 @@ def decode_bip21_uri(uri: str, network: bdk.Network) -> dict:
     return out
 
 
-def is_xpub(s):
+def is_xpub(s: str) -> bool:
     if not s.isalnum():
         return False
     first_four_letters = s[:4]
@@ -162,11 +162,11 @@ def extract_signer_info(s: str) -> SignerInfo:
     It overwrites fingerprint, key_origin, xpub  in default_keystore.
     """
 
-    def key_origin_contains_valid_characters(s):
+    def key_origin_contains_valid_characters(s: str) -> bool:
         # Matches strings that consist of 'h', '/', digits, and optionally ends with a single quote
         return re.fullmatch("[mh/0-9']*", s) is not None
 
-    def extract_groups(string, pattern):
+    def extract_groups(string: str, pattern):
         match = re.match(pattern, string)
         if match is None:
             raise Exception(f"'{string}' does not match the required pattern!")
@@ -186,7 +186,7 @@ def extract_signer_info(s: str) -> SignerInfo:
     )
 
 
-def is_valid_bitcoin_hash(hash):
+def is_valid_bitcoin_hash(hash: str) -> bool:
     import re
 
     if re.match("^[a-f0-9]{64}$", hash):
@@ -195,7 +195,7 @@ def is_valid_bitcoin_hash(hash):
         return False
 
 
-def is_valid_wallet_fingerprint(fingerprint):
+def is_valid_wallet_fingerprint(fingerprint: str) -> bool:
     import re
 
     if re.match("^[a-fA-F0-9]{8}$", fingerprint):
@@ -228,7 +228,7 @@ def base43_decode(v: str):
 ### see https://github.com/satoshilabs/slips/blob/master/slip-0132.md
 
 
-def get_version_bytes(slip132_key):
+def get_slip132_version_bytes(slip132_key: str) -> bytes:
     """Get the version bytes from a SLIP-132 key."""
     raw_extended_key = base58.b58decode(slip132_key)
     return raw_extended_key[:4]
@@ -255,7 +255,7 @@ version_bytes_map = {
 }
 
 
-def base58check_decode(s):
+def base58check_decode(s: str) -> bytes:
     """Decode a Base58Check encoded string to bytes"""
     # Decode the string
     data = base58.b58decode(s)
@@ -274,7 +274,7 @@ def base58check_decode(s):
     return payload
 
 
-def convert_slip132_to_bip32(slip132_key):
+def convert_slip132_to_bip32(slip132_key: str) -> str:
     """Convert a SLIP-132 extended key to a BIP32 extended key."""
     raw_extended_key = base58check_decode(slip132_key)
     slip132_version_bytes = raw_extended_key[:4]
@@ -296,8 +296,11 @@ def convert_slip132_to_bip32(slip132_key):
     return bip32_key
 
 
-def is_slip132(key):
-    return get_version_bytes(key) in version_bytes_map
+def is_slip132(key: str) -> bool:
+    try:
+        return get_slip132_version_bytes(key) in version_bytes_map
+    except:
+        return False
 
 
 def is_ndjson_with_keys(s: str, keys: List[str]):
@@ -329,7 +332,7 @@ def is_ndjson_with_keys(s: str, keys: List[str]):
     return True
 
 
-def is_bip329(s: str):
+def is_bip329(s: str) -> bool:
     return is_ndjson_with_keys(s, keys=["type", "ref", "label"])
 
 
@@ -388,7 +391,7 @@ class Data:
         assert d["data_type"] == data.data_type
         return data
 
-    def data_as_string(self):
+    def data_as_string(self) -> str:
         if isinstance(self.data, str):
             return self.data
         if self.data_type == DataType.Bip21:
