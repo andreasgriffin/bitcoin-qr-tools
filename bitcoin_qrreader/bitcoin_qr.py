@@ -325,6 +325,7 @@ def is_ndjson_with_keys(s: str, keys: List[str]):
             obj = json.loads(line)
             # Check if all specified keys are present in the JSON object
             if not all(key in obj for key in keys):
+                logger.debug(f"Not all required keys {keys} are present in {obj}")
                 return False
         except json.JSONDecodeError:
             return False

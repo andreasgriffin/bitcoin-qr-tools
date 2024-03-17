@@ -56,3 +56,16 @@ def test_labels_missing_key():
     except DecodingException:
         exceptionwas_raised = True
     assert exceptionwas_raised
+
+
+def test_missing_keywords_in_bip329():
+    d = {
+        "data": '{"__class__": "Label", "VERSION": "0.0.1", "type": "addr", "ref": "bcrt1qhf8w6h2agu0k6nktcr6tvlfjt2px2ts6tcz09nk5m26et87a7egq90rqc3", "category": "KYC-Exchange", "timestamp": 1710421010.854406}\n{"__class__": "Label", "VERSION": "0.0.1", "type": "addr", "ref": "bcrt1qvml6ssy258ve33jgm8x6c236axtl0wu4pljm2fkj20926muvnarqjfhx7p", "category": "KYC-Exchange", "timestamp": 1710594601.974821}\n{"__class__": "Label", "VERSION": "0.0.1", "type": "tx", "ref": "095544ff305a695d059f5bad721a8436adf012a0f95e176322718a1d0fd1e9c1", "label": "4", "timestamp": 1710676375.340319}',
+        "data_type": "LabelsBip329",
+    }
+    exceptionwas_raised = False
+    try:
+        data = Data.from_dump(d, network=bdk.Network.REGTEST)
+    except DecodingException:
+        exceptionwas_raised = True
+    assert exceptionwas_raised
