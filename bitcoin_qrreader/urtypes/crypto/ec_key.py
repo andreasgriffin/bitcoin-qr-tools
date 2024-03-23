@@ -21,7 +21,8 @@
 # THE SOFTWARE.
 
 import binascii
-from ...urtypes import RegistryType, RegistryItem
+
+from ...urtypes import RegistryItem, RegistryType
 
 CRYPTO_ECKEY = RegistryType("crypto-eckey", 306)
 

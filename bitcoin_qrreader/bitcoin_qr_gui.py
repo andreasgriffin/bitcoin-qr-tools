@@ -1,7 +1,10 @@
-from .qr_qui import VideoWidget
-from .bitcoin_qr import *
+import math
+
+import pygame
 from PyQt6 import QtWidgets
-import pygame, math
+
+from .bitcoin_qr import *
+from .qr_qui import VideoWidget
 
 
 class BitcoinVideoWidget(VideoWidget):

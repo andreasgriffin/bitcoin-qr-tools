@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from ...urtypes import RegistryType, RegistryItem
+from ...urtypes import RegistryItem, RegistryType
 
 CRYPTO_KEYPATH = RegistryType("crypto-keypath", 304)
 

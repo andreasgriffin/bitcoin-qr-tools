@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from ...urtypes import RegistryType, Bytes
+from ...urtypes import Bytes, RegistryType
 
 CRYPTO_PSBT = RegistryType("crypto-psbt", 310)
 

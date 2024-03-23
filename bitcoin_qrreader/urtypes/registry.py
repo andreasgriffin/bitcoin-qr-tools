@@ -21,7 +21,8 @@
 # THE SOFTWARE.
 
 import io
-from ..urtypes.cbor import decoder, encoder, DataItem
+
+from ..urtypes.cbor import DataItem, decoder, encoder
 
 
 class RegistryType:

@@ -1,7 +1,8 @@
 import logging
 from typing import List, Optional
+
 import bdkpython as bdk
-from hwilib.descriptor import parse_descriptor, Descriptor, PubkeyProvider
+from hwilib.descriptor import Descriptor, PubkeyProvider, parse_descriptor
 
 logger = logging.getLogger(__name__)
 
