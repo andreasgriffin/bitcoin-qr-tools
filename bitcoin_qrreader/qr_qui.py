@@ -166,6 +166,7 @@ class VideoWidget(QtWidgets.QWidget):
 
                 # Convert numpy image to surface for drawing
                 surface = self._numpy_to_surface(image)
+                surface = pygame.transform.flip(surface, True, False)
         else:
             try:
                 surface = self.capture.get_image()
