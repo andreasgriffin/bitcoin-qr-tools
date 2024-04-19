@@ -14,6 +14,7 @@ class BitcoinVideoWidget(VideoWidget):
         close_on_result=True,
         parent=None,
         network=bdk.Network.REGTEST,
+        show_network_switch=False,
     ):
         super().__init__(qr_data_callback=self.qr_data_callback, parent=parent)
         self.network: bdk.Network = network
@@ -22,6 +23,7 @@ class BitcoinVideoWidget(VideoWidget):
         self.combo_network.addItems([n.name for n in bdk.Network])
         self.combo_network.setCurrentText(self.network.name)
         self.layout().addWidget(self.combo_network)
+        self.combo_network.setVisible(show_network_switch)
 
         self.result_callback = result_callback
         self.close_on_result = close_on_result
@@ -86,11 +88,14 @@ class DemoBitcoinVideoWidget(BitcoinVideoWidget):
         self,
         parent=None,
         close_on_result=False,
+        network=bdk.Network.REGTEST,
     ):
         super().__init__(
             result_callback=self.result_callback,
             parent=parent,
             close_on_result=close_on_result,
+            network=network,
+            show_network_switch=True,
         )
 
         self.label_qr = QtWidgets.QTextEdit()
