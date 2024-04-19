@@ -161,8 +161,8 @@ class VideoWidget(QtWidgets.QWidget):
                 sct_img = sct.grab(monitor)
                 image = np.array(sct_img)
 
-                # Convert BGRA to RGB
-                image = image[:, :, :3]
+                # Convert BGRA to RGB by reordering the channels
+                image = image[:, :, [2, 1, 0]]  # Rearrange BGR to RGB
 
                 # Convert numpy image to surface for drawing
                 surface = self._numpy_to_surface(image)
