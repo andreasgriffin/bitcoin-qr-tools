@@ -21,11 +21,12 @@
 # THE SOFTWARE.
 
 import io
-from ...urtypes import RegistryType, RegistryItem
+
+from ...urtypes import RegistryItem, RegistryType
 from ...urtypes.cbor import DataItem
-from .multi_key import MultiKey
-from .hd_key import HDKey, CRYPTO_HDKEY
 from .ec_key import ECKey
+from .hd_key import CRYPTO_HDKEY, HDKey
+from .multi_key import MultiKey
 
 
 class ScriptExpression:

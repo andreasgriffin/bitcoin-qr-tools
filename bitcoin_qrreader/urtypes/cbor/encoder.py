@@ -28,7 +28,7 @@ import struct
 _str_type = type("")
 _bytes_type = type(b"")
 
-from .data import Tagging, Mapping, Undefined
+from .data import Mapping, Tagging, Undefined
 
 
 class EncoderError(Exception):

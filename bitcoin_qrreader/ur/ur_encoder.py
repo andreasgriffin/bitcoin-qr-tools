@@ -5,8 +5,8 @@
 # Licensed under the "BSD-2-Clause Plus Patent License"
 #
 
-from .fountain_encoder import FountainEncoder
 from .bytewords import *
+from .fountain_encoder import FountainEncoder
 
 
 class UREncoder:

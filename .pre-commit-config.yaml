@@ -1,4 +1,10 @@
 repos:
+  - repo: https://github.com/pre-commit/mirrors-isort
+    rev: v5.10.1  # Use the specified version of isort
+    hooks:
+      - id: isort
+        args:
+          - --profile=black  # Set the import order style (change 'google' to your preferred style)          
   - repo: https://github.com/myint/autoflake
     rev: v2.2.1  # Use the latest version of autoflake
     hooks:

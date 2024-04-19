@@ -5,10 +5,10 @@
 # Licensed under the "BSD-2-Clause Plus Patent License"
 #
 
-from .ur import UR
-from .fountain_encoder import Part as FountainEncoderPart
-from .fountain_decoder import FountainDecoder
 from .bytewords import *
+from .fountain_decoder import FountainDecoder
+from .fountain_encoder import Part as FountainEncoderPart
+from .ur import UR
 from .utils import drop_first, is_ur_type
 
 

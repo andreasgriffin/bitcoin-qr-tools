@@ -1,12 +1,26 @@
-import pygame
-import pygame.camera
-from PyQt6 import QtCore, QtWidgets, QtGui
-from pyzbar import pyzbar
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 import time
-from PyQt6.QtCore import QEvent
+from typing import List
+
 import mss
 import numpy as np
-from PyQt6.QtCore import pyqtSignal
+import pygame
+import pygame.camera
+from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6.QtCore import QEvent, pyqtSignal
+
+
+class BarcodeData:
+    def __init__(self, data, rect):
+        self.data = data  # The decoded text of the barcode
+        self.rect = rect  # The bounding rectangle of the barcode as a tuple (x, y, width, height)
+
+    def __repr__(self):
+        return f"BarcodeData(data={self.data}, rect={self.rect})"
 
 
 class VideoWidget(QtWidgets.QWidget):
@@ -14,6 +28,21 @@ class VideoWidget(QtWidgets.QWidget):
 
     def __init__(self, qr_data_callback=None, parent=None):
         super().__init__(parent)
+        self.cv2 = None
+        self.pyzbar = None
+        try:
+            # check if loading works
+            # it depend on zlib installed in the os
+            from pyzbar import pyzbar
+
+            self.pyzbar = pyzbar
+            logger.info("Load pyzbar successful")
+        except:
+            logger.info("Could not load pyzbar. Trying to load fallback cv2")
+            import cv2
+
+            self.cv2 = cv2
+
         self.is_screen_capture = False
         self.screen_capturer = mss.mss()
 
@@ -67,7 +96,7 @@ class VideoWidget(QtWidgets.QWidget):
                 continue
         return valid_cameras
 
-    def switch_camera(self, index):
+    def switch_camera(self, index: int):
         selected_camera = self.combo_cameras.currentText()
         if selected_camera == "Screen":
             self.is_screen_capture = True
@@ -85,17 +114,43 @@ class VideoWidget(QtWidgets.QWidget):
             self.capture.start()
             time.sleep(0.1)  # Add a short delay
 
-    def _numpy_to_surface(self, numpy_image):
+    def _numpy_to_surface(self, numpy_image: np.ndarray) -> pygame.Surface:
         # Convert numpy image (RGB) to pygame surface
         return pygame.surfarray.make_surface(numpy_image.transpose((1, 0, 2)))
 
-    def _surface_to_numpy(self, surface):
-        # Convert pygame surface to numpy array (RGB)
-        return pygame.surfarray.array3d(surface).transpose((1, 0, 2))
-
-    def _on_draw_surface(self, surface, barcode):
+    def _on_draw_surface(self, surface, barcode: BarcodeData):
         x, y, w, h = barcode.rect
         pygame.draw.rect(surface, (0, 255, 0), (x, y, w, h), 2)
+
+    def get_barcodes(self, array: np.ndarray) -> List[BarcodeData]:
+        if self.pyzbar:
+            decoded_codes = self.pyzbar.decode(array)
+            return [BarcodeData(data=decoded.data, rect=decoded.rect) for decoded in decoded_codes]
+        elif self.cv2:
+            array = self.cv2.transpose(array)
+            array = self.cv2.cvtColor(array, self.cv2.COLOR_RGB2BGR)
+            # Use OpenCV's QRCodeDetector to detect and decode the QR code.
+            detector = self.cv2.QRCodeDetector()
+            val, points, straight_qrcode = detector.detectAndDecode(array)
+
+            barcodes = []
+            if val:
+                # If a QR code is detected, 'val' contains the decoded text.
+                # 'points' contain the coordinates of the QR code corners.
+                if points is not None:
+                    # Convert points to a more manageable format
+                    points = points[0]  # Points are returned in a nested array.
+
+                    # Calculate the bounding rectangle using the points.
+                    y, x, w, h = self.cv2.boundingRect(points.astype(np.int32))
+                    rect = (x, y, w, h)  # Store the rectangle as a tuple
+
+                    barcode = BarcodeData(val.encode(), rect)
+                    barcodes.append(barcode)
+
+            return barcodes
+        else:
+            return []
 
     def update_frame(self):
 
@@ -118,7 +173,7 @@ class VideoWidget(QtWidgets.QWidget):
                 # print("Could not get image")
                 return
 
-        barcodes = pyzbar.decode(pygame.surfarray.array3d(surface))
+        barcodes = self.get_barcodes(pygame.surfarray.array3d(surface))
         surface = pygame.transform.flip(surface, False, True)
         surface = pygame.transform.rotate(surface, -90)
 
@@ -134,7 +189,7 @@ class VideoWidget(QtWidgets.QWidget):
             self.signal_qr_data_callback.emit(barcode.data)
             break
 
-    def showSurface(self, surface, scale_to=(640, 480)):
+    def showSurface(self, surface: pygame.Surface, scale_to=(640, 480)):
 
         array3d = pygame.surfarray.array3d(surface)
         height, width, _ = array3d.shape
@@ -168,14 +223,3 @@ class DemoVideoWidget(VideoWidget):
         s = qr_data.decode("utf-8")
         print(s)
         self.label_qr.setText(s)
-
-
-if __name__ == "__main__":
-    import sys
-
-    app = QtWidgets.QApplication(sys.argv)
-
-    video_widget = DemoVideoWidget()
-    video_widget.show()
-
-    sys.exit(app.exec_())

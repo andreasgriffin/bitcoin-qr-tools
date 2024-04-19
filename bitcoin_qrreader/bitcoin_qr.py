@@ -1,24 +1,26 @@
-from abc import ABC, abstractmethod
-from os import fdopen
+import base64
+import enum
+import hashlib
+import json
+import logging
 import re
 import urllib.parse
-from typing import List, Optional, Tuple, Dict
+from abc import ABC, abstractmethod
 from decimal import Decimal
-import bdkpython as bdk
-import base64, json
-from .urtypes.crypto import PSBT as UR_PSBT
-from .urtypes.crypto import Output as US_OUTPUT
-from .ur.ur_decoder import URDecoder
-from .urtypes.bytes import Bytes as UR_BYTES
-import hashlib
+from os import fdopen
+from typing import Dict, List, Optional, Tuple
+
 import base58
-import logging
-import enum
+import bdkpython as bdk
 
 from .multipath_descriptor import MultipathDescriptor
 from .ur.fountain_encoder import CBOREncoder
 from .ur.ur import UR
+from .ur.ur_decoder import URDecoder
 from .ur.ur_encoder import UREncoder
+from .urtypes.bytes import Bytes as UR_BYTES
+from .urtypes.crypto import PSBT as UR_PSBT
+from .urtypes.crypto import Output as US_OUTPUT
 
 BITCOIN_BIP21_URI_SCHEME = "bitcoin"
 logger = logging.getLogger(__name__)

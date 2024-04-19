@@ -22,8 +22,8 @@
 
 from ...urtypes import RegistryItem
 from ...urtypes.cbor import DataItem
-from .hd_key import HDKey, CRYPTO_HDKEY
-from .ec_key import ECKey, CRYPTO_ECKEY
+from .ec_key import CRYPTO_ECKEY, ECKey
+from .hd_key import CRYPTO_HDKEY, HDKey
 
 
 class MultiKey(RegistryItem):

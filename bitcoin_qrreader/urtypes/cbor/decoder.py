@@ -23,8 +23,8 @@
 # THE SOFTWARE.
 # coding: utf-8
 
-import struct
 import math
+import struct
 
 from .data import DataItem, Undefined
 
