@@ -1,5 +1,7 @@
-from bitcoin_qrreader.bitcoin_qr import *
-from bitcoin_qrreader.multipath_descriptor import *
+import bdkpython as bdk
+
+from bitcoin_qr_tools.data import Data, DataType, serialized_to_hex
+from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
 
 
 def test_xpub():
@@ -43,7 +45,7 @@ def test_tx():
         "UR:BYTES/164-3/LPCSOXAXCSVTCYHKMSLGOLHDGRRDFSHHGRHDCEFLTSCLJTJZJEGTVEHHRHISMNLTZMNLMEPRRYHFDYUTFWISDEFZSSVLPFGLJKRPJSEYPRBGFYAOCXHHLODTDECEZSNTRPAYCKGSWMRHKPGLVSRDNTBDAAISIOWSDNWFGRNSURFEJYFDBSCMFHVA",
         "UR:BYTES/165-3/LPCSONAXCSVTCYHKMSLGOLHDGRFNVYKIIOROWFJYHHTSIODMLKBBPLLOVYVSDAAADTHTWYVWGSDTIETSDESFDMWDJKJKONASRHNTHELFINDLNNATMTKTMSTESGTBRHGLFHFTYATTCSVSASDKASASEYYKSNGLBTRDTSURZEDMHKROOSTBETOLNBMD",
     ]
-    meta_data_handler = MetaDataHandler(bdk.Network.REGTEST)
+    meta_data_handler = UnifiedDecoder(bdk.Network.REGTEST)
     for part in parts:
         meta_data_handler.add(part)
     assert meta_data_handler.is_complete()

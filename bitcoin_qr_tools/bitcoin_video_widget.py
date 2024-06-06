@@ -1,9 +1,16 @@
+import logging
 import math
 
+from bitcoin_qr_tools.data import DecodingException
+
+logger = logging.getLogger(__name__)
+
+import bdkpython as bdk
 import pygame
 from PyQt6 import QtWidgets
 
-from .bitcoin_qr import *
+from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
+
 from .qr_qui import VideoWidget
 
 
@@ -28,7 +35,7 @@ class BitcoinVideoWidget(VideoWidget):
         self.result_callback = result_callback
         self.close_on_result = close_on_result
 
-        self.meta_data_handler = MetaDataHandler(self.network)
+        self.meta_data_handler = UnifiedDecoder(self.network)
         self.switch_network([n.name for n in bdk.Network].index(self.network.name))
         self.combo_network.currentIndexChanged.connect(self.switch_network)
 

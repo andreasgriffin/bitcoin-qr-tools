@@ -1,5 +1,7 @@
-from bitcoin_qrreader.bitcoin_qr import *
-from bitcoin_qrreader.multipath_descriptor import *
+import bdkpython as bdk
+
+from bitcoin_qr_tools.data import Data, DataType, DecodingException
+from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
 
 
 def test_labels_bip329():
@@ -17,7 +19,7 @@ def test_labels_bip329():
 
 """
     ]
-    meta_data_handler = MetaDataHandler(bdk.Network.REGTEST)
+    meta_data_handler = UnifiedDecoder(bdk.Network.REGTEST)
     for part in parts:
         meta_data_handler.add(part)
     assert meta_data_handler.is_complete()
@@ -31,7 +33,7 @@ def test_labels_bip329_single_line():
     parts = [
         """{ "type": "tx", "ref": "f91d0a8a78462bc59398f2c5d7a84fcff491c26ba54c4833478b202796c8aafd", "label": "Transaction"  }"""
     ]
-    meta_data_handler = MetaDataHandler(bdk.Network.REGTEST)
+    meta_data_handler = UnifiedDecoder(bdk.Network.REGTEST)
     for part in parts:
         meta_data_handler.add(part)
     assert meta_data_handler.is_complete()
@@ -48,7 +50,7 @@ def test_labels_missing_key():
         { "type": "pubkey", "ref": "0283409659355b6d1cc3c32decd5d561abaac86c37a353b52895a5e6c196d6f448" } 
         """
     ]
-    meta_data_handler = MetaDataHandler(bdk.Network.REGTEST)
+    meta_data_handler = UnifiedDecoder(bdk.Network.REGTEST)
     exceptionwas_raised = False
     try:
         for part in parts:

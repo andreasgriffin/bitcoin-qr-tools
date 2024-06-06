@@ -31,7 +31,7 @@ python demo.py
 ### From pypi
 
 ```shell
-pip install bitcoin_qrreader
+pip install bitcoin_qr_tools
 ```
 
 ### From git
@@ -49,7 +49,7 @@ pip install bitcoin_qrreader
 
    ```sh
    poetry shell
-   python -m bitcoin_qrreader
+   python -m bitcoin_qr_tools
    ```
    
 
@@ -57,8 +57,8 @@ pip install bitcoin_qrreader
 
 # Licences
 
-The python files in *bitcoin_qrreader*  are under the [GPL3](LICENSE).
+The python files in *bitcoin_qr_tools*  are under the [GPL3](LICENSE).
 
-The folder *bitcoin_qrreader/ur* is from https://github.com/Foundation-Devices/foundation-ur-py  and under   [BSD-2-Clause Plus Patent License](ur/LICENSE).
+The folder *bitcoin_qr_tools/ur* is from https://github.com/Foundation-Devices/foundation-ur-py  and under   [BSD-2-Clause Plus Patent License](ur/LICENSE).
 
-The folder *bitcoin_qrreader/urtypes* from https://github.com/selfcustody/urtypes  is under  [MIT](urtypes/LICENSE.md).
+The folder *bitcoin_qr_tools/urtypes* from https://github.com/selfcustody/urtypes  is under  [MIT](urtypes/LICENSE.md).

@@ -1,7 +1,7 @@
 import logging
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
-from bitcoin_qrreader.qr_qui import DemoVideoWidget
+from bitcoin_qr_tools.qr_qui import DemoVideoWidget
 
 logger = logging.getLogger(__name__)
 

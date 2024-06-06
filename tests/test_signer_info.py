@@ -1,5 +1,13 @@
-from bitcoin_qrreader.bitcoin_qr import *
-from bitcoin_qrreader.multipath_descriptor import *
+import bdkpython as bdk
+
+from bitcoin_qr_tools.data import (
+    Data,
+    DataType,
+    DecodingException,
+    SignerInfo,
+    WrongNetwork,
+)
+from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
 
 
 def test_SignerInfo():
@@ -155,7 +163,7 @@ def test_signer_infos():
     }"""
     ]
 
-    meta_data_handler = MetaDataHandler(bdk.Network.REGTEST)
+    meta_data_handler = UnifiedDecoder(bdk.Network.REGTEST)
     for part in parts:
         meta_data_handler.add(part)
     assert meta_data_handler.is_complete()
@@ -178,7 +186,7 @@ def test_wrong_network_SignerInfos():
         "xpub": "tpubD6NzVbkrYhZ4XzL5Dhayo67Gorv1YMS7j8pRUvVMd5odC2LBPLAygka9p7748JtSq82FNGPppFEz5xxZUdasBRCqJqXvUHq6xpnsMcYJzeh"
     }"""
     ]
-    meta_data_handler = MetaDataHandler(bdk.Network.REGTEST)
+    meta_data_handler = UnifiedDecoder(bdk.Network.REGTEST)
     exceptionwas_raised = False
     try:
         for part in parts:
@@ -198,7 +206,7 @@ def test_wrong_json_SignerInfos():
         "xpub": "tpubD6NzVbkrYhZ4XzL5Dhayo67Gorv1YMS7j8pRUvVMd5odC2LBPLAygka9p7748JtSq82FNGPppFEz5xxZUdasBRCqJqXvUHq6xpnsMcYJzeh",
     }"""
     ]
-    meta_data_handler = MetaDataHandler(bdk.Network.REGTEST)
+    meta_data_handler = UnifiedDecoder(bdk.Network.REGTEST)
     exceptionwas_raised = False
     try:
         for part in parts:

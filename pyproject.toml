@@ -10,12 +10,12 @@ disable_error_code = "assignment"
 
 
 [tool.poetry]
-name = "bitcoin-qrreader"
-version = "0.8.8"
+name = "bitcoin-qr-tools"
+version = "0.9.0"
 authors = ["andreasgriffin <andreasgriffin@proton.me>"]
 license = "GPL-3.0"
 readme = "README.md"
-description = "A python bitcoin qr reader"
+description = "Python bitcoin qr reader and generator"
 homepage = "https://github.com/andreasgriffin/bitcoin-qrreader"
 
 [tool.poetry.dependencies]
@@ -29,6 +29,8 @@ mss ="9.0.1"
 hwi = "2.3.1"
 pyzbar = "0.1.9"
 opencv-python-headless = "^4.9.0.80"
+segno = "1.5.3"
+pillow = "9.5.0"
 
 
 [tool.poetry.group.dev.dependencies]

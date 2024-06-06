@@ -1,5 +1,7 @@
-from bitcoin_qrreader.bitcoin_qr import *
-from bitcoin_qrreader.multipath_descriptor import *
+import bdkpython as bdk
+
+from bitcoin_qr_tools.data import Data, DataType
+from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
 
 
 def test_psbt():
@@ -33,7 +35,7 @@ def test_psbt():
         return [input_string[i : i + length] for i in range(0, len(input_string), length)]
 
     s = "cHNidP8BAHEBAAAAAXgQzjk+DTWQTPUtRMbYiheC0jfbipvw+jQ5lidmyABjAAAAAAD9////AgDh9QUAAAAAFgAUbBuOQOlcnz8vpruh2Kb3CFr4vlhkEQ2PAAAAABYAFN1n2hvBWYzshD42xwQzy9XYoji3BAEAAAABAKoCAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////BQKYAAEB/////wIA+QKVAAAAABYAFLlHwN6VXNLM381bMxmNJlaDTQzVAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkBIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBHwD5ApUAAAAAFgAUuUfA3pVc0szfzVszGY0mVoNNDNUiBgISCnRxeOxzC0MgK01AmiIRLrgS1AyIqKeBkdwL+nt/6RikLG3TVAAAgAEAAIAAAACAAAAAAAAAAAAAACICAlQcwExiTUk9f7olLkwPlQpiregRHc9jXXFJBlMoucgNGKQsbdNUAACAAQAAgAAAAIAAAAAAAQAAAAA="
-    meta_data_handler = MetaDataHandler(bdk.Network.REGTEST)
+    meta_data_handler = UnifiedDecoder(bdk.Network.REGTEST)
     splitted = split_string_by_length(s, 10)
     for part in [f"p{i+1}of{len(splitted)} {s}" for i, s in enumerate(splitted)]:
         meta_data_handler.add(part)

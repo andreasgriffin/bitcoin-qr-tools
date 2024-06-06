@@ -1,5 +1,13 @@
-from bitcoin_qrreader.bitcoin_qr import *
-from bitcoin_qrreader.multipath_descriptor import *
+import bdkpython as bdk
+
+from bitcoin_qr_tools.data import (
+    Data,
+    DataType,
+    DecodingException,
+    InconsistentDescriptors,
+)
+from bitcoin_qr_tools.multipath_descriptor import MultipathDescriptor
+from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
 
 
 def test_descriptor():
@@ -28,7 +36,7 @@ def test_descriptor():
     # "wpkh([7d315cd9/84h/1h/0h]tpubDCUCSorYswSAurXv7ZcwfkPR8ms2fmxkEW7LFHuLs85wsCngaNAEVFkAvZSabsnz2VH6NvH4uFd4tZ8J3PSaVaxchE8QCd9wxak5Sugnd9p/<0;1>/*)#3gahv2xk"
     # but the qr code contains "wpkh([7d315cd9/84'/1'/0']tpubDCUCSorYswSAurXv7ZcwfkPR8ms2fmxkEW7LFHuLs85wsCngaNAEVFkAvZSabsnz2VH6NvH4uFd4tZ8J3PSaVaxchE8QCd9wxak5Sugnd9p)#ca2wu8zu"
     s = "UR:CRYPTO-OUTPUT/TAADMWTAADDLOLAOWKAXHDCLAOVDGSDWLDGMAOIEIDECDPKSPABKRSLUSPWPVAPSFZIEPSMUJLBYETIEFZCFVYDYRTAAHDCXGLBKNBPSPETIJNLYATMUSPNTZCHEFXYTFRFGEHVWDIMEOSINLPHTUTKTWPMERPHGAHTAADEHOEADAEAOADAMTAADDYOTADLNCSGHYKADYKAEYKAOCYKIEHHHTAAXAXAYCYFNLRPAGLLGGSMTFR"
-    meta_data_handler = MetaDataHandler(bdk.Network.REGTEST)
+    meta_data_handler = UnifiedDecoder(bdk.Network.REGTEST)
     meta_data_handler.add(s)
     assert meta_data_handler.is_complete()
     data = meta_data_handler.get_complete_data()
@@ -66,7 +74,7 @@ def test_multipath_descriptor1():
     parts = [
         """wsh(sortedmulti(2,[45f35351/48h/1h/0h/2h]tpubDEY3tNWvDs8J6xAmwoirxgff61gPN1V6U5numeb6xjvZRB883NPPpRYHt2A6fUE3YyzDLezFfuosBdXsdXJhJUcpqYWF9EEBmWqG3rG8sdy/<0;1>/*,[829074ff/48h/1h/0h/2h]tpubDDx9arPwEvHGnnkKN1YJXFE4W6JZXyVX9HGjZW75nWe1FCsTYu2k3i7VtCwhGR9zj6UUYnseZUnwL7T6Znru3NmXkcjEQxMqRx7Rxz8rPp4/<0;1>/*,[d5b43540/48h/1h/0h/2h]tpubDFnCcKU3iUF4sPeQC68r2ewDaBB7TvLmQBTs12hnNS8nu6CPjZPmzapp7Woz6bkFuLfSjSpg6gacheKBaWBhDnEbEpKtCnVFdQnfhYGkPQF/<0;1>/*))#54uq36v8"""
     ]
-    meta_data_handler = MetaDataHandler(bdk.Network.REGTEST)
+    meta_data_handler = UnifiedDecoder(bdk.Network.REGTEST)
     for part in parts:
         meta_data_handler.add(part)
     assert meta_data_handler.is_complete()
@@ -84,7 +92,7 @@ def test_multipath_descriptor1():
     parts = [
         """wsh(sortedmulti(2,[b4b8e8de/48h/0h/0h/2h]xpub6DfgZZfpDv5JRrigvK9ce264NmRofrevrcmx1N5Y2yA9yPBQ7iSu2bmxVcW6yXT4g7GhaTe97nWTQifHLzksEWDC7va8dV5ygSGRqzDsUyW/<0;1>/*,[829074ff/48h/0h/0h/2h]xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM/<0;1>/*,[c40fbbb2/48h/0h/0h/2h]xpub6ESDx8itWPF2Evgg5WTrBJwXoz3KFAbrdFemct7452QMyXa9G2NKsyNPmi2HPCzAPDop44wGPYVGHBBAZ92o24H6aENRTgzhB9g7mVYfHWr/<0;1>/*))#5rd0djqx"""
     ]
-    meta_data_handler = MetaDataHandler(bdk.Network.BITCOIN)
+    meta_data_handler = UnifiedDecoder(bdk.Network.BITCOIN)
     for part in parts:
         meta_data_handler.add(part)
     assert meta_data_handler.is_complete()
@@ -104,7 +112,7 @@ def test_multipath_descriptor():
         """wpkh([0f056943/84h/1h/0h]tpubDC7jGaaSE66Pn4dgtbAAstde4bCyhSUs4r3P8WhMVvPByvcRrzrwqSvpF9Ghx83Z1LfVugGRrSBko5UEKELCz9HoMv5qKmGq3fqnnbS5E9r/0/*)#erexmnep
     wpkh([0f056943/84h/1h/0h]tpubDC7jGaaSE66Pn4dgtbAAstde4bCyhSUs4r3P8WhMVvPByvcRrzrwqSvpF9Ghx83Z1LfVugGRrSBko5UEKELCz9HoMv5qKmGq3fqnnbS5E9r/1/*)#ghu8xxfe"""
     ]
-    meta_data_handler = MetaDataHandler(bdk.Network.REGTEST)
+    meta_data_handler = UnifiedDecoder(bdk.Network.REGTEST)
     for part in parts:
         meta_data_handler.add(part)
     assert meta_data_handler.is_complete()
@@ -121,7 +129,7 @@ def test_multipath_descriptor():
         """wpkh([0f056943/84h/1h/0h]tpubDC7jGaaSE66Pn4dgtbAAstde4bCyhSUs4r3P8WhMVvPByvcRrzrwqSvpF9Ghx83Z1LfVugGRrSBko5UEKELCz9HoMv5qKmGq3fqnnbS5E9r/0/*)
     wpkh([0f05a943/84h/1h/0h]tpubaaaaGaaSE66Pn4dgtbAAstde4bCyhSUs4r3P8WhMVvPByvcRrzrwqSvpF9Ghx83Z1LfVugGRrSBko5UEKELCz9HoMv5qKmGq3fqnnbS5E9r/1/*)"""
     ]
-    meta_data_handler = MetaDataHandler(bdk.Network.REGTEST)
+    meta_data_handler = UnifiedDecoder(bdk.Network.REGTEST)
     exceptionwas_raised = False
     try:
         for part in parts:
@@ -135,7 +143,7 @@ def test_multipath_descriptor():
         """wpkh([0f056943/84h/1h/0h]tpubDC7jGaaSE66Pn4dgtbAAstde4bCyhSUs4r3P8WhMVvPByvcRrzrwqSvpF9Ghx83Z1LfVugGRrSBko5UEKELCz9HoMv5qKmGq3fqnnbS5E9r/0/*)
     wpkh([7d315cd9/84h/1h/0h]tpubDCUCSorYswSAurXv7ZcwfkPR8ms2fmxkEW7LFHuLs85wsCngaNAEVFkAvZSabsnz2VH6NvH4uFd4tZ8J3PSaVaxchE8QCd9wxak5Sugnd9p/1/*)"""
     ]
-    meta_data_handler = MetaDataHandler(bdk.Network.REGTEST)
+    meta_data_handler = UnifiedDecoder(bdk.Network.REGTEST)
     exceptionwas_raised = False
     try:
         for part in parts:
