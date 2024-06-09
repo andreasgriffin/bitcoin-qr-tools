@@ -53,7 +53,10 @@ class BitcoinVideoWidget(VideoWidget):
             if self.close_on_result:
                 self.close()
             if self.result_callback:
-                self.result_callback(self.meta_data_handler.get_complete_data())
+                try:
+                    self.result_callback(self.meta_data_handler.get_complete_data())
+                except:
+                    logger.warning(f"Could not decode data")
 
     def draw_pie_progress_bar(self, surface, rect, percentage, color):
         x, y, w, h = rect

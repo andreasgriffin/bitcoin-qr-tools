@@ -36,9 +36,10 @@ from PIL import Image
 from PyQt6.QtCore import QByteArray, QEvent, QRectF, QSize, Qt, QTimer
 from PyQt6.QtGui import QImage, QKeyEvent, QMouseEvent, QPainter, QPaintEvent, QPixmap
 from PyQt6.QtSvg import QSvgRenderer
-from PyQt6.QtWidgets import QApplication, QDialog, QSizePolicy, QWidget
+from PyQt6.QtWidgets import QApplication, QDialog, QWidget
 
-from .qr_generator import QRGenerator
+from bitcoin_qr_tools.data import Data
+from bitcoin_qr_tools.qr_generator import QRGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -185,13 +186,19 @@ class QRCodeWidgetSVG(QWidget):
         self.clickable = clickable
         self.always_animate = always_animate
         self.is_hovered = False
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.default_size = 200
 
         if clickable:
             self.setCursor(Qt.CursorShape.PointingHandCursor)
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.next_svg)
+
+    def sizeHint(self) -> QSize:
+        s = QSize()
+        s.setWidth(self.default_size)
+        s.setHeight(self.default_size)
+        return s
 
     def set_data_list(self, data_list: List[str]):
         self.svg_renderers = [
@@ -382,15 +389,16 @@ class EnlargedSVG(QDialog):
 
 
 if __name__ == "__main__":
+    import bdkpython as bdk
+
     app = QApplication(sys.argv)
     widget = QRCodeWidgetSVG()
-    data_list = ["data1", "data2", "data3"]
-    widget.set_data_list(data_list)
-    widget.show()
 
-    # To convert the current QR code to PIL Image:
-    pil_image = widget.as_pil_image()
-    if pil_image:
-        pil_image.show()  # or save using pil_image.save('filename.png')
+    psbt = "cHNidP8BAHEBAAAAAXgQzjk+DTWQTPUtRMbYiheC0jfbipvw+jQ5lidmyABjAAAAAAD9////AgDh9QUAAAAAFgAUbBuOQOlcnz8vpruh2Kb3CFr4vlhkEQ2PAAAAABYAFN1n2hvBWYzshD42xwQzy9XYoji3BAEAAAABAKoCAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////BQKYAAEB/////wIA+QKVAAAAABYAFLlHwN6VXNLM381bMxmNJlaDTQzVAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkBIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBHwD5ApUAAAAAFgAUuUfA3pVc0szfzVszGY0mVoNNDNUiBgISCnRxeOxzC0MgK01AmiIRLrgS1AyIqKeBkdwL+nt/6RikLG3TVAAAgAEAAIAAAACAAAAAAAAAAAAAACICAlQcwExiTUk9f7olLkwPlQpiregRHc9jXXFJBlMoucgNGKQsbdNUAACAAQAAgAAAAIAAAAAAAQAAAAA="
+    data: Data = Data.from_str(psbt, network=bdk.Network.REGTEST)
+    fragments = data.generate_fragments_for_qr(qr_type="bbqr")
+
+    widget.set_data_list(fragments)
+    widget.show()
 
     sys.exit(app.exec())

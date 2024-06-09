@@ -7,10 +7,12 @@ import re
 import urllib.parse
 from decimal import Decimal
 from os import fdopen
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 import base58
 import bdkpython as bdk
+
+from bitcoin_qr_tools.bbqr.split import split_qrs
 
 from .multipath_descriptor import MultipathDescriptor
 from .ur.fountain_encoder import CBOREncoder
@@ -331,7 +333,10 @@ def is_ndjson_with_keys(s: str, keys: List[str]):
 
 
 def is_bip329(s: str) -> bool:
-    return is_ndjson_with_keys(s, keys=["type", "ref", "label"])
+    try:
+        return is_ndjson_with_keys(s, keys=["type", "ref", "label"])
+    except:
+        return False
 
 
 class DataType(enum.Enum):
@@ -480,6 +485,18 @@ class Data:
         ]
 
     @classmethod
+    def _try_decode_psbt_binary(cls, raw: bytes):
+        psbt_magic_bytes = b"psbt\xff"
+
+        # Try each decoding strategy in the loop
+        try:
+            if raw[: len(psbt_magic_bytes)] == psbt_magic_bytes:
+                return bdk.PartiallySignedTransaction(base64.b64encode(raw).decode())
+        except Exception:
+            return None
+        return None
+
+    @classmethod
     def _try_decode_psbt(cls, s):
         psbt_magic_bytes = b"psbt\xff"
 
@@ -495,7 +512,17 @@ class Data:
         return None
 
     @classmethod
-    def _try_decode_serialized_transaction(cls, s):
+    def _try_transaction_binary(cls, raw: bytes):
+        # Try each decoding strategy in the loop
+        try:
+            return bdk.Transaction(raw)
+        except Exception:
+            return None
+
+        return None
+
+    @classmethod
+    def _try_decode_serialized_transaction(cls, s: str):
         # Try each decoding strategy in the loop
         for decode in cls._decoding_strategies():
             try:
@@ -593,7 +620,46 @@ class Data:
         ]
 
     @classmethod
-    def from_str(cls, s, network) -> "Data":
+    def from_binary(cls, raw: bytes, network) -> "Data":
+        # # Sequence of checks to identify the type of data in `s`
+        # if decoded_bip21 := cls._try_decode_bip21(s, network=network):
+        #     return Data(decoded_bip21, DataType.Bip21)
+
+        # if is_xpub(s):
+        #     data = convert_slip132_to_bip32(s) if is_slip132(s) else s
+        #     return Data(data, DataType.Xpub)
+
+        # if descriptor := cls._try_get_descriptor(s, network):
+        #     return Data(descriptor, DataType.Descriptor)
+
+        # if descriptor := cls._try_get_multipath_descriptor(s, network):
+        #     return Data(descriptor, DataType.MultiPathDescriptor)
+
+        # if is_valid_bitcoin_hash(s):
+        #     return Data(s, DataType.Txid)
+
+        # if is_valid_wallet_fingerprint(s):
+        #     return Data(s, DataType.Fingerprint)
+
+        if psbt := cls._try_decode_psbt_binary(raw):
+            return Data(psbt, DataType.PSBT)
+
+        if tx := cls._try_transaction_binary(raw):
+            return Data(tx, DataType.Tx)
+
+        # if signer_info := cls._try_extract_signer_info(s, network):
+        #     return Data(signer_info, DataType.SignerInfo)
+
+        # if signer_infos := cls._try_extract_signer_infos(s, network):
+        #     return Data(signer_infos, DataType.SignerInfos)
+
+        # if is_bip329(s):
+        #     return Data(s, DataType.LabelsBip329)
+
+        raise DecodingException(f"{raw} Could not be decoded")  # type: ignore
+
+    @classmethod
+    def from_str(cls, s: str, network) -> "Data":
         s = s.strip()
         data = None
 
@@ -634,27 +700,45 @@ class Data:
 
         raise DecodingException(f"{s} Could not be decoded")
 
-    def generate_fragments_for_qr(self, max_qr_size=100):
-        serialized = self.data_as_string()
+    def generate_fragments_for_qr(self, max_qr_size=100, qr_type: Literal["ur", "bbqr"] = "bbqr"):
+        if qr_type == "ur":
+            serialized = self.data_as_string()
 
-        if len(serialized) <= max_qr_size:
-            return [serialized]
+            if len(serialized) <= max_qr_size:
+                return [serialized]
 
-        if self.data_type == DataType.Tx:
-            bcor_encoder = CBOREncoder()
-            bcor_encoder.encodeBytes(hex_to_serialized(serialized))
-            ur = UR("bytes", bcor_encoder.get_bytes())
-        elif self.data_type == DataType.PSBT:
-            bcor_encoder = CBOREncoder()
-            bcor_encoder.encodeBytes(base64.b64decode(serialized.encode()))
-            ur = UR("crypto-psbt", bcor_encoder.get_bytes())
+            if self.data_type == DataType.Tx:
+                bcor_encoder = CBOREncoder()
+                bcor_encoder.encodeBytes(hex_to_serialized(serialized))
+                ur = UR("bytes", bcor_encoder.get_bytes())
+            elif self.data_type == DataType.PSBT:
+                bcor_encoder = CBOREncoder()
+                bcor_encoder.encodeBytes(base64.b64decode(serialized.encode()))
+                ur = UR("crypto-psbt", bcor_encoder.get_bytes())
 
-        encoder = UREncoder(ur, max_fragment_len=max_qr_size)
-        fragments = []
-        while not encoder.is_complete():
-            part = encoder.next_part()
-            fragments.append(part)
-        return fragments
+            encoder = UREncoder(ur, max_fragment_len=max_qr_size)
+            fragments = []
+            while not encoder.is_complete():
+                part = encoder.next_part()
+                fragments.append(part)
+            return fragments
+        if qr_type == "bbqr":
+            if self.data_type == DataType.Tx:
+                file_type = "T"
+                assert isinstance(self.data, bdk.Transaction)
+                raw = bytes(self.data.serialize())
+            elif self.data_type == DataType.PSBT:
+                file_type = "P"
+                assert isinstance(self.data, bdk.PartiallySignedTransaction)
+                raw = base64.b64decode(self.data.serialize())
+            else:
+                file_type = "U"
+                raw = self.data_as_string().encode()
+
+            version, parts = split_qrs(raw, file_type)
+            return parts
+
+        raise Exception(f"Unknown qr_type {qr_type}")
 
     def write_to_filedescriptor(self, fd):
         """

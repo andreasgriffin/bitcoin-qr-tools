@@ -2,10 +2,12 @@ import base64
 import logging
 import re
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 import bdkpython as bdk
 
+from bitcoin_qr_tools import bbqr
+from bitcoin_qr_tools.bbqr.consts import FILETYPE_NAMES, KNOWN_FILETYPES
 from bitcoin_qr_tools.data import Data
 
 from .ur.ur_decoder import URDecoder
@@ -22,7 +24,7 @@ class BaseCollector(ABC):
         self.network = network
 
     @abstractmethod
-    def is_correct_data_format(self, s):
+    def is_correct_data_format(self, s) -> bool:
         pass
 
     @abstractmethod
@@ -46,7 +48,7 @@ class BaseCollector(ABC):
 
 
 class SinglePassCollector(BaseCollector):
-    def is_correct_data_format(self, s):
+    def is_correct_data_format(self, s) -> bool:
         return True
 
     def is_complete(self) -> bool:
@@ -69,7 +71,7 @@ class SpecterDIYCollector(BaseCollector):
         self.clear()
         self.total_parts: int = 0
 
-    def is_correct_data_format(self, s):
+    def is_correct_data_format(self, s) -> bool:
         return self.extract_specter_diy_qr_part(s) is not None
 
     def is_complete(self) -> bool:
@@ -133,7 +135,7 @@ class URCollector(BaseCollector):
     def is_bytes(self, s: str):
         return re.search("^UR:BYTES/", s, re.IGNORECASE)
 
-    def is_correct_data_format(self, s):
+    def is_correct_data_format(self, s) -> bool:
         if self.is_psbt(s):
             return True
         if self.is_descriptor(s):
@@ -185,6 +187,114 @@ class URCollector(BaseCollector):
         return len(self.decoder.received_part_indexes()) / self.decoder.expected_part_count()
 
 
+class BBQRCollector(BaseCollector):
+    def __init__(self, network) -> None:
+        super().__init__(network)
+        self.clear()
+
+    def clear(self):
+        super().clear()
+        self.parts: Dict[int, str] = {}
+        self.total_parts = None
+
+    def is_correct_data_format(self, s) -> bool:
+        if self.get_splitted_data(s):
+            return True
+
+        return False
+
+    def get_splitted_data(self, part) -> Optional[Tuple[str, str, int, int, str]]:
+        "validation. If invalid, returns None"
+        try:
+            assert part[0:2] == "B$", "fixed header not found, expected B$"
+            encoding = part[2]
+            file_type = part[3]
+            num_parts = int(part[4:6], 36)
+
+            assert num_parts >= 1, "zero parts?"
+            assert encoding in "H2Z", f"bad encoding: {encoding}"
+            assert file_type in KNOWN_FILETYPES, f"bad file type: {encoding}"
+
+            idx = int(part[6:8], 36)
+
+            assert idx < num_parts, f"got part {idx} but only expecting {num_parts}"
+
+            raw = part[8:]
+            return encoding, file_type, num_parts, idx, raw
+        except:
+            return None
+
+    def get_available_indices(self) -> Set[int]:
+
+        return set(self.parts.keys())
+
+    def estimated_percent_complete(self):
+        num_parts = self.total_parts
+        if not num_parts:
+            return 0
+        return len(self.get_available_indices()) / num_parts
+
+    def is_complete(self) -> bool:
+        return self.estimated_percent_complete() >= 1
+
+    def get_complete_data(self) -> Optional[Data]:
+        if not self.is_complete():
+            return None
+
+        try:
+            file_type, raw = bbqr.join_qrs(list(self.parts.values()))
+        except:
+            self.clear()
+            return None
+
+        if FILETYPE_NAMES[file_type] in ["Transaction", "Binary"]:
+            return Data.from_binary(raw, network=self.network)
+        if FILETYPE_NAMES[file_type] in ["PSBT"]:
+
+            return Data.from_binary(raw, network=self.network)
+
+        if FILETYPE_NAMES[file_type] in ["JSON", "Unicode Text"]:
+            return Data.from_str(raw.decode(), network=self.network)
+
+        return None
+
+    def _are_consistent(self, *parts) -> bool:
+        if not parts:
+            return True
+        meta_datas = [self.get_splitted_data(part) for part in parts]
+        if not all(meta_datas):
+            # Not a single one can be None
+            return False
+
+        for i in [0, 1, 2]:
+            if len(set([meta_data[i] for meta_data in meta_datas if meta_data])) != 1:
+                return False
+
+        return True
+
+    def add(self, s: str) -> Optional[str]:
+        # only allow valid parts to be added
+        if not self.is_correct_data_format(s):
+            return None
+
+        # compare with exising  meta data
+        if self.parts:
+            existing_part = list(self.parts.values())[0]
+            if not self._are_consistent(existing_part, s):
+                logger.debug(f"Clearing cache, because {existing_part} if inconsistent with {s}")
+                self.clear()
+
+        meta_data = self.get_splitted_data(s)
+        if meta_data:
+            encoding, file_type, num_parts, idx, raw = meta_data
+            self.parts[idx] = s
+            self.total_parts = num_parts
+
+        logger.debug(f"{round(self.estimated_percent_complete()*100)}% complete")
+
+        return s
+
+
 class UnifiedDecoder:
     "Unified class to handle animated and static qr codes"
 
@@ -192,6 +302,7 @@ class UnifiedDecoder:
         self.network = network
         # SinglePassCollector must be the last one
         self.collectors: List[BaseCollector] = [
+            BBQRCollector(self.network),
             URCollector(self.network),
             SpecterDIYCollector(self.network),
             SinglePassCollector(self.network),
