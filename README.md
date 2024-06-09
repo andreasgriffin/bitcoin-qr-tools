@@ -1,6 +1,6 @@
-# A python bitcoin qr reader
+# Bitcoin qr tools
 
-* Recognizes (and classifies)
+* `BitcoinVideoWidget` recognizes (and classifies)  **blazingly fast**  
   * Addresses  (also BIP21 with amount)
   * Transactions (also base43 electrum encoding)
   * PSBT
@@ -9,17 +9,22 @@
   * Multipath Descriptor (like Sparrow)
   * Partial descriptors (Specter DIY) ( finger print , derivation, xpub)
   * TxId
+  * Animated QR Codes (BBQR)
   * Animated QR Codes ([UR](https://github.com/BlockchainCommons/Research/blob/master/papers/bcr-2020-005-ur.md)) (Transactions and Descriptors)
   * Animated QR Codes (Specter)
-* **blazingly fast** recognition
-* SLIP132 --> BIP32 conversion (output descriptors replace SLIP132)
+* Recognizes (and classifies)  **blazingly fast**  
+* QR Code generation via  `Data.generate_fragments_for_qr()`
+* QR Code Widgets, via the widgets `QRCodeWidget`,  `QRCodeWidgetSVG`
+
+
+
 
 ### Demo
 
 Run the demo with
 
 ```
-python demo.py
+python demo_reader.py
 ```
 
 ![screenshot](docs/screenshot.png)
