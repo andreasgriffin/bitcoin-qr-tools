@@ -134,6 +134,8 @@ def test_multipath_descriptor():
     try:
         for part in parts:
             meta_data_handler.add(part)
+        assert meta_data_handler.is_complete()
+        meta_data_handler.get_complete_data()
     except DecodingException:
         exceptionwas_raised = True
     assert exceptionwas_raised
@@ -148,6 +150,8 @@ def test_multipath_descriptor():
     try:
         for part in parts:
             meta_data_handler.add(part)
+        assert meta_data_handler.is_complete()
+        meta_data_handler.get_complete_data()
     except InconsistentDescriptors:
         exceptionwas_raised = True
     assert exceptionwas_raised

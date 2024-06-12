@@ -1,5 +1,6 @@
 import logging
 import math
+from typing import Callable
 
 from bitcoin_qr_tools.data import DecodingException
 
@@ -11,7 +12,7 @@ from PyQt6 import QtWidgets
 
 from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
 
-from .qr_qui import VideoWidget
+from .video_widget import VideoWidget
 
 
 class BitcoinVideoWidget(VideoWidget):
@@ -22,9 +23,11 @@ class BitcoinVideoWidget(VideoWidget):
         parent=None,
         network=bdk.Network.REGTEST,
         show_network_switch=False,
+        exception_callback: Callable[[Exception], None] = None,
     ):
         super().__init__(qr_data_callback=self.qr_data_callback, parent=parent)
         self.network: bdk.Network = network
+        self.exception_callback = exception_callback
 
         self.combo_network = QtWidgets.QComboBox(self)
         self.combo_network.addItems([n.name for n in bdk.Network])
@@ -55,8 +58,10 @@ class BitcoinVideoWidget(VideoWidget):
             if self.result_callback:
                 try:
                     self.result_callback(self.meta_data_handler.get_complete_data())
-                except:
-                    logger.warning(f"Could not decode data")
+                except Exception as e:
+                    logger.warning(f"Could not decode data.  {e}")
+                    if self.exception_callback:
+                        self.exception_callback(e)
 
     def draw_pie_progress_bar(self, surface, rect, percentage, color):
         x, y, w, h = rect
