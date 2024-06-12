@@ -52,14 +52,14 @@ class SinglePassCollector(BaseCollector):
         return True
 
     def is_complete(self) -> bool:
-        return bool(self.data)
+        return bool(self.last)
 
     def get_complete_data(self) -> Optional[Data]:
-        return self.data
+        return Data.from_str(self.last, network=self.network)
 
-    def add(self, s: str) -> Data:
-        self.data = Data.from_str(s, network=self.network)
-        return self.data
+    def add(self, s: str) -> str:
+        self.last = s
+        return self.last
 
     def estimated_percent_complete(self):
         return float(bool(self.data))

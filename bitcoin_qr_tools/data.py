@@ -324,7 +324,7 @@ def is_ndjson_with_keys(s: str, keys: List[str]):
             obj = json.loads(line)
             # Check if all specified keys are present in the JSON object
             if not all(key in obj for key in keys):
-                logger.debug(f"Not all required keys {keys} are present in {obj}")
+                logger.debug(f"ndjson check: Not all required keys {keys} are present in {obj}")
                 return False
         except json.JSONDecodeError:
             return False
@@ -591,18 +591,18 @@ class Data:
 
         if network == bdk.Network.BITCOIN:
             if json_data["chain"] != "BTC":
-                raise WrongNetwork()
+                raise WrongNetwork(f"""Expected Network {network}, but got {json_data["chain"]}""")
         if network == bdk.Network.REGTEST:
             if json_data["chain"] != "XRT":
-                raise WrongNetwork()
+                raise WrongNetwork(f"""Expected Network {network}, but got {json_data["chain"]}""")
         if network == bdk.Network.TESTNET:
             if json_data["chain"] != "XTN":
-                raise WrongNetwork()
+                raise WrongNetwork(f"""Expected Network {network}, but got {json_data["chain"]}""")
         if network == bdk.Network.SIGNET:
             # unclear which chain value is used for signet in coldcard
             # https://coldcard.com/docs/upgrade/#mk4-version-511-feb-27-2023
             if json_data["chain"] not in ["XTN", "XRT"]:
-                raise WrongNetwork()
+                raise WrongNetwork(f"""Expected Network {network}, but got {json_data["chain"]}""")
 
         # the fingerprint in the top level is the relevant one
         fingerprint = json_data["xfp"]
@@ -656,7 +656,7 @@ class Data:
         # if is_bip329(s):
         #     return Data(s, DataType.LabelsBip329)
 
-        raise DecodingException(f"{raw} Could not be decoded")  # type: ignore
+        raise DecodingException(f"{raw} Could not be decoded with from_binary")  # type: ignore
 
     @classmethod
     def from_str(cls, s: str, network) -> "Data":
@@ -698,7 +698,7 @@ class Data:
         if is_bip329(s):
             return Data(s, DataType.LabelsBip329)
 
-        raise DecodingException(f"{s} Could not be decoded")
+        raise DecodingException(f"{s} Could not be decoded with from_str")
 
     def generate_fragments_for_qr(self, max_qr_size=100, qr_type: Literal["ur", "bbqr"] = "bbqr"):
         if qr_type == "ur":
