@@ -715,6 +715,10 @@ class Data:
                 bcor_encoder = CBOREncoder()
                 bcor_encoder.encodeBytes(base64.b64decode(serialized.encode()))
                 ur = UR("crypto-psbt", bcor_encoder.get_bytes())
+            else:
+                bcor_encoder = CBOREncoder()
+                bcor_encoder.encodeBytes(serialized.encode())
+                ur = UR("bytes", bcor_encoder.get_bytes())
 
             encoder = UREncoder(ur, max_fragment_len=max_qr_size)
             fragments = []
