@@ -215,6 +215,7 @@ class QRCodeWidgetSVG(QWidget):
         self.svg_renderers = [QSvgRenderer(QByteArray(image.encode("utf-8"))) for image in image_list]
         self.current_index = 0
         self.manage_animation()
+        self.update()
 
     def manage_animation(self):
         should_animate = len(self.svg_renderers) > 1 and (

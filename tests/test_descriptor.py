@@ -155,3 +155,21 @@ def test_multipath_descriptor():
     except InconsistentDescriptors:
         exceptionwas_raised = True
     assert exceptionwas_raised
+
+
+def test_multipath_descriptor_to_qr_fragements():
+
+    # 2 descriptors in 2 lines  (coldcard style)
+    s = "wpkh([0f056943/84'/1'/0']tpubDC7jGaaSE66Pn4dgtbAAstde4bCyhSUs4r3P8WhMVvPByvcRrzrwqSvpF9Ghx83Z1LfVugGRrSBko5UEKELCz9HoMv5qKmGq3fqnnbS5E9r/<0;1>/*)#86p2gdxy"
+
+    data = Data.from_str(s, network=bdk.Network.REGTEST)
+
+    ur_fragments = data.generate_fragments_for_qr(qr_type="ur")
+    assert ur_fragments == [
+        "ur:bytes/1-2/lpadaocsnscytnktlesphdglhdnyktjojeisdehpdyiydyeceneseeeodleteedidlehdidldydihljyjokpidfyfxemimflhshsgufeenengdjteeieiojyidfpfpjkjyieiheeidfxkkisgugojkeejpeogdethgisgthfkogdfwkkkoiabsndvsvw",
+        "ur:bytes/2-2/lpaoaocsnscytnktlesphdglgmjpknjpktjsgukojofgesfliskseteohtehgsiyhfkpioflgmjpgufwjejlecgofegrfegsfxknesfdjlgtkoecjsgrjnfljseoiyjsjtjtidguecfeesjpdlfndyfrehfmdldrdtcnetenjoeyioiekskkhpkiwpcl",
+    ]
+    bbqr_fragments = data.generate_fragments_for_qr(qr_type="bbqr")
+    assert bbqr_fragments == [
+        "B$ZU0100AXA5WCUCGAAABUEP5HA6UZNTJVZRJAO2GJIECHA2CQ63QTCHSKL2SU737LHJTWSKVQP3BAEGJEYAEFWWQCXADKB5Q53OIZ3X77Y3FDCR2OGGVHEXAO3627WI36MLXC3AJGHSLCVMTMEFGFJZRN5ML4RHU6HKT5SCHQYVX2FOA5CTVFS6FSMVGNKGIJ6RVOB7OJWUEZLU73L6WUGR2U2WOBRFCIOOCQJ7QHWWMZMZ5WXMZZ7FB4"
+    ]
