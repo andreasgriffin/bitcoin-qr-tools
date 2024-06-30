@@ -34,7 +34,15 @@ from typing import List, Optional, Tuple
 
 from PIL import Image
 from PyQt6.QtCore import QByteArray, QEvent, QRectF, QSize, Qt, QTimer
-from PyQt6.QtGui import QImage, QKeyEvent, QMouseEvent, QPainter, QPaintEvent, QPixmap
+from PyQt6.QtGui import (
+    QCloseEvent,
+    QImage,
+    QKeyEvent,
+    QMouseEvent,
+    QPainter,
+    QPaintEvent,
+    QPixmap,
+)
 from PyQt6.QtSvg import QSvgRenderer
 from PyQt6.QtWidgets import QApplication, QDialog, QWidget
 
@@ -121,6 +129,11 @@ class EnlargableImageWidget(ImageWidget):
     def mousePressEvent(self, event: QMouseEvent):
         self.enlarge_image()
 
+    def closeEvent(self, event: QCloseEvent) -> None:
+        if self.enlarged_image:
+            self.enlarged_image.close()
+        super().closeEvent(event)
+
 
 class EnlargedImage(ImageWidget):
     def __init__(self, pil_image: Image, parent=None, screen_fraction=0.4):
@@ -191,7 +204,7 @@ class QRCodeWidgetSVG(QWidget):
         if clickable:
             self.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        self.timer = QTimer(self)
+        self.timer = QTimer()
         self.timer.timeout.connect(self.next_svg)
 
     def sizeHint(self) -> QSize:
@@ -345,6 +358,11 @@ class QRCodeWidgetSVG(QWidget):
             for renderer in self.svg_renderers
             if renderer.isValid()
         ]
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        self.timer.stop()
+        self.enlarged_image.close()
+        super().closeEvent(event)
 
 
 class EnlargedSVG(QDialog):
