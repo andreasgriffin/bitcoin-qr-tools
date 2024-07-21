@@ -213,22 +213,28 @@ class QRCodeWidgetSVG(QWidget):
         s.setHeight(self.default_size)
         return s
 
-    def set_data_list(self, data_list: List[str]):
-        self.svg_renderers = [
-            QSvgRenderer(QByteArray(QRGenerator.create_qr_svg(data).encode("utf-8"))) for data in data_list
-        ]
+    def set_renderers(self, svg_renderers):
+        self.svg_renderers = svg_renderers
         self.current_index = 0
+        if self.enlarged_image:
+            if self.svg_renderers:
+                self.enlarged_image.update_image(self.svg_renderers[self.current_index])
+            else:
+                self.enlarged_image.update_image(None)
         self.manage_animation()
+        self.update()
+
+    def set_data_list(self, data_list: List[str]):
+        self.set_renderers(
+            [QSvgRenderer(QByteArray(QRGenerator.create_qr_svg(data).encode("utf-8"))) for data in data_list]
+        )
 
     def set_always_animate(self, always_animate: bool):
         self.always_animate = always_animate
         self.manage_animation()
 
     def set_images(self, image_list: List[str]):
-        self.svg_renderers = [QSvgRenderer(QByteArray(image.encode("utf-8"))) for image in image_list]
-        self.current_index = 0
-        self.manage_animation()
-        self.update()
+        self.set_renderers([QSvgRenderer(QByteArray(image.encode("utf-8"))) for image in image_list])
 
     def manage_animation(self):
         should_animate = len(self.svg_renderers) > 1 and (
