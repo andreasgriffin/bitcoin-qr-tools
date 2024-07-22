@@ -11,7 +11,7 @@ disable_error_code = "assignment"
 
 [tool.poetry]
 name = "bitcoin-qr-tools"
-version = "0.10.7"
+version = "0.10.8"
 authors = ["andreasgriffin <andreasgriffin@proton.me>"]
 license = "GPL-3.0"
 readme = "README.md"
