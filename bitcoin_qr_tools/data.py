@@ -659,6 +659,26 @@ class Data:
         raise DecodingException(f"{raw} Could not be decoded with from_binary")  # type: ignore
 
     @classmethod
+    def from_tx(cls, tx: bdk.Transaction) -> "Data":
+        assert isinstance(tx, bdk.Transaction)
+        return Data(tx, DataType.Tx)
+
+    @classmethod
+    def from_psbt(cls, psbt: bdk.PartiallySignedTransaction) -> "Data":
+        assert isinstance(psbt, bdk.PartiallySignedTransaction)
+        return Data(psbt, DataType.PSBT)
+
+    @classmethod
+    def from_descriptor(cls, descriptor: bdk.Descriptor) -> "Data":
+        assert isinstance(descriptor, bdk.Descriptor)
+        return Data(descriptor, DataType.Descriptor)
+
+    @classmethod
+    def from_multipath_descriptor(cls, multipath_descriptor: MultipathDescriptor) -> "Data":
+        assert isinstance(multipath_descriptor, MultipathDescriptor)
+        return Data(multipath_descriptor, DataType.MultiPathDescriptor)
+
+    @classmethod
     def from_str(cls, s: str, network) -> "Data":
         s = s.strip()
         data = None
