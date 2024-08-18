@@ -218,3 +218,21 @@ def test_wrong_json_SignerInfos():
     except DecodingException:
         exceptionwas_raised = True
     assert exceptionwas_raised
+
+
+def test_sparrow_signer_infos_compact_by_coldcard_via_qr():
+    parts = [
+        '{\n  "p2sh_deriv": "m/45h",\n  "p2sh": "tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n",\n  "p2sh_desc": "sh(sortedmulti(M,[0F056943/45h]tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n/0/*,...))",\n  "p2sh_p2wsh_deriv": "m/48h/1h/0h/1h",\n  "p2sh_p2wsh": "Upub5T4XUooQzDXL58NCHk8ZCw9BsRSLCtnyHeZEExAq1XdnBFXiXVrHFuvvmh3TnCR7XmKHxkwqdACv68z7QKT1vwru9L1SZSsw8B2fuBvtSa6",\n  "p2sh_p2wsh_desc": "sh(wsh(sortedmulti(M,[0F056943/48h/1h/0h/1h]tpubDF2rnouQaaYrUEy2JM1YD3RFzew4onawGM4X2Re67gguTf5CbHonBRiFGe3Xjz7DK88dxBFGf2i7K1hef3PM4cFKyUjcbJXddaY9F5tJBoP/0/*,...)))",\n  "p2wsh_deriv": "m/48h/1h/0h/2h",\n  "p2wsh": "Vpub5mtnnUUL8u4oyRf5d2NZJqDypgmpx8FontedpqxNyjXTi6fLp8fmpp2wedS6UyuNpDgLDoVH23c6rYpFSEfB9jhdbD8gek2stjxhwJeE1Eq",\n  "p2wsh_desc": "wsh(sortedmulti(M,[0F056943/48h/1h/0h/2h]tpubDF2rnouQaaYrXF4noGTv6rQYmx87cQ4GrUdhpvXkhtChwQPbdGTi8GA88NUaSrwZBwNsTkC9bFkkC8vDyGBVVAQTZ2AS6gs68RQXtXcCvkP/0/*,...))",\n  "account": "0",\n  "xfp": "0F056943"\n}'
+    ]
+
+    meta_data_handler = UnifiedDecoder(bdk.Network.REGTEST)
+    for part in parts:
+        meta_data_handler.add(part)
+    assert meta_data_handler.is_complete()
+    data = meta_data_handler.get_complete_data()
+    assert data.data_type == DataType.SignerInfos, "Wrong type"
+    # bdk returns '  instead of h  (which sparrrow does), so the checksum is different
+    assert (
+        data.data_as_string()
+        == """[SignerInfo({'fingerprint': '0F056943', 'key_origin': 'm/45h', 'xpub': 'tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n', 'derivation_path': None, 'name': 'p2sh', 'first_address': None}), SignerInfo({'fingerprint': '0F056943', 'key_origin': 'm/48h/1h/0h/1h', 'xpub': 'Upub5T4XUooQzDXL58NCHk8ZCw9BsRSLCtnyHeZEExAq1XdnBFXiXVrHFuvvmh3TnCR7XmKHxkwqdACv68z7QKT1vwru9L1SZSsw8B2fuBvtSa6', 'derivation_path': None, 'name': 'p2sh_p2wsh', 'first_address': None}), SignerInfo({'fingerprint': '0F056943', 'key_origin': 'm/48h/1h/0h/2h', 'xpub': 'Vpub5mtnnUUL8u4oyRf5d2NZJqDypgmpx8FontedpqxNyjXTi6fLp8fmpp2wedS6UyuNpDgLDoVH23c6rYpFSEfB9jhdbD8gek2stjxhwJeE1Eq', 'derivation_path': None, 'name': 'p2wsh', 'first_address': None})]"""
+    )

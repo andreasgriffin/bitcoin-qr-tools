@@ -52,6 +52,7 @@ class VideoWidget(QtWidgets.QWidget):
 
         pygame.camera.init()
         self.cameras = self.get_valid_cameras()
+        index_last_camera = len(self.cameras) - 1
         self.combo_cameras = QtWidgets.QComboBox()
         self.combo_cameras.addItems(self.cameras)
         self.combo_cameras.currentIndexChanged.connect(self.switch_camera)
@@ -71,7 +72,9 @@ class VideoWidget(QtWidgets.QWidget):
         # Add "Screen" option for screen capture
         self.combo_cameras.addItem("Screen")
         self.cameras.append("Screen")  # Adding "Screen" to the cameras list
-        self.switch_camera(0)
+
+        # switch to the last camera that isn
+        self.combo_cameras.setCurrentIndex(index_last_camera)
 
     def closeEvent(self, event: QEvent) -> None:
         self.timer.stop()
