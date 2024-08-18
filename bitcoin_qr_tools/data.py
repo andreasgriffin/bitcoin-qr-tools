@@ -427,7 +427,7 @@ class Data:
             pass
 
     @classmethod
-    def _try_get_descriptor(cls, s, network):
+    def _try_get_descriptor(cls, s, network: bdk.Network):
         try:
             assert "<" not in s, "This contains characters of a multipath descriptor"
             assert ">" not in s, "This contains characters of a multipath descriptor"
@@ -446,7 +446,7 @@ class Data:
             pass
 
     @classmethod
-    def _try_get_multipath_descriptor(cls, s, network):
+    def _try_get_multipath_descriptor(cls, s, network: bdk.Network):
         # if new lines are presnt, try checking if there are descriptors in the lines
         if "\n" in s:
             splitted_lines = s.split("\n")
@@ -534,7 +534,7 @@ class Data:
         return None
 
     @classmethod
-    def _try_extract_signer_info(cls, s, network):
+    def _try_extract_signer_info(cls, s, network: bdk.Network):
         signer_info = None
         try:
             signer_info = extract_signer_info(s)
@@ -574,13 +574,13 @@ class Data:
         return None
 
     @classmethod
-    def _try_extract_signer_infos(cls, s, network):
+    def _try_extract_sparrow_signer_infos(cls, s, network: bdk.Network):
         # if it is a json
         json_data = None
         try:
             json_data = json.loads(s)
 
-            # check if it is in coldcard export format
+            # check if it is in sparrow export format
 
             assert "chain" in json_data
             assert "xfp" in json_data
@@ -620,7 +620,39 @@ class Data:
         ]
 
     @classmethod
-    def from_binary(cls, raw: bytes, network) -> "Data":
+    def _try_extract_sparrow_signer_infos_compact_by_coldcard(cls, s, network: bdk.Network):
+        # if it is a json
+        json_data = None
+        try:
+            json_data = json.loads(s)
+
+            # check if it is in coldcard export format
+            assert "account" in json_data
+            assert "xfp" in json_data
+
+        except Exception:
+            return None
+
+        # the fingerprint in the top level is the relevant one
+        fingerprint = json_data["xfp"]
+
+        # get all the main keys (address type names) by looking at which end with _deriv
+        address_type_names = [key.rstrip("_deriv") for key in json_data if key.endswith("_deriv")]
+
+        return [
+            SignerInfo(
+                xpub=convert_slip132_to_bip32(json_data[address_type_name])
+                if is_slip132(json_data[address_type_name])
+                else json_data[address_type_name],
+                fingerprint=fingerprint,
+                key_origin=json_data[address_type_name + "_deriv"],
+                name=address_type_name,
+            )
+            for address_type_name in address_type_names
+        ]
+
+    @classmethod
+    def from_binary(cls, raw: bytes, network: bdk.Network) -> "Data":
         # # Sequence of checks to identify the type of data in `s`
         # if decoded_bip21 := cls._try_decode_bip21(s, network=network):
         #     return Data(decoded_bip21, DataType.Bip21)
@@ -679,7 +711,7 @@ class Data:
         return Data(multipath_descriptor, DataType.MultiPathDescriptor)
 
     @classmethod
-    def from_str(cls, s: str, network) -> "Data":
+    def from_str(cls, s: str, network: bdk.Network) -> "Data":
         s = s.strip()
         data = None
 
@@ -712,7 +744,10 @@ class Data:
         if signer_info := cls._try_extract_signer_info(s, network):
             return Data(signer_info, DataType.SignerInfo)
 
-        if signer_infos := cls._try_extract_signer_infos(s, network):
+        if signer_infos := cls._try_extract_sparrow_signer_infos(s, network):
+            return Data(signer_infos, DataType.SignerInfos)
+
+        if signer_infos := cls._try_extract_sparrow_signer_infos_compact_by_coldcard(s, network):
             return Data(signer_infos, DataType.SignerInfos)
 
         if is_bip329(s):
