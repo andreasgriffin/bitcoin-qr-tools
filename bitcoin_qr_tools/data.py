@@ -641,7 +641,9 @@ class Data:
 
         return [
             SignerInfo(
-                xpub=json_data[address_type_name],
+                xpub=convert_slip132_to_bip32(json_data[address_type_name])
+                if is_slip132(json_data[address_type_name])
+                else json_data[address_type_name],
                 fingerprint=fingerprint,
                 key_origin=json_data[address_type_name + "_deriv"],
                 name=address_type_name,
