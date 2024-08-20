@@ -1,4 +1,5 @@
 import bdkpython as bdk
+import pytest
 
 from bitcoin_qr_tools.data import (
     Data,
@@ -220,7 +221,7 @@ def test_wrong_json_SignerInfos():
     assert exceptionwas_raised
 
 
-def test_sparrow_signer_infos_compact_by_coldcard_via_qr():
+def test_multisig_signer_infos_coldcard_qr():
     parts = [
         '{\n  "p2sh_deriv": "m/45h",\n  "p2sh": "tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n",\n  "p2sh_desc": "sh(sortedmulti(M,[0F056943/45h]tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n/0/*,...))",\n  "p2sh_p2wsh_deriv": "m/48h/1h/0h/1h",\n  "p2sh_p2wsh": "Upub5T4XUooQzDXL58NCHk8ZCw9BsRSLCtnyHeZEExAq1XdnBFXiXVrHFuvvmh3TnCR7XmKHxkwqdACv68z7QKT1vwru9L1SZSsw8B2fuBvtSa6",\n  "p2sh_p2wsh_desc": "sh(wsh(sortedmulti(M,[0F056943/48h/1h/0h/1h]tpubDF2rnouQaaYrUEy2JM1YD3RFzew4onawGM4X2Re67gguTf5CbHonBRiFGe3Xjz7DK88dxBFGf2i7K1hef3PM4cFKyUjcbJXddaY9F5tJBoP/0/*,...)))",\n  "p2wsh_deriv": "m/48h/1h/0h/2h",\n  "p2wsh": "Vpub5mtnnUUL8u4oyRf5d2NZJqDypgmpx8FontedpqxNyjXTi6fLp8fmpp2wedS6UyuNpDgLDoVH23c6rYpFSEfB9jhdbD8gek2stjxhwJeE1Eq",\n  "p2wsh_desc": "wsh(sortedmulti(M,[0F056943/48h/1h/0h/2h]tpubDF2rnouQaaYrXF4noGTv6rQYmx87cQ4GrUdhpvXkhtChwQPbdGTi8GA88NUaSrwZBwNsTkC9bFkkC8vDyGBVVAQTZ2AS6gs68RQXtXcCvkP/0/*,...))",\n  "account": "0",\n  "xfp": "0F056943"\n}'
     ]
@@ -235,4 +236,39 @@ def test_sparrow_signer_infos_compact_by_coldcard_via_qr():
     assert (
         data.data_as_string()
         == """[SignerInfo({'fingerprint': '0F056943', 'key_origin': 'm/45h', 'xpub': 'tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n', 'derivation_path': None, 'name': 'p2sh', 'first_address': None}), SignerInfo({'fingerprint': '0F056943', 'key_origin': 'm/48h/1h/0h/1h', 'xpub': 'tpubDF2rnouQaaYrUEy2JM1YD3RFzew4onawGM4X2Re67gguTf5CbHonBRiFGe3Xjz7DK88dxBFGf2i7K1hef3PM4cFKyUjcbJXddaY9F5tJBoP', 'derivation_path': None, 'name': 'p2sh_p2wsh', 'first_address': None}), SignerInfo({'fingerprint': '0F056943', 'key_origin': 'm/48h/1h/0h/2h', 'xpub': 'tpubDF2rnouQaaYrXF4noGTv6rQYmx87cQ4GrUdhpvXkhtChwQPbdGTi8GA88NUaSrwZBwNsTkC9bFkkC8vDyGBVVAQTZ2AS6gs68RQXtXcCvkP', 'derivation_path': None, 'name': 'p2wsh', 'first_address': None})]"""
+    )
+
+
+def test_multisig_signer_infos_coldcard_qr_wrong_network():
+    parts = [
+        '{\n  "p2sh_deriv": "m/45h",\n  "p2sh": "tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n",\n  "p2sh_desc": "sh(sortedmulti(M,[0F056943/45h]tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n/0/*,...))",\n  "p2sh_p2wsh_deriv": "m/48h/1h/0h/1h",\n  "p2sh_p2wsh": "Upub5T4XUooQzDXL58NCHk8ZCw9BsRSLCtnyHeZEExAq1XdnBFXiXVrHFuvvmh3TnCR7XmKHxkwqdACv68z7QKT1vwru9L1SZSsw8B2fuBvtSa6",\n  "p2sh_p2wsh_desc": "sh(wsh(sortedmulti(M,[0F056943/48h/1h/0h/1h]tpubDF2rnouQaaYrUEy2JM1YD3RFzew4onawGM4X2Re67gguTf5CbHonBRiFGe3Xjz7DK88dxBFGf2i7K1hef3PM4cFKyUjcbJXddaY9F5tJBoP/0/*,...)))",\n  "p2wsh_deriv": "m/48h/1h/0h/2h",\n  "p2wsh": "Vpub5mtnnUUL8u4oyRf5d2NZJqDypgmpx8FontedpqxNyjXTi6fLp8fmpp2wedS6UyuNpDgLDoVH23c6rYpFSEfB9jhdbD8gek2stjxhwJeE1Eq",\n  "p2wsh_desc": "wsh(sortedmulti(M,[0F056943/48h/1h/0h/2h]tpubDF2rnouQaaYrXF4noGTv6rQYmx87cQ4GrUdhpvXkhtChwQPbdGTi8GA88NUaSrwZBwNsTkC9bFkkC8vDyGBVVAQTZ2AS6gs68RQXtXcCvkP/0/*,...))",\n  "account": "0",\n  "xfp": "0F056943"\n}'
+    ]
+
+    meta_data_handler = UnifiedDecoder(bdk.Network.BITCOIN)
+    for part in parts:
+        meta_data_handler.add(part)
+
+    with pytest.raises(WrongNetwork) as exc_info:
+        assert meta_data_handler.is_complete()
+        meta_data_handler.get_complete_data()
+    assert (
+        str(exc_info.value)
+        == "tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n doesnt start with xpub, which is required for Network.BITCOIN"
+    )
+
+    # and now test that also an xpub cannot be entered in the test network
+    parts = [
+        '{\n  "p2sh_deriv": "m/45h",\n  "p2sh": "xpub6C6nQwHaWbSrzs5tZ1q7m5R9cPK9eYpNMFesiXsYrgc1P8bvLLAet9JfHjYXKjToD8cBRswJXXbbFpXgwsswVPAZzKMa1jUp2kVkGVUaJa7",\n  "p2sh_desc": "sh(sortedmulti(M,[0F056943/45h]xpub6C6nQwHaWbSrzs5tZ1q7m5R9cPK9eYpNMFesiXsYrgc1P8bvLLAet9JfHjYXKjToD8cBRswJXXbbFpXgwsswVPAZzKMa1jUp2kVkGVUaJa7/0/*,...))",\n  "account": "0",\n  "xfp": "0F056943"\n}'
+    ]
+
+    meta_data_handler = UnifiedDecoder(bdk.Network.TESTNET)
+    for part in parts:
+        meta_data_handler.add(part)
+
+    with pytest.raises(WrongNetwork) as exc_info:
+        assert meta_data_handler.is_complete()
+        meta_data_handler.get_complete_data()
+    assert (
+        str(exc_info.value)
+        == "xpub6C6nQwHaWbSrzs5tZ1q7m5R9cPK9eYpNMFesiXsYrgc1P8bvLLAet9JfHjYXKjToD8cBRswJXXbbFpXgwsswVPAZzKMa1jUp2kVkGVUaJa7 doesnt start with tpub, which is required for Network.TESTNET"
     )

@@ -620,7 +620,7 @@ class Data:
         ]
 
     @classmethod
-    def _try_extract_sparrow_signer_infos_compact_by_coldcard(cls, s, network: bdk.Network):
+    def _try_extract_multisig_signer_infos_coldcard_qr(cls, s, network: bdk.Network):
         # if it is a json
         json_data = None
         try:
@@ -639,7 +639,7 @@ class Data:
         # get all the main keys (address type names) by looking at which end with _deriv
         address_type_names = [key.rstrip("_deriv") for key in json_data if key.endswith("_deriv")]
 
-        return [
+        signer_infos = [
             SignerInfo(
                 xpub=convert_slip132_to_bip32(json_data[address_type_name])
                 if is_slip132(json_data[address_type_name])
@@ -650,6 +650,19 @@ class Data:
             )
             for address_type_name in address_type_names
         ]
+        for signer_info in signer_infos:
+            if network == bdk.Network.BITCOIN:
+                if not signer_info.xpub.startswith("xpub"):
+                    raise WrongNetwork(
+                        f"{signer_info.xpub} doesnt start with xpub, which is required for {network}"
+                    )
+            else:
+                if not signer_info.xpub.startswith("tpub"):
+                    raise WrongNetwork(
+                        f"{signer_info.xpub} doesnt start with tpub, which is required for {network}"
+                    )
+
+        return signer_infos
 
     @classmethod
     def from_binary(cls, raw: bytes, network: bdk.Network) -> "Data":
@@ -747,7 +760,7 @@ class Data:
         if signer_infos := cls._try_extract_sparrow_signer_infos(s, network):
             return Data(signer_infos, DataType.SignerInfos)
 
-        if signer_infos := cls._try_extract_sparrow_signer_infos_compact_by_coldcard(s, network):
+        if signer_infos := cls._try_extract_multisig_signer_infos_coldcard_qr(s, network):
             return Data(signer_infos, DataType.SignerInfos)
 
         if is_bip329(s):
