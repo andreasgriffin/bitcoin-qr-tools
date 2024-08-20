@@ -57,6 +57,14 @@ class MultipathDescriptor:
             return None
 
     @classmethod
+    def is_valid(cls, descriptor_str: str, network: bdk.Network) -> bool:
+        try:
+            cls.from_descriptor_str(descriptor_str=descriptor_str, network=network)
+        except:
+            return False
+        return True
+
+    @classmethod
     def from_descriptor_str(cls, descriptor_str: str, network: bdk.Network) -> "MultipathDescriptor":
         derivation_path = cls.get_equal_derivation_path(descriptor_str)
 
