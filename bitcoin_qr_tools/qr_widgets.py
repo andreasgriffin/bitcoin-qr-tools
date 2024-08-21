@@ -138,7 +138,7 @@ class EnlargableImageWidget(ImageWidget):
 class EnlargedImage(ImageWidget):
     def __init__(self, pil_image: Image, parent=None, screen_fraction=0.4):
         super().__init__(pil_image, parent)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        self.setWindowTitle("Enlarged Image")
         self.installEventFilter(self)  # Install the event filter for this widget
 
         # Get screen resolution
