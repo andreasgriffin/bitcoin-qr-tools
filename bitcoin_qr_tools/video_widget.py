@@ -75,6 +75,7 @@ class VideoWidget(QtWidgets.QWidget):
 
         # switch to the last camera that isn
         self.combo_cameras.setCurrentIndex(index_last_camera)
+        self.switch_camera(index_last_camera)
 
     def closeEvent(self, event: QEvent) -> None:
         self.timer.stop()
