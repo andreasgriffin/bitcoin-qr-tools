@@ -108,3 +108,12 @@ class MultipathDescriptor:
             receive_descriptor_str, new_derivation_path="/<0;1>/*"
         )
         return receive_descriptor.to_string(hardened_char="'")
+
+    def address_descriptor(self, kind: bdk.KeychainKind, address_index: int) -> str:
+        receive_descriptor_str = self.bdk_descriptors[0].as_string()
+
+        new_derivation_path = f"/{0 if kind == bdk.KeychainKind.EXTERNAL else 1}/{address_index}"
+        receive_descriptor = get_adapted_hwi_descriptor(
+            receive_descriptor_str, new_derivation_path=new_derivation_path
+        )
+        return receive_descriptor.to_string(hardened_char="'")
