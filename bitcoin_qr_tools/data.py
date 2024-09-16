@@ -1,4 +1,5 @@
 import base64
+import binascii
 import enum
 import hashlib
 import json
@@ -651,18 +652,77 @@ class Data:
             for address_type_name in address_type_names
         ]
         for signer_info in signer_infos:
-            if network == bdk.Network.BITCOIN:
-                if not signer_info.xpub.startswith("xpub"):
-                    raise WrongNetwork(
-                        f"{signer_info.xpub} doesnt start with xpub, which is required for {network}"
-                    )
-            else:
-                if not signer_info.xpub.startswith("tpub"):
-                    raise WrongNetwork(
-                        f"{signer_info.xpub} doesnt start with tpub, which is required for {network}"
-                    )
-
+            cls.ensure_xpub_matches_network(signer_info.xpub, network=network)
         return signer_infos
+
+    @classmethod
+    def ensure_xpub_matches_network(cls, xpub: str, network: bdk.Network):
+        if network == bdk.Network.BITCOIN:
+            if not xpub.startswith("xpub"):
+                raise WrongNetwork(f"{xpub} doesnt start with xpub, which is required for {network}")
+        else:
+            if not xpub.startswith("tpub"):
+                raise WrongNetwork(f"{xpub} doesnt start with tpub, which is required for {network}")
+
+    @classmethod
+    def _try_jade_wallet_export_to_signer_infos(
+        cls, s: str, network: bdk.Network
+    ) -> Optional[List[SignerInfo]]:
+        def convert_to_signer_infos(data: str) -> List[SignerInfo]:
+            # Initialize variables
+            lines = data.strip().split("\n")
+            # wallet_info = {}
+            signer_infos: List[SignerInfo] = []
+            key_origin = None
+
+            # # Iterate through each line
+            # for line in lines:
+            #     if line.startswith("# Exported by"):
+            #         wallet_info["Exported_by"] = line.split(" by ")[-1]
+            #     elif line.startswith("Name:"):
+            #         wallet_info["Name"] = line.split(": ")[-1]
+            #     elif line.startswith("Policy:"):
+            #         wallet_info["Policy"] = line.split(": ")[-1]
+            #     elif line.startswith("Format:"):
+            #         wallet_info["Format"] = line.split(": ")[-1]
+
+            for line_key_origin, line_xpub_fingeprint in zip(lines, lines[1:]):
+                if line_key_origin.startswith("Derivation:"):
+                    key_origin = line_key_origin.split(":")[-1].strip()
+                    if not key_origin.startswith("m/"):
+                        continue
+
+                    fingerprint, xpub = line_xpub_fingeprint.split(":")
+                    fingerprint = fingerprint.strip()
+                    xpub = xpub.strip()
+                    if len(fingerprint) != 8:
+                        continue
+
+                    signer_infos.append(SignerInfo(fingerprint=fingerprint, key_origin=key_origin, xpub=xpub))
+
+            for signer_info in signer_infos:
+                cls.ensure_xpub_matches_network(signer_info.xpub, network=network)
+            return signer_infos
+
+        try:
+            # Decode the hex string to ASCII
+            decoded_text = binascii.unhexlify(s).decode("utf-8")
+
+            # the data now looks like
+            # "# Exported by Blockstream Jade
+            # Name: hwi3374c2e55c4b
+            # Policy: 2 of 3
+            # Format: P2WSH
+            # Derivation: m/48'/1'/0'/2'
+            # 14c949b4: tpubDDvtDSGt5JmgxgpRp3nyZj3ULZvFWuU9AaS6x3UwkNE6vaNgzd6oyKYEQUzSevUQs2ste5QznpbN8Nt5bVbZvrJFpCqw9UPXCtnCutEvEwW
+            # Derivation: m/48'/1'/0'/2'
+            # d8cf7475: tpubDEDUiUcwmoC92QJ2kGPQwtikGqLrjdyUfuRMhm5ab4nYmgRkkKPF9mp2FcunzMu9y5Ea2urGUJh4t1o7Wb6KjKddzJKcE8BoAyTWK6ughFK
+            # Derivation: m/48'/1'/0'/2'
+            # d5b43540: tpubDFnCcKU3iUF4sPeQC68r2ewDaBB7TvLmQBTs12hnNS8nu6CPjZPmzapp7Woz6bkFuLfSjSpg6gacheKBaWBhDnEbEpKtCnVFdQnfhYGkPQF"
+            return convert_to_signer_infos(decoded_text)
+        except:
+            pass
+        return None
 
     @classmethod
     def from_binary(cls, raw: bytes, network: bdk.Network) -> "Data":
@@ -765,6 +825,9 @@ class Data:
 
         if is_bip329(s):
             return Data(s, DataType.LabelsBip329)
+
+        if signer_infos := cls._try_jade_wallet_export_to_signer_infos(s, network=network):
+            return Data(signer_infos, DataType.SignerInfos)
 
         raise DecodingException(f"{s} Could not be decoded with from_str")
 

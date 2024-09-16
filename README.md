@@ -11,7 +11,7 @@
   * TxId
   * Wallet Export Infos (Sparrow Format, Coldcard Sparrow QR format, Specter DIY, ...)
   * Animated QR Codes (BBQR)
-  * Animated QR Codes ([UR](https://github.com/BlockchainCommons/Research/blob/master/papers/bcr-2020-005-ur.md)) (Transactions and Descriptors)
+  * Animated QR Codes ([UR](https://github.com/BlockchainCommons/Research/blob/master/papers/bcr-2020-005-ur.md)) (Transactions, Descriptors, Jade Wallet Export)
   * Animated QR Codes (Specter)
 * Recognizes (and classifies)  **blazingly fast**  
 * QR Code generation via  `Data.generate_fragments_for_qr()`
