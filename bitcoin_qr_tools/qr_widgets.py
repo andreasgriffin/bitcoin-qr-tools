@@ -44,7 +44,7 @@ from PyQt6.QtGui import (
     QPixmap,
 )
 from PyQt6.QtSvg import QSvgRenderer
-from PyQt6.QtWidgets import QApplication, QDialog, QWidget
+from PyQt6.QtWidgets import QApplication, QDialog, QSizePolicy, QWidget
 
 from bitcoin_qr_tools.data import Data
 from bitcoin_qr_tools.qr_generator import QRGenerator
@@ -136,7 +136,7 @@ class EnlargableImageWidget(ImageWidget):
 
 
 class EnlargedImage(ImageWidget):
-    def __init__(self, pil_image: Image, parent=None, screen_fraction=0.4):
+    def __init__(self, pil_image: Image, parent=None, screen_fraction=0.7):
         super().__init__(pil_image, parent)
         self.setWindowTitle("Enlarged Image")
         self.installEventFilter(self)  # Install the event filter for this widget
@@ -200,18 +200,15 @@ class QRCodeWidgetSVG(QWidget):
         self.always_animate = always_animate
         self.is_hovered = False
         self.default_size = 200
+        self.setBaseSize(self.default_size, self.default_size)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.setMinimumSize(20, 20)
 
         if clickable:
             self.setCursor(Qt.CursorShape.PointingHandCursor)
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.next_svg)
-
-    def sizeHint(self) -> QSize:
-        s = QSize()
-        s.setWidth(self.default_size)
-        s.setHeight(self.default_size)
-        return s
 
     def set_renderers(self, svg_renderers):
         self.svg_renderers = svg_renderers
