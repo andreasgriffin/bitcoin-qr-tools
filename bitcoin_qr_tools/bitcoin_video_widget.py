@@ -9,16 +9,20 @@ logger = logging.getLogger(__name__)
 import bdkpython as bdk
 import pygame
 from PyQt6 import QtWidgets
+from PyQt6.QtCore import pyqtSignal
 
 from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
 
+from .data import Data
 from .video_widget import VideoWidget
 
 
 class BitcoinVideoWidget(VideoWidget):
+    signal_data = pyqtSignal(Data)
+    signal_recognize_exception = pyqtSignal(Exception)
+
     def __init__(
         self,
-        result_callback=None,
         close_on_result=True,
         parent=None,
         network=bdk.Network.REGTEST,
@@ -35,7 +39,6 @@ class BitcoinVideoWidget(VideoWidget):
         self.layout().addWidget(self.combo_network)
         self.combo_network.setVisible(show_network_switch)
 
-        self.result_callback = result_callback
         self.close_on_result = close_on_result
 
         self.meta_data_handler = UnifiedDecoder(self.network)
@@ -55,13 +58,14 @@ class BitcoinVideoWidget(VideoWidget):
         if self.meta_data_handler.is_complete():
             if self.close_on_result:
                 self.close()
-            if self.result_callback:
-                try:
-                    self.result_callback(self.meta_data_handler.get_complete_data())
-                except Exception as e:
-                    logger.warning(f"Could not decode data.  {e}")
-                    if self.exception_callback:
-                        self.exception_callback(e)
+
+            try:
+                data = self.meta_data_handler.get_complete_data()
+                if data:
+                    self.signal_data.emit(data)
+            except Exception as e:
+                logger.warning(f"Could not decode data.  {e}")
+                self.signal_recognize_exception.emit(e)
 
     def draw_pie_progress_bar(self, surface, rect, percentage, color):
         x, y, w, h = rect
@@ -106,13 +110,12 @@ class DemoBitcoinVideoWidget(BitcoinVideoWidget):
         network=bdk.Network.REGTEST,
     ):
         super().__init__(
-            result_callback=self.result_callback,
             parent=parent,
             close_on_result=close_on_result,
             network=network,
             show_network_switch=True,
         )
-
+        self.signal_data.connect(self.result_callback)
         self.label_qr = QtWidgets.QTextEdit()
 
         self.layout().addWidget(self.label_qr)

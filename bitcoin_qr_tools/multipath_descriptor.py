@@ -65,7 +65,7 @@ class MultipathDescriptor:
         return True
 
     @classmethod
-    def from_descriptor_str(cls, descriptor_str: str, network: bdk.Network) -> "MultipathDescriptor":
+    def from_descriptor_str(cls, descriptor_str: str, network: bdk.Network):
         derivation_path = cls.get_equal_derivation_path(descriptor_str)
 
         assert (
@@ -83,7 +83,7 @@ class MultipathDescriptor:
         receive_descriptor = get_adapted_hwi_descriptor(descriptor_str, new_derivation_path="/0/*")
         change_descriptor = get_adapted_hwi_descriptor(descriptor_str, new_derivation_path="/1/*")
 
-        return MultipathDescriptor(
+        return cls(
             bdk.Descriptor(receive_descriptor.to_string(), network=network),
             bdk.Descriptor(change_descriptor.to_string(), network=network),
         )
