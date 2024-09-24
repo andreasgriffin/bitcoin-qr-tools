@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 class QRGenerator:
     @staticmethod
-    def create_qr_PILimage(data: str, scale=10, color="black", background="white") -> Image:
+    def create_qr_PILimage(data: str, scale=10, color="black", background="white") -> Image.Image:
         """Generate a QR Code from the provided data and return it as an PIL Image
 
         :param data: The data to encode in the QR Code.

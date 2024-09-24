@@ -164,7 +164,7 @@ def test_multipath_descriptor_to_qr_fragements():
 
     data = Data.from_str(s, network=bdk.Network.REGTEST)
 
-    ur_fragments = data.generate_fragments_for_qr(qr_type="ur")
+    ur_fragments = data.generate_fragments_for_qr(qr_type="ur", max_qr_size=100)
     assert ur_fragments == [
         "ur:bytes/1-2/lpadaocsnscytnktlesphdglhdnyktjojeisdehpdyiydyeceneseeeodleteedidlehdidldydihljyjokpidfyfxemimflhshsgufeenengdjteeieiojyidfpfpjkjyieiheeidfxkkisgugojkeejpeogdethgisgthfkogdfwkkkoiabsndvsvw",
         "ur:bytes/2-2/lpaoaocsnscytnktlesphdglgmjpknjpktjsgukojofgesfliskseteohtehgsiyhfkpioflgmjpgufwjejlecgofegrfegsfxknesfdjlgtkoecjsgrjnfljseoiyjsjtjtidguecfeesjpdlfndyfrehfmdldrdtcnetenjoeyioiekskkhpkiwpcl",
