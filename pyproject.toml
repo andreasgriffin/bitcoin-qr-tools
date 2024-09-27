@@ -17,15 +17,15 @@ python = ">=3.9,<3.13"
 pyqt6 = "^6.7.0"
 base58 = "^2.1.1"
 bdkpython ="^0.31.0"
-pygame ="^2.5.2"
+pygame ="^2.6.0"
 mss ="^9.0.1"
 hwi = "^3.0.0"
 pyzbar = "^0.1.9"
-opencv-python-headless = ">=4.9.0.80"
 segno = "1.6.1"
 pyqrcode = "^1.2.1"
 pillow = "^10.4.0"
 numpy = "^2.0.1"
+opencv-python-headless = "^4.10.0.84"
 
 
 [tool.poetry.group.dev.dependencies]

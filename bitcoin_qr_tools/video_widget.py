@@ -4,7 +4,7 @@ logger = logging.getLogger(__name__)
 
 
 import time
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import mss
 import numpy as np
@@ -14,6 +14,8 @@ from mss.base import MSSBase
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import pyqtSignal
 
+from .cv2camera import CV2Camera
+
 
 class BarcodeData:
     def __init__(self, data, rect):
@@ -22,6 +24,9 @@ class BarcodeData:
 
     def __repr__(self):
         return f"BarcodeData(data={self.data}, rect={self.rect})"
+
+
+TypeSomeCamera = Union[CV2Camera, pygame.camera.Camera]
 
 
 class VideoWidget(QtWidgets.QWidget):
@@ -50,7 +55,7 @@ class VideoWidget(QtWidgets.QWidget):
 
         pygame.camera.init()
         for camera_name, camera in self.get_valid_cameras():
-            self.combo_cameras.addItem(camera_name, userData=camera)
+            self.combo_cameras.addItem(str(camera_name), userData=camera)
 
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.label_image)
@@ -58,7 +63,7 @@ class VideoWidget(QtWidgets.QWidget):
 
         self.setLayout(layout)
 
-        self.current_camera = None
+        self.current_camera: TypeSomeCamera | None = None
 
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update_frame)
@@ -87,22 +92,49 @@ class VideoWidget(QtWidgets.QWidget):
         # If you call the parent's closeEvent(), it will proceed to close the widget
         super().closeEvent(event)
 
-    def get_valid_cameras(self) -> List[Tuple[str, pygame.camera.Camera]]:
-        valid_cameras: List[Tuple[str, pygame.camera.Camera]] = []
-        for camera_name in pygame.camera.list_cameras():
-            try:
-                temp_camera = pygame.camera.Camera(camera_name, (640, 480))
-                temp_camera.start()
-                temp_camera.stop()
+    @staticmethod
+    def get_pygame_camera(camera_name: str | int) -> pygame.camera.Camera | None:
+        try:
+            temp_camera = pygame.camera.Camera(camera_name, (640, 480))
+            temp_camera.start()
+            temp_camera.stop()
+            logger.debug(f"Found pygame.camera.Camera({camera_name}, (640, 480))")
+            return temp_camera
+        except Exception as e:
+            logger.debug(f"Could not get  pygame.camera.Camera({camera_name}, (640, 480)). {e} ")
+        return None
+
+    @staticmethod
+    def get_cv2camera(index: int) -> CV2Camera | None:
+        try:
+            temp_camera = CV2Camera(index, (640, 480))
+            temp_camera.start()
+            temp_camera.stop()
+            logger.debug(f"Found CV2Camera({index}, (640, 480))")
+            return temp_camera
+        except Exception as e:
+            logger.debug(f"Could not get  CV2Camera({index}, (640, 480)). {e} ")
+
+        return None
+
+    def get_valid_cameras(self) -> List[Tuple[str, TypeSomeCamera]]:
+        valid_cameras: List[Tuple[str, TypeSomeCamera]] = []
+        for index, camera_name in enumerate(pygame.camera.list_cameras()):
+            temp_camera = self.get_pygame_camera(camera_name) or self.get_cv2camera(index)
+            if temp_camera:
                 valid_cameras.append((camera_name, temp_camera))
-            except SystemError:
-                continue
+
+        if not valid_cameras:
+            temp_camera = self.get_pygame_camera(0) or self.get_cv2camera(0)
+            if temp_camera:
+                valid_cameras.append((str(0), temp_camera))
+
         return valid_cameras
 
     def switch_camera(self, index: int):
         selected_camera = self.combo_cameras.currentData()
 
-        if isinstance(self.current_camera, pygame.camera.Camera):
+        if isinstance(self.current_camera, (CV2Camera, pygame.camera.Camera)):
             try:
                 self.current_camera.stop()
             except:
@@ -110,7 +142,7 @@ class VideoWidget(QtWidgets.QWidget):
 
         self.current_camera = selected_camera
 
-        if isinstance(self.current_camera, pygame.camera.Camera):
+        if isinstance(self.current_camera, (CV2Camera, pygame.camera.Camera)):
             self.current_camera.start()
             time.sleep(0.1)  # Add a short delay
         else:
@@ -170,7 +202,7 @@ class VideoWidget(QtWidgets.QWidget):
                 # Convert numpy image to surface for drawing
                 surface = self._numpy_to_surface(image)
                 surface = pygame.transform.flip(surface, True, False)
-        elif isinstance(self.current_camera, pygame.camera.Camera):
+        elif isinstance(self.current_camera, (CV2Camera, pygame.camera.Camera)):
             try:
                 surface = self.current_camera.get_image()
             except:
