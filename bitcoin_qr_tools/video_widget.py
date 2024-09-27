@@ -24,9 +24,9 @@ class BarcodeData:
 
 
 class VideoWidget(QtWidgets.QWidget):
-    signal_qr_data_callback = pyqtSignal(object)
+    signal_raw_qr_data = pyqtSignal(object)
 
-    def __init__(self, qr_data_callback=None, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
         self.cv2 = None
         self.pyzbar = None
@@ -47,8 +47,6 @@ class VideoWidget(QtWidgets.QWidget):
         self.screen_capturer = mss.mss()
 
         self.label_image = QtWidgets.QLabel()
-        self.qr_data_callback = qr_data_callback
-        self.signal_qr_data_callback.connect(qr_data_callback)
 
         pygame.camera.init()
         self.cameras = self.get_valid_cameras()
@@ -191,7 +189,7 @@ class VideoWidget(QtWidgets.QWidget):
         self.showSurface(surface, scale_to=(640, 480))
 
         for barcode in barcodes:
-            self.signal_qr_data_callback.emit(barcode.data)
+            self.signal_raw_qr_data.emit(barcode.data)
             break
 
     def showSurface(self, surface: pygame.Surface, scale_to=(640, 480)):
@@ -218,11 +216,13 @@ class VideoWidget(QtWidgets.QWidget):
 
 class DemoVideoWidget(VideoWidget):
     def __init__(self, parent=None):
-        super().__init__(qr_data_callback=self.show_qr, parent=parent)
+        super().__init__(parent=parent)
 
         self.label_qr = QtWidgets.QTextEdit()
 
         self.layout().addWidget(self.label_qr)
+
+        self.signal_raw_qr_data.connect(self.show_qr)
 
     def show_qr(self, qr_data):
         s = qr_data.decode("utf-8")

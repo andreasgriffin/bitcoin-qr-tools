@@ -29,7 +29,7 @@ class BitcoinVideoWidget(VideoWidget):
         show_network_switch=False,
         exception_callback: Callable[[Exception], None] = None,
     ):
-        super().__init__(qr_data_callback=self.qr_data_callback, parent=parent)
+        super().__init__(parent=parent)
         self.network: bdk.Network = network
         self.exception_callback = exception_callback
 
@@ -44,12 +44,13 @@ class BitcoinVideoWidget(VideoWidget):
         self.meta_data_handler = UnifiedDecoder(self.network)
         self.switch_network([n.name for n in bdk.Network].index(self.network.name))
         self.combo_network.currentIndexChanged.connect(self.switch_network)
+        self.signal_raw_qr_data.connect(self.on_raw_qr_data)
 
     def switch_network(self, idx):
         networks = [n for n in bdk.Network]
         self.meta_data_handler.set_network(networks[idx])
 
-    def qr_data_callback(self, qr_data):
+    def on_raw_qr_data(self, qr_data):
         try:
             self.meta_data_handler.add(qr_data.decode("utf-8"))
         except DecodingException as e:
