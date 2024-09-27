@@ -33,9 +33,10 @@ import sys
 from typing import List, Optional, Tuple
 
 from PIL import Image
-from PyQt6.QtCore import QByteArray, QEvent, QRectF, QSize, Qt, QTimer
+from PyQt6.QtCore import QByteArray, QEvent, QObject, QRectF, QSize, Qt, QTimer
 from PyQt6.QtGui import (
     QCloseEvent,
+    QEnterEvent,
     QImage,
     QKeyEvent,
     QMouseEvent,
@@ -52,7 +53,7 @@ from bitcoin_qr_tools.qr_generator import QRGenerator
 logger = logging.getLogger(__name__)
 
 
-def pil_image_to_qimage(im: Image):
+def pil_image_to_qimage(im: Image.Image):
     im = im.convert("RGBA")
     data = im.tobytes("raw", "RGBA")
     qim = QImage(data, im.size[0], im.size[1], QImage.Format.Format_RGBA8888)
@@ -61,14 +62,16 @@ def pil_image_to_qimage(im: Image):
 
 
 class ImageWidget(QWidget):
-    def __init__(self, pil_image: Image = None, parent=None, size_hint: Tuple[int, int] = None):
+    def __init__(
+        self, pil_image: Image.Image | None = None, parent=None, size_hint: Tuple[int, int] | None = None
+    ):
         super().__init__(parent)
         self.pil_image = pil_image
         self.size_hint = size_hint
         self.qt_image = pil_image_to_qimage(pil_image) if pil_image else QImage()
         self.scaled_image = self.qt_image
 
-    def paintEvent(self, event: QPaintEvent) -> None:
+    def paintEvent(self, event: QPaintEvent | None) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
 
@@ -91,7 +94,7 @@ class ImageWidget(QWidget):
             # Draw the image centered
             painter.drawImage(x, y, self.scaled_image)
 
-    def set_image(self, pil_image: Image):
+    def set_image(self, pil_image: Image.Image):
         self.pil_image = pil_image
         self.qt_image = pil_image_to_qimage(pil_image)
         self.update()  # Trigger a repaint
@@ -126,10 +129,11 @@ class EnlargableImageWidget(ImageWidget):
         else:
             self.enlarged_image.show()
 
-    def mousePressEvent(self, event: QMouseEvent):
+    def mousePressEvent(self, event: QMouseEvent | None):
         self.enlarge_image()
+        super().mousePressEvent(event)
 
-    def closeEvent(self, event: QCloseEvent) -> None:
+    def closeEvent(self, event: QCloseEvent | None) -> None:
         if self.enlarged_image:
             self.enlarged_image.close()
         super().closeEvent(event)
@@ -160,19 +164,19 @@ class EnlargedImage(ImageWidget):
 
         self.setGeometry(x, y, round(new_width), round(new_height))
 
-    def eventFilter(self, source: QWidget, event: QEvent) -> bool:
+    def eventFilter(self, source: QObject | None, event: QEvent | None) -> bool:
         # Check for the FocusOut event
-        if event.type() in [QEvent.Type.FocusOut, QEvent.Type.WindowDeactivate]:
+        if event and event.type() in [QEvent.Type.FocusOut, QEvent.Type.WindowDeactivate]:
             # Close the widget if it loses focus
             if source is self:
                 self.close()
         return super().eventFilter(source, event)
 
-    def mousePressEvent(self, event: QMouseEvent):
+    def mousePressEvent(self, event: QMouseEvent | None):
         self.close()
 
-    def keyPressEvent(self, event: QKeyEvent):
-        if event.key() == Qt.Key.Key_Escape:
+    def keyPressEvent(self, event: QKeyEvent | None):
+        if event and event.key() == Qt.Key.Key_Escape:
             self.close()
 
 
@@ -255,7 +259,7 @@ class QRCodeWidgetSVG(QWidget):
         else:
             self.manage_animation()
 
-    def paintEvent(self, event: QPaintEvent) -> None:
+    def paintEvent(self, event: QPaintEvent | None) -> None:
         if not self.svg_renderers:
             return
 
@@ -269,13 +273,15 @@ class QRCodeWidgetSVG(QWidget):
 
         self.svg_renderers[self.current_index].render(painter, QRectF(x, y, side, side))
 
-    def enterEvent(self, event: QEvent) -> None:
+    def enterEvent(self, event: QEnterEvent | None) -> None:
         self.is_hovered = True
         self.manage_animation()
+        super().enterEvent(event)
 
-    def leaveEvent(self, event: QEvent) -> None:
+    def leaveEvent(self, event: QEvent | None) -> None:
         self.is_hovered = False
         self.manage_animation()
+        super().leaveEvent(event)
 
     def enlarge_image(self):
         if not self.svg_renderers:
@@ -289,9 +295,10 @@ class QRCodeWidgetSVG(QWidget):
         self.enlarged_image.update_image(self.svg_renderers[self.current_index])
         self.manage_animation()
 
-    def mousePressEvent(self, event: QMouseEvent):
+    def mousePressEvent(self, event: QMouseEvent | None):
         if self.clickable:
             self.enlarge_image()
+        super().mousePressEvent(event)
 
     def save_file(self, base_filename: str, format="PNG", antialias=False):
         """Save all QR codes to files. If format is 'GIF', combines them into
@@ -347,7 +354,7 @@ class QRCodeWidgetSVG(QWidget):
 
         # Convert QImage to PIL Image
         buffer = io.BytesIO()
-        qimage.save(buffer, "PNG")
+        qimage.save(buffer, "PNG")  # type: ignore
         buffer.seek(0)
         return Image.open(buffer)
 
@@ -362,9 +369,10 @@ class QRCodeWidgetSVG(QWidget):
             if renderer.isValid()
         ]
 
-    def closeEvent(self, event: QCloseEvent) -> None:
+    def closeEvent(self, event: QCloseEvent | None) -> None:
         self.timer.stop()
-        self.enlarged_image.close()
+        if self.enlarged_image:
+            self.enlarged_image.close()
         super().closeEvent(event)
 
 
@@ -387,7 +395,7 @@ class EnlargedSVG(QDialog):
         self.svg_renderer = new_renderer
         self.update()
 
-    def paintEvent(self, event: QPaintEvent) -> None:
+    def paintEvent(self, event: QPaintEvent | None) -> None:
         if not self.svg_renderer:
             return
 
@@ -401,12 +409,12 @@ class EnlargedSVG(QDialog):
 
         self.svg_renderer.render(painter, QRectF(x, y, side, side))
 
-    def mousePressEvent(self, event: QMouseEvent):
+    def mousePressEvent(self, event: QMouseEvent | None):
         super().mousePressEvent(event)
         self.close()
 
-    def keyPressEvent(self, event: QKeyEvent):
-        if event.key() == Qt.Key.Key_Escape:
+    def keyPressEvent(self, event: QKeyEvent | None):
+        if event and event.key() == Qt.Key.Key_Escape:
             self.close()
 
 

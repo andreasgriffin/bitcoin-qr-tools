@@ -69,7 +69,7 @@ class SpecterDIYCollector(BaseCollector):
     def __init__(self, network) -> None:
         super().__init__(network)
         self.clear()
-        self.total_parts: int = 0
+        self.total_parts: int | None = 0
 
     def is_correct_data_format(self, s) -> bool:
         return self.extract_specter_diy_qr_part(s) is not None
@@ -78,7 +78,7 @@ class SpecterDIYCollector(BaseCollector):
         return len(self.parts) == self.total_parts
 
     def get_complete_data(self) -> Optional[Data]:
-        if not self.is_complete():
+        if (self.total_parts is None) or not self.is_complete():
             return None
 
         total_s = ""
