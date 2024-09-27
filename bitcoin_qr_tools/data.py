@@ -8,7 +8,7 @@ import re
 import urllib.parse
 from decimal import Decimal
 from os import fdopen
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 import base58
 import bdkpython as bdk
@@ -74,7 +74,7 @@ def decode_bip21_uri(uri: str, network: bdk.Network) -> dict:
         if len(v) != 1:
             raise InvalidBitcoinURI(f"Duplicate Key: {repr(k)}")
 
-    out = {k: v[0] for k, v in pq.items()}
+    out: Dict[str, Any] = {k: v[0] for k, v in pq.items()}
     if address:
         if not is_bitcoin_address(address, network=network):
             raise InvalidBitcoinURI(f"Invalid bitcoin address: {address}")
@@ -519,8 +519,6 @@ class Data:
             return bdk.Transaction(raw)
         except Exception:
             return None
-
-        return None
 
     @classmethod
     def _try_decode_serialized_transaction(cls, s: str):

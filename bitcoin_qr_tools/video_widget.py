@@ -4,14 +4,15 @@ logger = logging.getLogger(__name__)
 
 
 import time
-from typing import List
+from typing import List, Tuple
 
 import mss
 import numpy as np
 import pygame
 import pygame.camera
+from mss.base import MSSBase
 from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtCore import QEvent, pyqtSignal
+from PyQt6.QtCore import pyqtSignal
 
 
 class BarcodeData:
@@ -43,17 +44,13 @@ class VideoWidget(QtWidgets.QWidget):
 
             self.cv2 = cv2
 
-        self.is_screen_capture = False
-        self.screen_capturer = mss.mss()
-
         self.label_image = QtWidgets.QLabel()
 
-        pygame.camera.init()
-        self.cameras = self.get_valid_cameras()
-        index_last_camera = len(self.cameras) - 1
         self.combo_cameras = QtWidgets.QComboBox()
-        self.combo_cameras.addItems(self.cameras)
-        self.combo_cameras.currentIndexChanged.connect(self.switch_camera)
+
+        pygame.camera.init()
+        for camera_name, camera in self.get_valid_cameras():
+            self.combo_cameras.addItem(camera_name, userData=camera)
 
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.label_image)
@@ -61,60 +58,64 @@ class VideoWidget(QtWidgets.QWidget):
 
         self.setLayout(layout)
 
-        self.capture = None
+        self.current_camera = None
 
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update_frame)
         self.timer.start(int(1000.0 / 30.0))  # 30 FPS
 
         # Add "Screen" option for screen capture
-        self.combo_cameras.addItem("Screen")
-        self.cameras.append("Screen")  # Adding "Screen" to the cameras list
+        self.combo_cameras.addItem("Screen", userData=mss.mss())
 
         # switch to the last camera that isn
-        self.combo_cameras.setCurrentIndex(index_last_camera)
-        self.switch_camera(index_last_camera)
+        if self.combo_cameras.count():
+            last_camera_idx = max(self.combo_cameras.count() - 2, 0)
+            self.combo_cameras.setCurrentIndex(last_camera_idx)
+            self.switch_camera(last_camera_idx)
 
-    def closeEvent(self, event: QEvent) -> None:
+        # signals
+        self.combo_cameras.currentIndexChanged.connect(self.switch_camera)
+
+    def closeEvent(self, event: QtGui.QCloseEvent | None) -> None:
         self.timer.stop()
-        if self.capture:
+        if self.current_camera:
             try:
-                self.capture.stop()
+                self.current_camera.stop()
             except:
                 pass
 
         # If you call the parent's closeEvent(), it will proceed to close the widget
         super().closeEvent(event)
 
-    def get_valid_cameras(self):
-        valid_cameras = []
-        for camera in pygame.camera.list_cameras():
+    def get_valid_cameras(self) -> List[Tuple[str, pygame.camera.Camera]]:
+        valid_cameras: List[Tuple[str, pygame.camera.Camera]] = []
+        for camera_name in pygame.camera.list_cameras():
             try:
-                temp_camera = pygame.camera.Camera(camera, (640, 480))
+                temp_camera = pygame.camera.Camera(camera_name, (640, 480))
                 temp_camera.start()
                 temp_camera.stop()
-                valid_cameras.append(camera)
+                valid_cameras.append((camera_name, temp_camera))
             except SystemError:
                 continue
         return valid_cameras
 
     def switch_camera(self, index: int):
-        selected_camera = self.combo_cameras.currentText()
-        if selected_camera == "Screen":
-            self.is_screen_capture = True
-            # Additional logic for initializing screen capture can be added here
-        else:
-            self.is_screen_capture = False
+        selected_camera = self.combo_cameras.currentData()
 
-            if self.capture:
-                try:
-                    self.capture.stop()
-                except:
-                    pass
+        if isinstance(self.current_camera, pygame.camera.Camera):
+            try:
+                self.current_camera.stop()
+            except:
+                pass
 
-            self.capture = pygame.camera.Camera(self.cameras[index], (640, 480))
-            self.capture.start()
+        self.current_camera = selected_camera
+
+        if isinstance(self.current_camera, pygame.camera.Camera):
+            self.current_camera.start()
             time.sleep(0.1)  # Add a short delay
+        else:
+            # The logic of capture is in update_frame
+            pass
 
     def _numpy_to_surface(self, numpy_image: np.ndarray) -> pygame.Surface:
         # Convert numpy image (RGB) to pygame surface
@@ -157,7 +158,7 @@ class VideoWidget(QtWidgets.QWidget):
     def update_frame(self):
 
         barcodes = []
-        if self.is_screen_capture:
+        if isinstance(self.current_camera, MSSBase):
             with mss.mss() as sct:
                 monitor = sct.monitors[1]  # capture the first monitor
                 sct_img = sct.grab(monitor)
@@ -169,12 +170,14 @@ class VideoWidget(QtWidgets.QWidget):
                 # Convert numpy image to surface for drawing
                 surface = self._numpy_to_surface(image)
                 surface = pygame.transform.flip(surface, True, False)
-        else:
+        elif isinstance(self.current_camera, pygame.camera.Camera):
             try:
-                surface = self.capture.get_image()
+                surface = self.current_camera.get_image()
             except:
                 # print("Could not get image")
                 return
+        else:
+            return
 
         barcodes = self.get_barcodes(pygame.surfarray.array3d(surface))
         surface = pygame.transform.flip(surface, False, True)
@@ -220,7 +223,7 @@ class DemoVideoWidget(VideoWidget):
 
         self.label_qr = QtWidgets.QTextEdit()
 
-        self.layout().addWidget(self.label_qr)
+        self.layout().addWidget(self.label_qr)  # type: ignore
 
         self.signal_raw_qr_data.connect(self.show_qr)
 

@@ -1,6 +1,5 @@
 import logging
 import math
-from typing import Callable
 
 from bitcoin_qr_tools.data import DecodingException
 
@@ -27,16 +26,14 @@ class BitcoinVideoWidget(VideoWidget):
         parent=None,
         network=bdk.Network.REGTEST,
         show_network_switch=False,
-        exception_callback: Callable[[Exception], None] = None,
     ):
         super().__init__(parent=parent)
         self.network: bdk.Network = network
-        self.exception_callback = exception_callback
 
         self.combo_network = QtWidgets.QComboBox(self)
         self.combo_network.addItems([n.name for n in bdk.Network])
         self.combo_network.setCurrentText(self.network.name)
-        self.layout().addWidget(self.combo_network)
+        self.layout().addWidget(self.combo_network)  # type: ignore
         self.combo_network.setVisible(show_network_switch)
 
         self.close_on_result = close_on_result
@@ -119,7 +116,7 @@ class DemoBitcoinVideoWidget(BitcoinVideoWidget):
         self.signal_data.connect(self.result_callback)
         self.label_qr = QtWidgets.QTextEdit()
 
-        self.layout().addWidget(self.label_qr)
+        self.layout().addWidget(self.label_qr)  # type: ignore
 
     def result_callback(self, qr_data):
         self.label_qr.setText(str(qr_data))
