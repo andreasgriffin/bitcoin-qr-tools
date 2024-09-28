@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import QApplication, QLabel, QVBoxLayout, QWidget
 
 
 class CV2Camera:
-    def __init__(self, device_index=0, resolution=(640, 480), mode="RGB"):
+    def __init__(self, device_index=0, resolution=None, mode="RGB"):
         self.device_index = device_index
         self.resolution = resolution
         self._cam = None
@@ -17,8 +17,7 @@ class CV2Camera:
 
     def start(self):
         self._cam = cv2.VideoCapture(self.device_index)
-        self._cam.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[0])
-        self._cam.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
+
         if not self._cam.isOpened():
             raise ValueError("Could not open camera")
         self._open = True
