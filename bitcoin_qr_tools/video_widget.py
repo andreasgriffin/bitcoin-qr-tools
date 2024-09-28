@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
     QMenu,
     QMessageBox,
     QSizePolicy,
+    QSlider,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -70,8 +71,8 @@ class VideoWidget(QWidget):
 
         self.combo_cameras = QComboBox()
         self.combo_cameras.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        self.label_description = QLabel(self.tr("Camera:"))
-        self.lower_widget_layout.addWidget(self.label_description)
+        self.label_camera_choose = QLabel(self.tr("Camera:"))
+        self.lower_widget_layout.addWidget(self.label_camera_choose)
         self.lower_widget_layout.addWidget(self.combo_cameras)
 
         # Create the tool button
@@ -94,12 +95,28 @@ class VideoWidget(QWidget):
         settingsButton.setMenu(menu)
         settingsButton.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
 
+        self.middle_widget = QWidget()
+        self.middle_widget_layout = QHBoxLayout(self.middle_widget)
+
+        # Create slider
+        self.slider = QSlider(Qt.Orientation.Horizontal, self)
+        self.slider.setMinimum(10)
+        self.slider.setMaximum(50)
+        self.slider.setValue(10)  # Default value
+        self.slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.slider.setTickInterval(1)
+
+        self.label_slider = QLabel(self.tr("Zoom:"))
+        self.middle_widget_layout.addWidget(self.label_slider)
+        self.middle_widget_layout.addWidget(self.slider)
+
         pygame.camera.init()
         for camera_name, camera in self.get_valid_cameras():
             self.combo_cameras.addItem(str(camera_name), userData=camera)
 
         layout = QVBoxLayout()
         layout.addWidget(self.label_image)
+        layout.addWidget(self.middle_widget)
         layout.addWidget(self.lower_widget)
 
         self.setLayout(layout)
@@ -122,6 +139,10 @@ class VideoWidget(QWidget):
         # signals
         self.combo_cameras.currentIndexChanged.connect(self.switch_camera)
 
+    @property
+    def zoom(self) -> float:
+        return self.slider.value() / 10
+
     def prompt_rtsp_url(self):
         text, ok = QInputDialog.getText(self, "Enter RTSP URL", "RTSP URL:")
         if ok and text:
@@ -132,18 +153,20 @@ class VideoWidget(QWidget):
         # This is a placeholder function to illustrate what you might do
         print("Adding RTSP Camera with URL:", url)
         # Assume validation of the URL or further actions here
-        temp_camera = RTSPCamera(url)
-        try:
 
-            temp_camera.start()
-            temp_camera.stop()
-        except:
-            QMessageBox().warning(None, "Error", "The camera could not be opened")
-            return
+        for enable_udp in [False, True]:
+            temp_camera = RTSPCamera(url)
+            try:
+                temp_camera.start(enable_udp=enable_udp)
+                temp_camera.stop()
+                self.combo_cameras.addItem(str(url), userData=temp_camera)
+                self.combo_cameras.setCurrentIndex(self.combo_cameras.count() - 1)
+                self.switch_camera(self.combo_cameras.count() - 1)
+                return
+            except:
+                logger.debug(f"{temp_camera} with enable_udp {enable_udp} could not be opened")
 
-        self.combo_cameras.addItem(str(url), userData=temp_camera)
-        self.combo_cameras.setCurrentIndex(self.combo_cameras.count() - 1)
-        self.switch_camera(self.combo_cameras.count() - 1)
+        QMessageBox().warning(None, "Error", "The camera could not be opened")
 
     def closeEvent(self, event: QtGui.QCloseEvent | None) -> None:
         self.timer.stop()
@@ -221,6 +244,38 @@ class VideoWidget(QWidget):
         x, y, w, h = barcode.rect
         pygame.draw.rect(surface, (0, 255, 0), (x, y, w, h), 2)
 
+    @staticmethod
+    def crop(
+        image_surface: pygame.Surface, left: float, right: float, top: float, bottom: float
+    ) -> pygame.Surface:
+        """
+        Crop the image based on the specified proportions from each edge using Pygame.
+
+        :param image_surface: The full image as a pygame.Surface.
+        :param left: Proportion of the width to crop from the left.
+        :param right: Proportion of the width to crop from the right.
+        :param top: Proportion of the height to crop from the top.
+        :param bottom: Proportion of the height to crop from the bottom.
+        :return: Cropped image as a pygame.Surface.
+        """
+        w, h = image_surface.get_size()
+        left_idx = int(w * left)
+        right_idx = int(w * (1 - right))
+        top_idx = int(h * top)
+        bottom_idx = int(h * (1 - bottom))
+
+        # Ensure the indices are within the image dimensions
+        left_idx = max(left_idx, 0)
+        right_idx = min(right_idx, w)
+        top_idx = max(top_idx, 0)
+        bottom_idx = min(bottom_idx, h)
+
+        # Define the rectangle for the subsurface
+        rect = pygame.Rect(left_idx, top_idx, right_idx - left_idx, bottom_idx - top_idx)
+
+        # Return the subsurface
+        return image_surface.subsurface(rect)
+
     def get_barcodes(self, array: np.ndarray) -> List[BarcodeData]:
         if self.pyzbar:
             decoded_codes = self.pyzbar.decode(array)
@@ -275,6 +330,14 @@ class VideoWidget(QWidget):
         else:
             return
 
+        crop_value = min((1 - 1 / self.zoom) / 2, 0.48)
+        surface = self.crop(
+            surface,
+            crop_value,
+            crop_value,
+            crop_value,
+            crop_value,
+        )
         barcodes = self.get_barcodes(pygame.surfarray.array3d(surface))
         surface = pygame.transform.flip(surface, False, True)
         surface = pygame.transform.rotate(surface, -90)
