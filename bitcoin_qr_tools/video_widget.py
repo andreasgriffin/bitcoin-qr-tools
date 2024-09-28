@@ -5,7 +5,7 @@ from bitcoin_qr_tools.rtsp_camera import RTSPCamera
 logger = logging.getLogger(__name__)
 
 import time
-from typing import List, Tuple, Union
+from typing import Any, List, Tuple, Union
 
 import cv2
 import mss
@@ -99,21 +99,34 @@ class VideoWidget(QWidget):
         self.middle_widget = QWidget()
         self.middle_widget_layout = QHBoxLayout(self.middle_widget)
 
-        # Create slider
-        self.slider = QSlider(Qt.Orientation.Horizontal, self)
-        self.slider.setMinimum(10)
-        self.slider.setMaximum(50)
-        self.slider.setValue(10)  # Default value
-        self.slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.slider.setTickInterval(1)
+        # Create zoom slider
+        self.zoom_slider = QSlider(Qt.Orientation.Horizontal, self)
+        self.zoom_slider.setMinimum(10)
+        self.zoom_slider.setMaximum(50)
+        self.zoom_slider.setValue(10)  # Default value
+        self.zoom_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.zoom_slider.setTickInterval(1)
 
-        self.label_slider = QLabel(self.tr("Zoom:"))
-        self.middle_widget_layout.addWidget(self.label_slider)
-        self.middle_widget_layout.addWidget(self.slider)
+        self.label_zoom_slider = QLabel(self.tr("Zoom:"))
+        # self.middle_widget_layout.addWidget(self.label_zoom_slider)
+        # self.middle_widget_layout.addWidget(self.zoom_slider)
+
+        # Create brightness slider
+        self.brightness_slider = QSlider(Qt.Orientation.Horizontal, self)
+        self.brightness_slider.setMinimum(0)
+        self.brightness_slider.setMaximum(200)
+        self.brightness_slider.setValue(100)
+        self.brightness_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.brightness_slider.setTickInterval(10)
+        self.brightness_slider.valueChanged.connect(self.on_change_brightness)
+
+        self.label_brightness_slider = QLabel(self.tr("Brightness (reduce for bright displays):"))
+        self.middle_widget_layout.addWidget(self.label_brightness_slider)
+        self.middle_widget_layout.addWidget(self.brightness_slider)
 
         pygame.camera.init()
-        for camera_name, camera in self.get_valid_cameras():
-            self.combo_cameras.addItem(str(camera_name), userData=camera)
+        for index, camera_name, camera in self.get_valid_cameras():
+            self.add_to_combo_box(str(camera_name), index, camera_name, camera)
 
         layout = QVBoxLayout()
         layout.addWidget(self.label_image)
@@ -129,7 +142,7 @@ class VideoWidget(QWidget):
         self.timer.start(int(1000.0 / 30.0))  # 30 FPS
 
         # Add "Screen" option for screen capture
-        self.combo_cameras.addItem("Screen", userData=mss.mss())
+        self.add_to_combo_box("Screen", None, "Screen", mss.mss())
 
         # switch to the last camera that isn
         if self.combo_cameras.count():
@@ -140,9 +153,18 @@ class VideoWidget(QWidget):
         # signals
         self.combo_cameras.currentIndexChanged.connect(self.switch_camera)
 
+    def add_to_combo_box(
+        self,
+        display_name: str,
+        index: int | None,
+        camera_name: str,
+        camera: Union[CV2Camera, RTSPCamera, pygame.camera.Camera, MSSBase],
+    ):
+        self.combo_cameras.addItem(display_name, userData=(index, camera_name, camera))
+
     @property
     def zoom(self) -> float:
-        return self.slider.value() / 10
+        return self.zoom_slider.value() / 10
 
     def prompt_rtsp_url(self):
         text, ok = QInputDialog.getText(self, "Enter RTSP URL", "RTSP URL:", text="rtsp://")
@@ -160,7 +182,7 @@ class VideoWidget(QWidget):
             try:
                 temp_camera.start(enable_udp=enable_udp)
                 temp_camera.stop()
-                self.combo_cameras.addItem(str(url), userData=temp_camera)
+                self.add_to_combo_box(str(url), None, str(url), temp_camera)
                 self.combo_cameras.setCurrentIndex(self.combo_cameras.count() - 1)
                 self.switch_camera(self.combo_cameras.count() - 1)
                 return
@@ -171,7 +193,9 @@ class VideoWidget(QWidget):
 
     def closeEvent(self, event: QtGui.QCloseEvent | None) -> None:
         self.timer.stop()
+
         if self.current_camera:
+            self.set_brightness_defaults(self.current_camera)
             try:
                 self.current_camera.stop()
             except:
@@ -180,10 +204,50 @@ class VideoWidget(QWidget):
         # If you call the parent's closeEvent(), it will proceed to close the widget
         super().closeEvent(event)
 
-    @staticmethod
-    def find_best_resolution(camera_index=0):
+    def set_brightness_defaults(self, camera: Any):
+        if isinstance(camera, (pygame.camera.Camera, CV2Camera)):
+            self.change_brightness(camera, 128)
+
+    def on_change_brightness(self, value: int):
+        camera_index, camera_name, selected_camera = self.combo_cameras.currentData()
+        if isinstance(selected_camera, (pygame.camera.Camera, CV2Camera)):
+            self.change_brightness(selected_camera, value)
+
+    def get_brightness(self, camera: Any) -> Tuple[float, float, float]:
+        if isinstance(camera, pygame.camera.Camera):
+            _flipx, _flipy, brightness = camera.get_controls()
+            return 0, 255, brightness
+
+        elif isinstance(camera, CV2Camera) and camera._cam:
+            brightness = camera._cam.get(cv2.CAP_PROP_BRIGHTNESS)
+            return 0, 255, brightness
+
+        return 0, 255, 128
+
+    def change_brightness(self, camera: Union[pygame.camera.Camera, CV2Camera], value: float):
+        v = cv2.CAP_PROP_BRIGHTNESS
+
+        target_value = int(value)
+
+        if isinstance(camera, pygame.camera.Camera):
+            _flipx, _flipy, old_value = camera.get_controls()
+            camera.set_controls(False, False, target_value)
+            _flipx, _flipy, new_value = camera.get_controls()
+
+            if new_value != old_value:
+                print(f"Changed {v} from {old_value} --> { new_value }")
+
+        elif isinstance(camera, CV2Camera) and camera._cam:
+            old_value = camera._cam.get(v)
+            camera._cam.set(v, target_value)
+            new_value = camera._cam.get(v)
+
+            if new_value != old_value:
+                print(f"Changed {v} from {old_value} --> { new_value }")
+
+    def find_best_resolution(self, camera_index=0):
         # Common resolutions to try
-        common_resolutions = [(1920, 1080), (1280, 720), (1024, 768), (800, 600), (640, 480)]
+        common_resolutions = [(1280, 720), (1024, 768), (800, 600), (640, 480)]
 
         camera = cv2.VideoCapture(camera_index)
         best_resolution = (0, 0)
@@ -204,10 +268,9 @@ class VideoWidget(QWidget):
         camera.release()
         return best_resolution
 
-    @staticmethod
-    def get_pygame_camera(camera_name: str | int, index) -> pygame.camera.Camera | None:
+    def get_pygame_camera(self, camera_name: str | int, index) -> pygame.camera.Camera | None:
         try:
-            resolution = VideoWidget.find_best_resolution(index)
+            resolution = self.find_best_resolution(index)
             temp_camera = pygame.camera.Camera(camera_name, resolution)
             temp_camera.start()
             temp_camera.stop()
@@ -217,10 +280,9 @@ class VideoWidget(QWidget):
             logger.debug(f"Could not get  pygame.camera.Camera({camera_name}). {e} ")
         return None
 
-    @staticmethod
-    def get_cv2camera(index: int) -> CV2Camera | None:
+    def get_cv2camera(self, index: int) -> CV2Camera | None:
         try:
-            resolution = VideoWidget.find_best_resolution(index)
+            resolution = self.find_best_resolution(index)
             temp_camera = CV2Camera(index, resolution)
             temp_camera.start()
             temp_camera.stop()
@@ -231,23 +293,24 @@ class VideoWidget(QWidget):
 
         return None
 
-    def get_valid_cameras(self) -> List[Tuple[str, TypeSomeCamera]]:
-        valid_cameras: List[Tuple[str, TypeSomeCamera]] = []
+    def get_valid_cameras(self) -> List[Tuple[int, str, TypeSomeCamera]]:
+        valid_cameras: List[Tuple[int, str, TypeSomeCamera]] = []
         for index, camera_name in enumerate(pygame.camera.list_cameras()):
             temp_camera = self.get_pygame_camera(camera_name, index) or self.get_cv2camera(index)
             if temp_camera:
-                valid_cameras.append((camera_name, temp_camera))
+                valid_cameras.append((index, camera_name, temp_camera))
 
         if not valid_cameras:
             temp_camera = self.get_pygame_camera(0, 0) or self.get_cv2camera(0)
             if temp_camera:
-                valid_cameras.append((str(0), temp_camera))
+                valid_cameras.append((0, str(0), temp_camera))
 
         return valid_cameras
 
     def switch_camera(self, index: int):
-        selected_camera = self.combo_cameras.currentData()
+        index, camera_name, selected_camera = self.combo_cameras.currentData()
 
+        self.set_brightness_defaults(self.current_camera)
         if isinstance(self.current_camera, (CV2Camera, RTSPCamera, pygame.camera.Camera)):
             try:
                 self.current_camera.stop()
@@ -262,6 +325,11 @@ class VideoWidget(QWidget):
         else:
             # The logic of capture is in update_frame
             pass
+
+        b_min, b_max, b = self.get_brightness(self.current_camera)
+        self.brightness_slider.setMinimum(int(b_min))
+        self.brightness_slider.setMaximum(int(b_max))
+        self.brightness_slider.setValue(int(b))
 
     def _numpy_to_surface(self, numpy_image: np.ndarray) -> pygame.Surface:
         # Convert numpy image (RGB) to pygame surface
