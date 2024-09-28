@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 import time
 from typing import List, Tuple, Union
 
+import cv2
 import mss
 import numpy as np
 import pygame
@@ -180,39 +181,65 @@ class VideoWidget(QWidget):
         super().closeEvent(event)
 
     @staticmethod
-    def get_pygame_camera(camera_name: str | int) -> pygame.camera.Camera | None:
+    def find_best_resolution(camera_index=0):
+        # Common resolutions to try
+        common_resolutions = [(1920, 1080), (1280, 720), (1024, 768), (800, 600), (640, 480)]
+
+        camera = cv2.VideoCapture(camera_index)
+        best_resolution = (0, 0)
+
+        for resolution in common_resolutions:
+            # Set camera resolution
+            camera.set(cv2.CAP_PROP_FRAME_WIDTH, resolution[0])
+            camera.set(cv2.CAP_PROP_FRAME_HEIGHT, resolution[1])
+
+            # Check if the camera accepts this resolution
+            test_width = camera.get(cv2.CAP_PROP_FRAME_WIDTH)
+            test_height = camera.get(cv2.CAP_PROP_FRAME_HEIGHT)
+
+            if (test_width, test_height) == resolution:
+                best_resolution = resolution
+                break
+
+        camera.release()
+        return best_resolution
+
+    @staticmethod
+    def get_pygame_camera(camera_name: str | int, index) -> pygame.camera.Camera | None:
         try:
-            temp_camera = pygame.camera.Camera(camera_name, (640, 480))
+            resolution = VideoWidget.find_best_resolution(index)
+            temp_camera = pygame.camera.Camera(camera_name, resolution)
             temp_camera.start()
             temp_camera.stop()
-            logger.debug(f"Found pygame.camera.Camera({camera_name}, (640, 480))")
+            logger.debug(f"Found pygame.camera.Camera({camera_name}, {resolution})")
             return temp_camera
         except Exception as e:
-            logger.debug(f"Could not get  pygame.camera.Camera({camera_name}, (640, 480)). {e} ")
+            logger.debug(f"Could not get  pygame.camera.Camera({camera_name}). {e} ")
         return None
 
     @staticmethod
     def get_cv2camera(index: int) -> CV2Camera | None:
         try:
-            temp_camera = CV2Camera(index, (640, 480))
+            resolution = VideoWidget.find_best_resolution(index)
+            temp_camera = CV2Camera(index, resolution)
             temp_camera.start()
             temp_camera.stop()
-            logger.debug(f"Found CV2Camera({index}, (640, 480))")
+            logger.debug(f"Found CV2Camera({index}, {resolution})")
             return temp_camera
         except Exception as e:
-            logger.debug(f"Could not get  CV2Camera({index}, (640, 480)). {e} ")
+            logger.debug(f"Could not get  CV2Camera({index}). {e} ")
 
         return None
 
     def get_valid_cameras(self) -> List[Tuple[str, TypeSomeCamera]]:
         valid_cameras: List[Tuple[str, TypeSomeCamera]] = []
         for index, camera_name in enumerate(pygame.camera.list_cameras()):
-            temp_camera = self.get_pygame_camera(camera_name) or self.get_cv2camera(index)
+            temp_camera = self.get_pygame_camera(camera_name, index) or self.get_cv2camera(index)
             if temp_camera:
                 valid_cameras.append((camera_name, temp_camera))
 
         if not valid_cameras:
-            temp_camera = self.get_pygame_camera(0) or self.get_cv2camera(0)
+            temp_camera = self.get_pygame_camera(0, 0) or self.get_cv2camera(0)
             if temp_camera:
                 valid_cameras.append((str(0), temp_camera))
 
