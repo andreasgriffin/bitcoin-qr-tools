@@ -126,7 +126,7 @@ class VideoWidget(QWidget):
 
         pygame.camera.init()
         for index, camera_name, camera in self.get_valid_cameras():
-            self.add_to_combo_box(str(camera_name), index, camera_name, camera)
+            self.combo_cameras.addItem(str(camera_name), userData=camera)
 
         layout = QVBoxLayout()
         layout.addWidget(self.label_image)
@@ -142,7 +142,7 @@ class VideoWidget(QWidget):
         self.timer.start(int(1000.0 / 30.0))  # 30 FPS
 
         # Add "Screen" option for screen capture
-        self.add_to_combo_box("Screen", None, "Screen", mss.mss())
+        self.combo_cameras.addItem("Screen", userData=mss.mss())
 
         # switch to the last camera that isn
         if self.combo_cameras.count():
@@ -152,15 +152,6 @@ class VideoWidget(QWidget):
 
         # signals
         self.combo_cameras.currentIndexChanged.connect(self.switch_camera)
-
-    def add_to_combo_box(
-        self,
-        display_name: str,
-        index: int | None,
-        camera_name: str,
-        camera: Union[CV2Camera, RTSPCamera, pygame.camera.Camera, MSSBase],
-    ):
-        self.combo_cameras.addItem(display_name, userData=(index, camera_name, camera))
 
     @property
     def zoom(self) -> float:
@@ -182,7 +173,7 @@ class VideoWidget(QWidget):
             try:
                 temp_camera.start(enable_udp=enable_udp)
                 temp_camera.stop()
-                self.add_to_combo_box(str(url), None, str(url), temp_camera)
+                self.combo_cameras.addItem(str(url), userData=temp_camera)
                 self.combo_cameras.setCurrentIndex(self.combo_cameras.count() - 1)
                 self.switch_camera(self.combo_cameras.count() - 1)
                 return
@@ -209,7 +200,7 @@ class VideoWidget(QWidget):
             self.change_brightness(camera, 128)
 
     def on_change_brightness(self, value: int):
-        camera_index, camera_name, selected_camera = self.combo_cameras.currentData()
+        selected_camera = self.combo_cameras.currentData()
         if isinstance(selected_camera, (pygame.camera.Camera, CV2Camera)):
             self.change_brightness(selected_camera, value)
 
@@ -308,7 +299,7 @@ class VideoWidget(QWidget):
         return valid_cameras
 
     def switch_camera(self, index: int):
-        index, camera_name, selected_camera = self.combo_cameras.currentData()
+        selected_camera = self.combo_cameras.currentData()
 
         self.set_brightness_defaults(self.current_camera)
         if isinstance(self.current_camera, (CV2Camera, RTSPCamera, pygame.camera.Camera)):
