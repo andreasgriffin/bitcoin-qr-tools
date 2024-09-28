@@ -84,19 +84,8 @@ class VideoWidget(QWidget):
         )  # Show text beside the icon
         self.lower_widget_layout.addWidget(settingsButton)
 
-        # Create a menu for the button
-        menu = QMenu("", self)
-
-        # Add actions to the menu
-        action_add_rtsp_camera = QAction("Add RTSP Camera", self)
-        menu.addAction(action_add_rtsp_camera)
-        action_add_rtsp_camera.triggered.connect(self.prompt_rtsp_url)
-
-        # Set the menu to the tool button
-        settingsButton.setMenu(menu)
-        settingsButton.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-
         self.middle_widget = QWidget()
+        self.middle_widget.setVisible(False)
         self.middle_widget_layout = QHBoxLayout(self.middle_widget)
 
         # Create zoom slider
@@ -108,8 +97,8 @@ class VideoWidget(QWidget):
         self.zoom_slider.setTickInterval(1)
 
         self.label_zoom_slider = QLabel(self.tr("Zoom:"))
-        # self.middle_widget_layout.addWidget(self.label_zoom_slider)
-        # self.middle_widget_layout.addWidget(self.zoom_slider)
+        self.middle_widget_layout.addWidget(self.label_zoom_slider)
+        self.middle_widget_layout.addWidget(self.zoom_slider)
 
         # Create brightness slider
         self.brightness_slider = QSlider(Qt.Orientation.Horizontal, self)
@@ -123,6 +112,20 @@ class VideoWidget(QWidget):
         self.label_brightness_slider = QLabel(self.tr("Brightness (reduce for bright displays):"))
         self.middle_widget_layout.addWidget(self.label_brightness_slider)
         self.middle_widget_layout.addWidget(self.brightness_slider)
+
+        # Create a menu for the button
+        menu = QMenu("", self)
+        settingsButton.setMenu(menu)
+        settingsButton.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+
+        action_show_camera_controls = QAction(self.tr("Show camera controls"), self)
+        menu.addAction(action_show_camera_controls)
+        action_show_camera_controls.setCheckable(True)
+        action_show_camera_controls.triggered.connect(self.middle_widget.setVisible)
+
+        action_add_rtsp_camera = QAction(self.tr("Add RTSP Camera"), self)
+        menu.addAction(action_add_rtsp_camera)
+        action_add_rtsp_camera.triggered.connect(self.prompt_rtsp_url)
 
         pygame.camera.init()
         for index, camera_name, camera in self.get_valid_cameras():
