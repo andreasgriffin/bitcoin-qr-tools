@@ -144,7 +144,7 @@ class VideoWidget(QWidget):
         return self.slider.value() / 10
 
     def prompt_rtsp_url(self):
-        text, ok = QInputDialog.getText(self, "Enter RTSP URL", "RTSP URL:")
+        text, ok = QInputDialog.getText(self, "Enter RTSP URL", "RTSP URL:", text="rtsp://")
         if ok and text:
             self.add_rtsp_camera(text)
 

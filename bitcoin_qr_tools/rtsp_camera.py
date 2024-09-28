@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import QApplication, QLabel, QVBoxLayout, QWidget
 
 
 class RTSPCamera:
-    def __init__(self, rtsp_url: str, resolution=(640, 480)):
+    def __init__(self, rtsp_url: str):
         """
         Initialize the RTSP camera with the given URL and resolution.
 
@@ -17,7 +17,6 @@ class RTSPCamera:
         :param resolution: tuple, the resolution of the camera as (width, height)
         """
         self.rtsp_url = rtsp_url
-        self.resolution = resolution
         self._cam: cv2.VideoCapture | None = None
         self._open = False
 
@@ -30,8 +29,12 @@ class RTSPCamera:
             os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;udp"
 
         self._cam = cv2.VideoCapture(self.rtsp_url)
-        self._cam.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[0])
-        self._cam.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
+
+        self.width = int(self._cam.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.height = int(self._cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.fps = self._cam.get(cv2.CAP_PROP_FPS)  # Reading the frames per second
+
+        print(f"Stream resolution: {self.width}x{self.height}, FPS: {self.fps}")
 
         if not self._cam.isOpened():
             raise ValueError("Could not open camera stream.")
@@ -77,7 +80,7 @@ if __name__ == "__main__":
         def __init__(self, rtsp_url):
             super().__init__()
             self.camera = RTSPCamera(rtsp_url)
-            self.camera.start()
+            self.camera.start(enable_udp=True)
 
             self.label_image = QLabel(self)
             self._layout = QVBoxLayout(self)
@@ -120,6 +123,6 @@ if __name__ == "__main__":
             super().closeEvent(event)
 
     app = QApplication(sys.argv)
-    window = MainWindow("some url")
+    window = MainWindow("rtsp://192.168.178.27:8086/webcam")
     window.show()
     sys.exit(app.exec())
