@@ -1,7 +1,8 @@
 import logging
 
-logger = logging.getLogger(__name__)
+from bitcoin_qr_tools.rtsp_camera import RTSPCamera
 
+logger = logging.getLogger(__name__)
 
 import time
 from typing import List, Tuple, Union
@@ -12,7 +13,20 @@ import pygame
 import pygame.camera
 from mss.base import MSSBase
 from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QAction
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QMenu,
+    QMessageBox,
+    QSizePolicy,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from .cv2camera import CV2Camera
 
@@ -26,14 +40,15 @@ class BarcodeData:
         return f"BarcodeData(data={self.data}, rect={self.rect})"
 
 
-TypeSomeCamera = Union[CV2Camera, pygame.camera.Camera]
+TypeSomeCamera = Union[CV2Camera, RTSPCamera, pygame.camera.Camera]
 
 
-class VideoWidget(QtWidgets.QWidget):
+class VideoWidget(QWidget):
     signal_raw_qr_data = pyqtSignal(object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setWindowTitle(self.tr("Camera"))
         self.cv2 = None
         self.pyzbar = None
         try:
@@ -49,17 +64,43 @@ class VideoWidget(QtWidgets.QWidget):
 
             self.cv2 = cv2
 
-        self.label_image = QtWidgets.QLabel()
+        self.label_image = QLabel()
+        self.lower_widget = QWidget()
+        self.lower_widget_layout = QHBoxLayout(self.lower_widget)
 
-        self.combo_cameras = QtWidgets.QComboBox()
+        self.combo_cameras = QComboBox()
+        self.combo_cameras.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.label_description = QLabel(self.tr("Camera:"))
+        self.lower_widget_layout.addWidget(self.label_description)
+        self.lower_widget_layout.addWidget(self.combo_cameras)
+
+        # Create the tool button
+        settingsButton = QToolButton(self)
+        settingsButton.setText(self.tr("Settings"))
+        settingsButton.setToolButtonStyle(
+            Qt.ToolButtonStyle.ToolButtonTextBesideIcon
+        )  # Show text beside the icon
+        self.lower_widget_layout.addWidget(settingsButton)
+
+        # Create a menu for the button
+        menu = QMenu("", self)
+
+        # Add actions to the menu
+        action_add_rtsp_camera = QAction("Add RTSP Camera", self)
+        menu.addAction(action_add_rtsp_camera)
+        action_add_rtsp_camera.triggered.connect(self.prompt_rtsp_url)
+
+        # Set the menu to the tool button
+        settingsButton.setMenu(menu)
+        settingsButton.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
 
         pygame.camera.init()
         for camera_name, camera in self.get_valid_cameras():
             self.combo_cameras.addItem(str(camera_name), userData=camera)
 
-        layout = QtWidgets.QVBoxLayout()
+        layout = QVBoxLayout()
         layout.addWidget(self.label_image)
-        layout.addWidget(self.combo_cameras)
+        layout.addWidget(self.lower_widget)
 
         self.setLayout(layout)
 
@@ -80,6 +121,29 @@ class VideoWidget(QtWidgets.QWidget):
 
         # signals
         self.combo_cameras.currentIndexChanged.connect(self.switch_camera)
+
+    def prompt_rtsp_url(self):
+        text, ok = QInputDialog.getText(self, "Enter RTSP URL", "RTSP URL:")
+        if ok and text:
+            self.add_rtsp_camera(text)
+
+    def add_rtsp_camera(self, url: str):
+        # Here you would add your actual logic to handle the RTSP camera
+        # This is a placeholder function to illustrate what you might do
+        print("Adding RTSP Camera with URL:", url)
+        # Assume validation of the URL or further actions here
+        temp_camera = RTSPCamera(url)
+        try:
+
+            temp_camera.start()
+            temp_camera.stop()
+        except:
+            QMessageBox().warning(None, "Error", "The camera could not be opened")
+            return
+
+        self.combo_cameras.addItem(str(url), userData=temp_camera)
+        self.combo_cameras.setCurrentIndex(self.combo_cameras.count() - 1)
+        self.switch_camera(self.combo_cameras.count() - 1)
 
     def closeEvent(self, event: QtGui.QCloseEvent | None) -> None:
         self.timer.stop()
@@ -134,7 +198,7 @@ class VideoWidget(QtWidgets.QWidget):
     def switch_camera(self, index: int):
         selected_camera = self.combo_cameras.currentData()
 
-        if isinstance(self.current_camera, (CV2Camera, pygame.camera.Camera)):
+        if isinstance(self.current_camera, (CV2Camera, RTSPCamera, pygame.camera.Camera)):
             try:
                 self.current_camera.stop()
             except:
@@ -142,7 +206,7 @@ class VideoWidget(QtWidgets.QWidget):
 
         self.current_camera = selected_camera
 
-        if isinstance(self.current_camera, (CV2Camera, pygame.camera.Camera)):
+        if isinstance(self.current_camera, (CV2Camera, RTSPCamera, pygame.camera.Camera)):
             self.current_camera.start()
             time.sleep(0.1)  # Add a short delay
         else:
@@ -202,7 +266,7 @@ class VideoWidget(QtWidgets.QWidget):
                 # Convert numpy image to surface for drawing
                 surface = self._numpy_to_surface(image)
                 surface = pygame.transform.flip(surface, True, False)
-        elif isinstance(self.current_camera, (CV2Camera, pygame.camera.Camera)):
+        elif isinstance(self.current_camera, (CV2Camera, RTSPCamera, pygame.camera.Camera)):
             try:
                 surface = self.current_camera.get_image()
             except:
