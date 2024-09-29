@@ -258,7 +258,7 @@ class VideoWidget(QWidget):
         self.post_process_checkbox.setChecked(self.preset_process_checkbox.isChecked())
         if self.preset_process_checkbox.isChecked():
             self.zoom_slider.setValue(25)
-            self.brightness_slider.setValue(30)
+            self.brightness_slider.setValue(20)
         else:
             self.zoom_slider.setValue(0)
             self.brightness_slider.setValue(128)
@@ -329,6 +329,7 @@ class VideoWidget(QWidget):
         selected_camera = self.combo_cameras.currentData()
 
         self.set_brightness_defaults(self.current_camera)
+        self.on_preset_process_checkbox(False)
         if isinstance(self.current_camera, (CV2Camera, RTSPCamera, pygame.camera.Camera)):
             try:
                 self.current_camera.stop()
@@ -348,6 +349,7 @@ class VideoWidget(QWidget):
         self.brightness_slider.setMinimum(int(b_min))
         self.brightness_slider.setMaximum(int(b_max))
         self.brightness_slider.setValue(int(b))
+        self.on_preset_process_checkbox(self.preset_process_checkbox.isChecked())
 
     def _numpy_to_surface(self, numpy_image: np.ndarray) -> pygame.Surface:
         # Convert numpy image (RGB) to pygame surface
@@ -489,9 +491,14 @@ class VideoWidget(QWidget):
         if self.post_process_checkbox.isChecked():
             array = self.preprocess_for_qr_detection(array)
             surface = pygame.surfarray.make_surface(array)
-        barcodes = self.get_barcodes(array)
         surface = pygame.transform.flip(surface, False, True)
         surface = pygame.transform.rotate(surface, -90)
+
+        barcodes = self.get_barcodes(array)
+        if not barcodes:
+            barcodes = self.get_barcodes(self.preprocess_for_qr_detection(array))
+            if barcodes:
+                logger.info(f"Found a barcode thanks to preprocessing")
 
         for barcode in barcodes:
             self._on_draw_surface(surface, barcode)
