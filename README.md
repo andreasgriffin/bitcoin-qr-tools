@@ -17,9 +17,6 @@
 * QR Code generation via  `Data.generate_fragments_for_qr()`
 * QR Code Widgets, via the widgets `QRCodeWidget`,  `QRCodeWidgetSVG`
 
-
-
-
 ### Demo
 
 Run the demo with
@@ -28,11 +25,15 @@ Run the demo with
 python demo_reader.py
 ```
 
-![screenshot](docs/screenshot.png)
+### Detection even in bad light contitions and bad camera
+
+![screenshot](docs/bad-light.png)
+
+### Automatic image enhancement for bright hardware signer screens
+
+![screenshot](docs/enhanced.png)
 
 # Install package
-
-
 
 ### From pypi
 
@@ -42,24 +43,20 @@ pip install bitcoin_qr_tools
 
 ### From git
 
- * Setup poetry and install dependencies 
+* Setup poetry and install dependencies 
+  
+  ```sh
+  curl -sSL https://install.python-poetry.org | python3 -  # see https://python-poetry.org/docs/master/#installing-with-the-official-installer
+  poetry config virtualenvs.in-project true
+  poetry install
+  ```
 
-   ```sh
-   curl -sSL https://install.python-poetry.org | python3 -  # see https://python-poetry.org/docs/master/#installing-with-the-official-installer
-   poetry config virtualenvs.in-project true
-   poetry install
-   ```
-
-
- * Run  
-
-   ```sh
-   poetry shell
-   python -m bitcoin_qr_tools
-   ```
-   
-
-
+* Run  
+  
+  ```sh
+  poetry shell
+  python -m bitcoin_qr_tools
+  ```
 
 # Licences
 
