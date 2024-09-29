@@ -17,6 +17,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QHBoxLayout,
     QInputDialog,
@@ -84,19 +85,14 @@ class VideoWidget(QWidget):
         )  # Show text beside the icon
         self.lower_widget_layout.addWidget(settingsButton)
 
-        # Create a menu for the button
-        menu = QMenu("", self)
+        # Create postprocess_checkbox
+        self.preset_process_checkbox = QCheckBox(self.tr("Enhance Picture for detection"), parent=self)
+        self.preset_process_checkbox.stateChanged.connect(self.on_preset_process_checkbox)
+        self.preset_process_checkbox.setChecked(False)
 
-        # Add actions to the menu
-        action_add_rtsp_camera = QAction("Add RTSP Camera", self)
-        menu.addAction(action_add_rtsp_camera)
-        action_add_rtsp_camera.triggered.connect(self.prompt_rtsp_url)
-
-        # Set the menu to the tool button
-        settingsButton.setMenu(menu)
-        settingsButton.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-
+        # middle widget
         self.middle_widget = QWidget()
+        self.middle_widget.setVisible(False)
         self.middle_widget_layout = QHBoxLayout(self.middle_widget)
 
         # Create zoom slider
@@ -108,8 +104,8 @@ class VideoWidget(QWidget):
         self.zoom_slider.setTickInterval(1)
 
         self.label_zoom_slider = QLabel(self.tr("Zoom:"))
-        # self.middle_widget_layout.addWidget(self.label_zoom_slider)
-        # self.middle_widget_layout.addWidget(self.zoom_slider)
+        self.middle_widget_layout.addWidget(self.label_zoom_slider)
+        self.middle_widget_layout.addWidget(self.zoom_slider)
 
         # Create brightness slider
         self.brightness_slider = QSlider(Qt.Orientation.Horizontal, self)
@@ -124,12 +120,34 @@ class VideoWidget(QWidget):
         self.middle_widget_layout.addWidget(self.label_brightness_slider)
         self.middle_widget_layout.addWidget(self.brightness_slider)
 
+        # Create postprocess_checkbox
+        self.post_process_checkbox = QCheckBox(parent=self)
+        self.post_process_checkbox.setChecked(False)
+        self.label_post_process_checkbox = QLabel(self.tr("Postprocess"))
+        self.middle_widget_layout.addWidget(self.label_post_process_checkbox)
+        self.middle_widget_layout.addWidget(self.post_process_checkbox)
+
+        # Create a menu for the button
+        menu = QMenu("", self)
+        settingsButton.setMenu(menu)
+        settingsButton.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+
+        action_show_camera_controls = QAction(self.tr("Show camera controls"), self)
+        menu.addAction(action_show_camera_controls)
+        action_show_camera_controls.setCheckable(True)
+        action_show_camera_controls.triggered.connect(self.middle_widget.setVisible)
+
+        action_add_rtsp_camera = QAction(self.tr("Add RTSP Camera"), self)
+        menu.addAction(action_add_rtsp_camera)
+        action_add_rtsp_camera.triggered.connect(self.prompt_rtsp_url)
+
         pygame.camera.init()
         for index, camera_name, camera in self.get_valid_cameras():
             self.combo_cameras.addItem(str(camera_name), userData=camera)
 
         layout = QVBoxLayout()
         layout.addWidget(self.label_image)
+        layout.addWidget(self.preset_process_checkbox)
         layout.addWidget(self.middle_widget)
         layout.addWidget(self.lower_widget)
 
@@ -235,6 +253,15 @@ class VideoWidget(QWidget):
 
             if new_value != old_value:
                 print(f"Changed {v} from {old_value} --> { new_value }")
+
+    def on_preset_process_checkbox(self, state: Any):
+        self.post_process_checkbox.setChecked(self.preset_process_checkbox.isChecked())
+        if self.preset_process_checkbox.isChecked():
+            self.zoom_slider.setValue(25)
+            self.brightness_slider.setValue(30)
+        else:
+            self.zoom_slider.setValue(0)
+            self.brightness_slider.setValue(128)
 
     def find_best_resolution(self, camera_index=0):
         # Common resolutions to try
@@ -392,6 +419,40 @@ class VideoWidget(QWidget):
         else:
             return []
 
+    @staticmethod
+    def preprocess_for_qr_detection(array: np.ndarray):
+        """
+        Preprocess a 3D NumPy array for QR detection, returning a 3D NumPy array.
+
+        Args:
+            array (np.ndarray): Input 3D NumPy array in RGB format.
+
+        Returns:
+            np.ndarray: Processed 3D NumPy array in RGB format.
+        """
+        # Ensure the array is in the right format (RGB)
+        if array.ndim != 3 or array.shape[2] != 3:
+            raise ValueError("Input array must be a 3D NumPy array with 3 channels (RGB)")
+
+        # Convert RGB to Grayscale
+        gray = cv2.cvtColor(array, cv2.COLOR_RGB2GRAY)
+
+        # Enhance contrast using histogram equalization
+        equalized = cv2.equalizeHist(gray)
+
+        # # Apply Gaussian blur to reduce noise
+        smoothed = cv2.GaussianBlur(equalized, (5, 5), 0)
+
+        # Apply adaptive thresholding
+        thresholded = cv2.adaptiveThreshold(
+            smoothed, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+        )
+
+        # Convert single channel binary image back to 3-channel RGB format
+        thresholded_rgb = cv2.cvtColor(thresholded, cv2.COLOR_GRAY2RGB)
+
+        return thresholded_rgb
+
     def update_frame(self):
 
         barcodes = []
@@ -424,7 +485,11 @@ class VideoWidget(QWidget):
             crop_value,
             crop_value,
         )
-        barcodes = self.get_barcodes(pygame.surfarray.array3d(surface))
+        array = pygame.surfarray.array3d(surface)
+        if self.post_process_checkbox.isChecked():
+            array = self.preprocess_for_qr_detection(array)
+            surface = pygame.surfarray.make_surface(array)
+        barcodes = self.get_barcodes(array)
         surface = pygame.transform.flip(surface, False, True)
         surface = pygame.transform.rotate(surface, -90)
 
