@@ -1,4 +1,5 @@
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 from bitcoin_qr_tools.rtsp_camera import RTSPCamera
 
@@ -34,6 +35,12 @@ from PyQt6.QtWidgets import (
 from .cv2camera import CV2Camera
 
 
+def threaded_list(f, args):
+    with ThreadPoolExecutor() as executor:
+        res = [executor.submit(f, arg) for arg in args]
+    return [r.result() for r in res]
+
+
 class BarcodeData:
     def __init__(self, data, rect):
         self.data = data  # The decoded text of the barcode
@@ -52,6 +59,7 @@ class VideoWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(self.tr("Camera"))
+        self.frame_counter = 0
         self.cv2 = None
         self.pyzbar = None
         try:
@@ -213,9 +221,13 @@ class VideoWidget(QWidget):
         # If you call the parent's closeEvent(), it will proceed to close the widget
         super().closeEvent(event)
 
+    def set_brightness(self, value=128, camera=None):
+        selected_camera = self.combo_cameras.currentData()
+        if isinstance(selected_camera, (pygame.camera.Camera, CV2Camera)):
+            self.change_brightness(selected_camera, value)
+
     def set_brightness_defaults(self, camera: Any):
-        if isinstance(camera, (pygame.camera.Camera, CV2Camera)):
-            self.change_brightness(camera, 128)
+        self.set_brightness(128, camera=camera)
 
     def on_change_brightness(self, value: int):
         selected_camera = self.combo_cameras.currentData()
@@ -422,7 +434,13 @@ class VideoWidget(QWidget):
             return []
 
     @staticmethod
-    def preprocess_for_qr_detection(array: np.ndarray):
+    def preprocess_for_qr_detection(
+        array: np.ndarray,
+        gauss_kernel_size: int = 5,
+        single_channel: int | None = None,
+        threshold_blockSize: int = 11,
+        threshold_C: float = 0,
+    ):
         """
         Preprocess a 3D NumPy array for QR detection, returning a 3D NumPy array.
 
@@ -437,25 +455,28 @@ class VideoWidget(QWidget):
             raise ValueError("Input array must be a 3D NumPy array with 3 channels (RGB)")
 
         # Convert RGB to Grayscale
-        gray = cv2.cvtColor(array, cv2.COLOR_RGB2GRAY)
+        if single_channel is None:
+            gray = cv2.cvtColor(array, cv2.COLOR_RGB2GRAY)
+        else:
+            gray = array[:, :, single_channel]
+
+        # print("Average brightness (grayscale):",  np.mean(gray))
 
         # Enhance contrast using histogram equalization
-        equalized = cv2.equalizeHist(gray)
+        gray = cv2.equalizeHist(gray)
 
         # # Apply Gaussian blur to reduce noise
-        smoothed = cv2.GaussianBlur(equalized, (5, 5), 0)
+        gray = cv2.GaussianBlur(gray, (gauss_kernel_size, gauss_kernel_size), 0)
 
-        # Apply adaptive thresholding
-        thresholded = cv2.adaptiveThreshold(
-            smoothed, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+        # # Apply adaptive thresholding
+        gray = cv2.adaptiveThreshold(
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, threshold_blockSize, threshold_C
         )
 
-        # Convert single channel binary image back to 3-channel RGB format
-        thresholded_rgb = cv2.cvtColor(thresholded, cv2.COLOR_GRAY2RGB)
-
-        return thresholded_rgb
+        return cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
 
     def update_frame(self):
+        self.frame_counter += 1
 
         barcodes = []
         if isinstance(self.current_camera, MSSBase):
@@ -487,18 +508,30 @@ class VideoWidget(QWidget):
             crop_value,
             crop_value,
         )
-        array = pygame.surfarray.array3d(surface)
+        array = array_original = pygame.surfarray.array3d(surface)
         if self.post_process_checkbox.isChecked():
-            array = self.preprocess_for_qr_detection(array)
+            array = self.preprocess_for_qr_detection(array_original.copy())
             surface = pygame.surfarray.make_surface(array)
         surface = pygame.transform.flip(surface, False, True)
         surface = pygame.transform.rotate(surface, -90)
 
         barcodes = self.get_barcodes(array)
-        if not barcodes:
-            barcodes = self.get_barcodes(self.preprocess_for_qr_detection(array))
-            if barcodes:
-                logger.info(f"Found a barcode thanks to preprocessing")
+
+        def transform_and_detect(values):
+            gauss, thres = values
+            return self.get_barcodes(
+                self.preprocess_for_qr_detection(
+                    array_original.copy(), gauss_kernel_size=gauss, threshold_blockSize=thres
+                )
+            )
+
+        arguments = [(5, 11), (5, 21), (3, 11), (9, 31), (11, 35), (7, 21)]
+        list_of_barcodes = threaded_list(transform_and_detect, arguments)
+        barcodes = sum(list_of_barcodes, [])
+        if barcodes:
+            logger.debug(
+                f"Found barcodes with parameters {[argument for barcodes, argument in  zip(list_of_barcodes, arguments) if barcodes]}"
+            )
 
         for barcode in barcodes:
             self._on_draw_surface(surface, barcode)
