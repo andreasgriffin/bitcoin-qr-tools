@@ -2,18 +2,19 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 
 from bitcoin_qr_tools.rtsp_camera import RTSPCamera
+from bitcoin_qr_tools.screen_camera import ScreenCamera
 
 logger = logging.getLogger(__name__)
 
+import signal
+import sys
 import time
 from typing import Any, List, Tuple, Union
 
 import cv2
-import mss
 import numpy as np
 import pygame
 import pygame.camera
-from mss.base import MSSBase
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QAction
@@ -50,7 +51,7 @@ class BarcodeData:
         return f"BarcodeData(data={self.data}, rect={self.rect})"
 
 
-TypeSomeCamera = Union[CV2Camera, RTSPCamera, pygame.camera.Camera]
+TypeSomeCamera = Union[CV2Camera, RTSPCamera, pygame.camera.Camera, ScreenCamera]
 
 
 class VideoWidget(QWidget):
@@ -168,7 +169,7 @@ class VideoWidget(QWidget):
         self.timer.start(int(1000.0 / 30.0))  # 30 FPS
 
         # Add "Screen" option for screen capture
-        self.combo_cameras.addItem("Screen", userData=mss.mss())
+        self.combo_cameras.addItem("Screen", userData=ScreenCamera())
 
         # switch to the last camera that isn
         if self.combo_cameras.count():
@@ -178,6 +179,14 @@ class VideoWidget(QWidget):
 
         # signals
         self.combo_cameras.currentIndexChanged.connect(self.switch_camera)
+
+        signal.signal(signal.SIGTERM, self.signal_handler)
+        signal.signal(signal.SIGINT, self.signal_handler)  # Handle Ctrl+C
+
+    def signal_handler(self, sig, frame):
+        print("Signal received:", sig)
+        self.stop_timer_and_stop_all_cameras()
+        sys.exit(0)
 
     @property
     def zoom(self) -> float:
@@ -208,15 +217,29 @@ class VideoWidget(QWidget):
 
         QMessageBox().warning(None, "Error", "The camera could not be opened")
 
-    def closeEvent(self, event: QtGui.QCloseEvent | None) -> None:
+    def stop_timer_and_stop_all_cameras(self):
         self.timer.stop()
 
         if self.current_camera:
             self.set_brightness_defaults(self.current_camera)
-            try:
-                self.current_camera.stop()
-            except:
-                pass
+
+        for i in range(self.combo_cameras.count()):
+            camera: TypeSomeCamera = self.combo_cameras.itemData(i)
+            if camera:
+                try:
+                    logger.debug(f"Stopping {camera}")
+                    camera.stop()
+                except SystemError as e:
+                    if "ioctl(VIDIOC_STREAMOFF) failure" in str(e):
+                        pass  # this is expected
+                    else:
+                        logger.debug(str(e))
+                except Exception as e:
+                    # if it is already closed, it gives an exception.
+                    logger.debug(str(e))
+
+    def closeEvent(self, event: QtGui.QCloseEvent | None) -> None:
+        self.stop_timer_and_stop_all_cameras()
 
         # If you call the parent's closeEvent(), it will proceed to close the widget
         super().closeEvent(event)
@@ -338,11 +361,11 @@ class VideoWidget(QWidget):
         return valid_cameras
 
     def switch_camera(self, index: int):
-        selected_camera = self.combo_cameras.currentData()
+        selected_camera: TypeSomeCamera = self.combo_cameras.currentData()
 
         self.set_brightness_defaults(self.current_camera)
         self.on_preset_process_checkbox(False)
-        if isinstance(self.current_camera, (CV2Camera, RTSPCamera, pygame.camera.Camera)):
+        if self.current_camera:
             try:
                 self.current_camera.stop()
             except:
@@ -350,7 +373,7 @@ class VideoWidget(QWidget):
 
         self.current_camera = selected_camera
 
-        if isinstance(self.current_camera, (CV2Camera, RTSPCamera, pygame.camera.Camera)):
+        if self.current_camera:
             self.current_camera.start()
             time.sleep(0.1)  # Add a short delay
         else:
@@ -479,19 +502,7 @@ class VideoWidget(QWidget):
         self.frame_counter += 1
 
         barcodes = []
-        if isinstance(self.current_camera, MSSBase):
-            with mss.mss() as sct:
-                monitor = sct.monitors[1]  # capture the first monitor
-                sct_img = sct.grab(monitor)
-                image = np.array(sct_img)
-
-                # Convert BGRA to RGB by reordering the channels
-                image = image[:, :, [2, 1, 0]]  # Rearrange BGR to RGB
-
-                # Convert numpy image to surface for drawing
-                surface = self._numpy_to_surface(image)
-                surface = pygame.transform.flip(surface, True, False)
-        elif isinstance(self.current_camera, (CV2Camera, RTSPCamera, pygame.camera.Camera)):
+        if self.current_camera:
             try:
                 surface = self.current_camera.get_image()
             except:
@@ -519,11 +530,14 @@ class VideoWidget(QWidget):
 
         def transform_and_detect(values):
             gauss, thres = values
-            return self.get_barcodes(
-                self.preprocess_for_qr_detection(
-                    array_original.copy(), gauss_kernel_size=gauss, threshold_blockSize=thres
+            try:
+                return self.get_barcodes(
+                    self.preprocess_for_qr_detection(
+                        array_original.copy(), gauss_kernel_size=gauss, threshold_blockSize=thres
+                    )
                 )
-            )
+            except:
+                return []
 
         arguments = [(5, 11), (5, 21), (3, 11), (9, 31), (11, 35), (7, 21)]
         list_of_barcodes = threaded_list(transform_and_detect, arguments)
