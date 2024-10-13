@@ -93,7 +93,7 @@ class BitcoinVideoWidget(VideoWidget):
         super()._on_draw_surface(surface, barcode)
 
         estimated_percent_complete = self.meta_data_handler.estimated_percent_complete()
-        print(estimated_percent_complete)
+        logger.debug(estimated_percent_complete)
         if 0 == estimated_percent_complete:
             return
 

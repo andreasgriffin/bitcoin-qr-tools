@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 
@@ -6,6 +7,8 @@ import pygame
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtWidgets import QApplication, QLabel, QVBoxLayout, QWidget
+
+logger = logging.getLogger(__name__)
 
 
 class RTSPCamera:
@@ -34,7 +37,7 @@ class RTSPCamera:
         self.height = int(self._cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.fps = self._cam.get(cv2.CAP_PROP_FPS)  # Reading the frames per second
 
-        print(f"Stream resolution: {self.width}x{self.height}, FPS: {self.fps}")
+        logger.debug(f"Stream resolution: {self.width}x{self.height}, FPS: {self.fps}")
 
         if not self._cam.isOpened():
             raise ValueError("Could not open camera stream.")
