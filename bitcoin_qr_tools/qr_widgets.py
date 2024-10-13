@@ -115,7 +115,7 @@ class ImageWidget(QWidget):
 
 
 class EnlargableImageWidget(ImageWidget):
-    def __init__(self, pil_image: Image = None, parent=None, size_hint: Tuple[int, int] = None):
+    def __init__(self, pil_image: Image.Image = None, parent=None, size_hint: Tuple[int, int] = None):
         super().__init__(pil_image, parent, size_hint=size_hint)
         self.enlarged_image: Optional[EnlargedImage] = None
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -140,7 +140,7 @@ class EnlargableImageWidget(ImageWidget):
 
 
 class EnlargedImage(ImageWidget):
-    def __init__(self, pil_image: Image, parent=None, screen_fraction=0.7):
+    def __init__(self, pil_image: Image.Image, parent=None, screen_fraction=0.7):
         super().__init__(pil_image, parent)
         self.setWindowTitle("Enlarged Image")
         self.installEventFilter(self)  # Install the event filter for this widget
