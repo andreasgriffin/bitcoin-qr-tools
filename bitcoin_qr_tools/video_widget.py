@@ -1,6 +1,7 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
+from bitcoin_qr_tools.i18n import translate
 from bitcoin_qr_tools.rtsp_camera import RTSPCamera
 from bitcoin_qr_tools.screen_camera import ScreenCamera
 
@@ -59,7 +60,7 @@ class VideoWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(self.tr("Camera"))
+        self.setWindowTitle(translate("video", "Camera"))
         self.frame_counter = 0
         self.cv2 = None
         self.pyzbar = None
@@ -82,20 +83,22 @@ class VideoWidget(QWidget):
 
         self.combo_cameras = QComboBox()
         self.combo_cameras.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        self.label_camera_choose = QLabel(self.tr("Camera:"))
+        self.label_camera_choose = QLabel(translate("video", "Camera:"))
         self.lower_widget_layout.addWidget(self.label_camera_choose)
         self.lower_widget_layout.addWidget(self.combo_cameras)
 
         # Create the tool button
         settingsButton = QToolButton(self)
-        settingsButton.setText(self.tr("Settings"))
+        settingsButton.setText(translate("video", "Settings"))
         settingsButton.setToolButtonStyle(
             Qt.ToolButtonStyle.ToolButtonTextBesideIcon
         )  # Show text beside the icon
         self.lower_widget_layout.addWidget(settingsButton)
 
         # Create postprocess_checkbox
-        self.preset_process_checkbox = QCheckBox(self.tr("Enhance Picture for detection"), parent=self)
+        self.preset_process_checkbox = QCheckBox(
+            translate("video", "Enhance picture for detection"), parent=self
+        )
         self.preset_process_checkbox.stateChanged.connect(self.on_preset_process_checkbox)
         self.preset_process_checkbox.setChecked(False)
 
@@ -112,7 +115,7 @@ class VideoWidget(QWidget):
         self.zoom_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.zoom_slider.setTickInterval(1)
 
-        self.label_zoom_slider = QLabel(self.tr("Zoom:"))
+        self.label_zoom_slider = QLabel(translate("video", "Zoom:"))
         self.middle_widget_layout.addWidget(self.label_zoom_slider)
         self.middle_widget_layout.addWidget(self.zoom_slider)
 
@@ -125,14 +128,14 @@ class VideoWidget(QWidget):
         self.brightness_slider.setTickInterval(10)
         self.brightness_slider.valueChanged.connect(self.on_change_brightness)
 
-        self.label_brightness_slider = QLabel(self.tr("Brightness (reduce for bright displays):"))
+        self.label_brightness_slider = QLabel(translate("video", "Brightness (reduce for bright displays):"))
         self.middle_widget_layout.addWidget(self.label_brightness_slider)
         self.middle_widget_layout.addWidget(self.brightness_slider)
 
         # Create postprocess_checkbox
         self.post_process_checkbox = QCheckBox(parent=self)
         self.post_process_checkbox.setChecked(False)
-        self.label_post_process_checkbox = QLabel(self.tr("Postprocess"))
+        self.label_post_process_checkbox = QLabel(translate("video", "Postprocess"))
         self.middle_widget_layout.addWidget(self.label_post_process_checkbox)
         self.middle_widget_layout.addWidget(self.post_process_checkbox)
 
@@ -141,12 +144,12 @@ class VideoWidget(QWidget):
         settingsButton.setMenu(menu)
         settingsButton.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
 
-        action_show_camera_controls = QAction(self.tr("Show camera controls"), self)
+        action_show_camera_controls = QAction(translate("video", "Show camera controls"), self)
         menu.addAction(action_show_camera_controls)
         action_show_camera_controls.setCheckable(True)
         action_show_camera_controls.triggered.connect(self.middle_widget.setVisible)
 
-        action_add_rtsp_camera = QAction(self.tr("Add RTSP Camera"), self)
+        action_add_rtsp_camera = QAction(translate("video", "Add RTSP Camera"), self)
         menu.addAction(action_add_rtsp_camera)
         action_add_rtsp_camera.triggered.connect(self.prompt_rtsp_url)
 
@@ -169,7 +172,7 @@ class VideoWidget(QWidget):
         self.timer.start(int(1000.0 / 30.0))  # 30 FPS
 
         # Add "Screen" option for screen capture
-        self.combo_cameras.addItem("Screen", userData=ScreenCamera())
+        self.combo_cameras.addItem(translate("video", "Screen"), userData=ScreenCamera())
 
         # switch to the last camera that isn
         if self.combo_cameras.count():
@@ -184,7 +187,7 @@ class VideoWidget(QWidget):
         signal.signal(signal.SIGINT, self.signal_handler)  # Handle Ctrl+C
 
     def signal_handler(self, sig, frame):
-        print("Signal received:", sig)
+        logger.debug("Signal received:", sig)
         self.stop_timer_and_stop_all_cameras()
         sys.exit(0)
 
@@ -193,14 +196,16 @@ class VideoWidget(QWidget):
         return self.zoom_slider.value() / 10
 
     def prompt_rtsp_url(self):
-        text, ok = QInputDialog.getText(self, "Enter RTSP URL", "RTSP URL:", text="rtsp://")
+        text, ok = QInputDialog.getText(
+            self, translate("video", "Enter RTSP URL"), translate("video", "RTSP URL:"), text="rtsp://"
+        )
         if ok and text:
             self.add_rtsp_camera(text)
 
     def add_rtsp_camera(self, url: str):
         # Here you would add your actual logic to handle the RTSP camera
         # This is a placeholder function to illustrate what you might do
-        print("Adding RTSP Camera with URL:", url)
+        logger.debug("Adding RTSP Camera with URL:", url)
         # Assume validation of the URL or further actions here
 
         for enable_udp in [False, True]:
@@ -215,7 +220,9 @@ class VideoWidget(QWidget):
             except:
                 logger.debug(f"{temp_camera} with enable_udp {enable_udp} could not be opened")
 
-        QMessageBox().warning(None, "Error", "The camera could not be opened")
+        QMessageBox().warning(
+            None, translate("video", "Error"), translate("video", "The camera could not be opened")
+        )
 
     def stop_timer_and_stop_all_cameras(self):
         self.timer.stop()
@@ -279,7 +286,7 @@ class VideoWidget(QWidget):
             _flipx, _flipy, new_value = camera.get_controls()
 
             if new_value != old_value:
-                print(f"Changed {v} from {old_value} --> { new_value }")
+                logger.debug(f"Changed {v} from {old_value} --> { new_value }")
 
         elif isinstance(camera, CV2Camera) and camera._cam:
             old_value = camera._cam.get(v)
@@ -287,7 +294,7 @@ class VideoWidget(QWidget):
             new_value = camera._cam.get(v)
 
             if new_value != old_value:
-                print(f"Changed {v} from {old_value} --> { new_value }")
+                logger.debug(f"Changed {v} from {old_value} --> { new_value }")
 
     def on_preset_process_checkbox(self, state: Any):
         self.post_process_checkbox.setChecked(self.preset_process_checkbox.isChecked())
@@ -483,7 +490,7 @@ class VideoWidget(QWidget):
         else:
             gray = array[:, :, single_channel]
 
-        # print("Average brightness (grayscale):",  np.mean(gray))
+        # logger.debug("Average brightness (grayscale):",  np.mean(gray))
 
         # Enhance contrast using histogram equalization
         gray = cv2.equalizeHist(gray)
@@ -506,7 +513,7 @@ class VideoWidget(QWidget):
             try:
                 surface = self.current_camera.get_image()
             except:
-                # print("Could not get image")
+                # logger.debug("Could not get image")
                 return
         else:
             return
@@ -593,5 +600,5 @@ class DemoVideoWidget(VideoWidget):
 
     def show_qr(self, qr_data):
         s = qr_data.decode("utf-8")
-        print(s)
+        logger.debug(s)
         self.label_qr.setText(s)
