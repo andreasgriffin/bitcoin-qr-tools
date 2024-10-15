@@ -546,25 +546,29 @@ class VideoWidget(QWidget):
             except:
                 return []
 
-        arguments = [(5, 11), (5, 21), (3, 11), (9, 31), (11, 35), (7, 21)]
-        list_of_barcodes = threaded_list(transform_and_detect, arguments)
-        barcodes = sum(list_of_barcodes, [])
-        if barcodes:
-            logger.debug(
-                f"Found barcodes with parameters {[argument for barcodes, argument in  zip(list_of_barcodes, arguments) if barcodes]}"
-            )
+        if not barcodes:
+            arguments = [(5, 11), (5, 21), (3, 11), (9, 31), (11, 35), (7, 21)]
+            list_of_barcodes = threaded_list(transform_and_detect, arguments)
+            barcodes = sum(list_of_barcodes, [])
+            if barcodes:
+                logger.debug(
+                    f"Found barcodes with parameters {[argument for barcodes, argument in  zip(list_of_barcodes, arguments) if barcodes]}"
+                )
 
-        for barcode in barcodes:
-            self._on_draw_surface(surface, barcode)
-            # only show the 1. barcode
-            break
+        sorted_barcodes = sorted(barcodes, key=lambda item: len(item.data), reverse=True)
+        # only show the 1. barcode (with the longest data)
+        selected_barcode = sorted_barcodes[0] if sorted_barcodes else None
+        if selected_barcode and not selected_barcode.data:
+            selected_barcode = None
+
+        if selected_barcode:
+            self._on_draw_surface(surface, selected_barcode)
 
         surface = pygame.transform.flip(surface, False, True)
         self.showSurface(surface, scale_to=(640, 480))
 
-        for barcode in barcodes:
-            self.signal_raw_qr_data.emit(barcode.data)
-            break
+        if selected_barcode:
+            self.signal_raw_qr_data.emit(selected_barcode.data)
 
     def showSurface(self, surface: pygame.Surface, scale_to=(640, 480)):
 
