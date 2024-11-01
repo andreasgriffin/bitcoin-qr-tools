@@ -27,7 +27,6 @@
 # SOFTWARE.
 
 
-import io
 import logging
 import sys
 from typing import List, Optional, Tuple
@@ -300,7 +299,7 @@ class QRCodeWidgetSVG(QWidget):
             self.enlarge_image()
         super().mousePressEvent(event)
 
-    def save_file(self, base_filename: str, format="PNG", antialias=False):
+    def save_file(self, base_filename: str, image_format="PNG", antialias=False):
         """Save all QR codes to files. If format is 'GIF', combines them into
         an animated GIF.
 
@@ -310,14 +309,14 @@ class QRCodeWidgetSVG(QWidget):
         :param antialias: Boolean to indicate if anti-aliasing should be
             used.
         """
-        if format.upper() == "GIF":
+        if image_format.upper() == "GIF":
             images = []
             for renderer in self.svg_renderers:
                 if not renderer.isValid():
                     continue
-                images.append(self.renderer_to_pil(renderer, antialias))
+                images.append(self.renderer_to_pil(renderer, antialias, image_format))
             images[0].save(
-                f"{base_filename}.gif",
+                f"{base_filename}.{image_format.lower()}",
                 save_all=True,
                 append_images=images[1:],
                 loop=0,
@@ -328,9 +327,9 @@ class QRCodeWidgetSVG(QWidget):
                 if not renderer.isValid():
                     continue
                 image = self.renderer_to_pil(renderer, antialias)
-                image.save(f"{base_filename}_{i}.{format.lower()}")
+                image.save(f"{base_filename}_{i}.{image_format.lower()}")
 
-    def renderer_to_pil(self, renderer: QSvgRenderer, antialias: bool):
+    def renderer_to_pil(self, renderer: QSvgRenderer, antialias: bool, image_format="PNG"):
         """Convert a QR code renderer to a PIL Image.
 
         :param renderer: The QR code renderer.
@@ -338,25 +337,41 @@ class QRCodeWidgetSVG(QWidget):
             used.
         :return: PIL Image object.
         """
-        size = self.size()
-        pixmap = QPixmap(size)
+        # setting the length that it can handle the largets qr codes:
+        # Version 40: 177x177 modules
+        length = 177 * 2
+
+        pixmap = QPixmap(length, length)
         pixmap.fill(Qt.GlobalColor.white)
         painter = QPainter(pixmap)
 
         if antialias:
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        renderer.render(painter, QRectF(0, 0, size.width(), size.height()))
+        renderer.render(painter, QRectF(0, 0, length, length))
         painter.end()
 
         # Convert QPixmap to QImage
         qimage = pixmap.toImage()
 
-        # Convert QImage to PIL Image
-        buffer = io.BytesIO()
-        qimage.save(buffer, "PNG")  # type: ignore
-        buffer.seek(0)
-        return Image.open(buffer)
+        return self.qimage_to_pil(qimage=qimage)
+
+    @staticmethod
+    def qimage_to_pil(qimage: QImage) -> Image.Image:
+        """Convert QImage to PIL Image."""
+        qimage = qimage.convertToFormat(QImage.Format.Format_RGB32)
+
+        width = qimage.width()
+        height = qimage.height()
+
+        # Get the data from the QImage
+        # 4 bytes per pixel
+        buffer = qimage.bits().asstring(width * height * 4)  # type: ignore
+
+        # Create a PIL Image from the buffer
+        pil_image = Image.frombytes("RGBA", (width, height), buffer, "raw", "BGRA")
+
+        return pil_image
 
     def as_pil_images(self):
         """Convert all the QR codes to PIL Images.
