@@ -1,4 +1,5 @@
 import logging
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 
 from bitcoin_qr_tools.i18n import translate
@@ -61,7 +62,8 @@ class VideoWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(translate("video", "Camera"))
-        self.frame_counter = 0
+        self.frame_counter: deque[float] = deque(maxlen=5000)
+        self.last_display_fps = time.time()
         self.cv2 = None
         self.pyzbar = None
         try:
@@ -506,9 +508,15 @@ class VideoWidget(QWidget):
         return cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
 
     def update_frame(self):
-        self.frame_counter += 1
+        self.frame_counter.append(time.time())
+        if time.time() - self.last_display_fps > 10:
+            self.last_display_fps = time.time()
+            if self.frame_counter[-1] - self.frame_counter[0] > 0:
+                logger.debug(
+                    f"fps: {len(self.frame_counter)/(self.frame_counter[-1]- self.frame_counter[0] )  }"
+                )
 
-        barcodes = []
+        barcodes: List[BarcodeData] = []
         if self.current_camera:
             try:
                 surface = self.current_camera.get_image()
@@ -533,27 +541,26 @@ class VideoWidget(QWidget):
         surface = pygame.transform.flip(surface, False, True)
         surface = pygame.transform.rotate(surface, -90)
 
-        barcodes = self.get_barcodes(array)
-
-        def transform_and_detect(values):
-            gauss, thres = values
+        def transform_and_detect(values: Tuple[int, int] | None) -> List[BarcodeData]:
+            if values is None:
+                return self.get_barcodes(array_original)
+            gauss_kernel_size, thres = values
             try:
                 return self.get_barcodes(
                     self.preprocess_for_qr_detection(
-                        array_original.copy(), gauss_kernel_size=gauss, threshold_blockSize=thres
+                        array_original.copy(), gauss_kernel_size=gauss_kernel_size, threshold_blockSize=thres
                     )
                 )
             except:
                 return []
 
-        if not barcodes:
-            arguments = [(5, 11), (5, 21), (3, 11), (9, 31), (11, 35), (7, 21)]
-            list_of_barcodes = threaded_list(transform_and_detect, arguments)
-            barcodes = sum(list_of_barcodes, [])
-            if barcodes:
-                logger.debug(
-                    f"Found barcodes with parameters {[argument for barcodes, argument in  zip(list_of_barcodes, arguments) if barcodes]}"
-                )
+        arguments = [None, (5, 11), (5, 21), (3, 11), (9, 31), (11, 35), (7, 21)]
+        list_of_barcodes = threaded_list(transform_and_detect, arguments)
+        barcodes = sum(list_of_barcodes, [])
+        if barcodes:
+            logger.debug(
+                f"Found barcodes with parameters {[argument for barcodes, argument in  zip(list_of_barcodes, arguments) if barcodes]}"
+            )
 
         sorted_barcodes = sorted(barcodes, key=lambda item: len(item.data), reverse=True)
         # only show the 1. barcode (with the longest data)
