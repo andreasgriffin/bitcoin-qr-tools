@@ -62,6 +62,7 @@ class VideoWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(translate("video", "Camera"))
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         self.frame_counter: deque[float] = deque(maxlen=5000)
         self.last_display_fps = time.time()
         self.cv2 = None
