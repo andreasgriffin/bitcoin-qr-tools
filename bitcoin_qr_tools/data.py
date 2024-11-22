@@ -595,7 +595,7 @@ class Data:
             if json_data["chain"] != "XRT":
                 raise WrongNetwork(f"""Expected Network {network}, but got {json_data["chain"]}""")
         if network == bdk.Network.TESTNET:
-            if json_data["chain"] != "XTN":
+            if json_data["chain"] not in ["XTN", "TBTC"]:
                 raise WrongNetwork(f"""Expected Network {network}, but got {json_data["chain"]}""")
         if network == bdk.Network.SIGNET:
             # unclear which chain value is used for signet in coldcard
