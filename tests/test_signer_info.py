@@ -274,7 +274,21 @@ def test_multisig_signer_infos_coldcard_qr_wrong_network():
     )
 
 
-def test_ur_signer_info_passport():
+def test_ur_passport_multisig_sparrow_signer_info():
+    s = '{\n  "p2sh_deriv": "m/45\'",\n  "p2sh": "tpubD9Mz5aj9ECe3FhVj1DPmDnr7BaJdmT9qEsHJB5dMH4oxkNJcGpxUJc7GZmSLJwcbkD6YHSNoqtChe88GYspc7nLgsLvvebn6NJsPP4tBriN",\n  "p2wsh_p2sh_deriv": "m/48\'/1\'/0\'/1\'",\n  "p2wsh_p2sh": "Upub5TRrjLzSsQ1y4Y66eyKFoeLGp7SnHmKDrDM8eAStCd6h9KyeiECLnkMXSCEF6ngAPxiK33rApfKr9wUkhc9q59p7vTy6HQC5NdqLnj6T9Fs",\n  "p2wsh_deriv": "m/48\'/1\'/0\'/2\'",\n  "p2wsh": "Vpub5nG831fN25ZSxj9QNAuGdaiuK6ydVAhLboUny8iayYhHvpb8pFrS611ahsQNMLaqu2e3ZhZAmVhSPkeav8QiwNzLFBQc2z9DgEfFWkFAqCm",\n  "xfp": "95CA6ECC"\n}\n'
+
+    data = Data.from_str(s, network=bdk.Network.TESTNET)
+    assert data.data_type == DataType.SignerInfos
+    # check conversion to tpub
+    assert (
+        data.data[1].xpub
+        == "tpubDFQC3M6STm3VTegvfaCEokcLwLwWtf7BpurRRdv9Jn9pRjX8n29qiG8qw9EK4aNGBKXf2U9brXq3NpCHxL6ACpCYkchGKFqmt3Lp8YJbpW6"
+    )
+    assert data.data[1].key_origin == "m/48h/1h/0h/1h"
+    assert data.data[1].fingerprint == "95CA6ECC"
+
+
+def test_ur_passport_single_sig_signer_infos():
     parts = [
         "UR:BYTES/1830-38/LPCFATDSCSDSCFATDMCYEOJEINBDHDEHFZBWJEECESFEBWFXDAFWAODEEMASKSAXBNFRGTHEEHAHFSGHDYCNCWDEGODPDNKGHEKTCYAHAEHEIEIOKBGDBWEEBGJNKSJSJSFWAEGSFL",
         "UR:BYTES/1830-38/LPCFATDSCSDSCFATDMCYEOJEINBDHDEHFZBWJEECESFEBWFXDAFWAODEEMASKSAXBNFRGTHEEHAHFSGHDYCNCWDEGODPDNKGHEKTCYAHAEHEIEIOKBGDBWEEBGJNKSJSJSFWAEGSFL",

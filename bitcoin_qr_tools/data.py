@@ -580,11 +580,9 @@ class Data:
             json_data = json.loads(s)
 
             # check if it is in sparrow export format
-
             assert "chain" in json_data
             assert "xfp" in json_data
             assert "xpub" in json_data
-
         except:
             return None
 
@@ -619,15 +617,16 @@ class Data:
         ]
 
     @classmethod
-    def _try_extract_multisig_signer_infos_coldcard_qr(cls, s, network: bdk.Network):
+    def _try_extract_multisig_signer_infos_coldcard_and_passport_qr(cls, s, network: bdk.Network):
         # if it is a json
         json_data = None
         try:
             json_data = json.loads(s)
 
             # check if it is in coldcard export format
-            assert "account" in json_data
             assert "xfp" in json_data
+            # for coldcard  assert "account" in json_data
+            # for passport  assert "account" not in json_data
 
         except Exception:
             return None
@@ -818,7 +817,7 @@ class Data:
         if signer_infos := cls._try_extract_sparrow_signer_infos(s, network):
             return Data(signer_infos, DataType.SignerInfos)
 
-        if signer_infos := cls._try_extract_multisig_signer_infos_coldcard_qr(s, network):
+        if signer_infos := cls._try_extract_multisig_signer_infos_coldcard_and_passport_qr(s, network):
             return Data(signer_infos, DataType.SignerInfos)
 
         if is_bip329(s):
