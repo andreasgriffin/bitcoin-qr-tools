@@ -107,6 +107,7 @@ class SpecterDIYCollector(BaseCollector):
             self.total_parts = n
 
         self.parts[m] = data
+        logger.debug(f"{self.__class__.__name__}: {round(self.estimated_percent_complete()*100)}% complete")
         return data
 
     def clear(self):
@@ -156,19 +157,24 @@ class URCollector(BaseCollector):
             s = US_OUTPUT.from_cbor(self.decoder.result.cbor).descriptor()
         if self.decoder.result.type == "bytes":
             raw = UR_BYTES.from_cbor(self.decoder.result.cbor).data
-            s = raw.hex()
+            try:
+                # for UR text info
+                s = raw.decode()
+            except:
+                # for UR tx
+                s = raw.hex()
 
         return Data.from_str(s, network=self.network)
 
     def add(self, s: str) -> Optional[str]:
         self.decoder.receive_part(s)
-        logger.debug(f"{round(self.decoder.estimated_percent_complete()*100)}% complete")
+        logger.debug(f"{self.__class__.__name__}: {round(self.estimated_percent_complete()*100)}% complete")
 
         # if the decoder is stuck for some reason. reset it
         # this part must be done AFTER receive_part(s)
         if self.received_parts > self.decoder.expected_part_count() * 2:
             logger.debug(
-                f"{self.received_parts}/{self.decoder.expected_part_count()} parts received, but incomplete. Resetting"
+                f"{self.__class__.__name__}: {self.received_parts}/{self.decoder.expected_part_count()} parts received, but incomplete. Resetting"
             )
             self.clear()
 
@@ -290,7 +296,7 @@ class BBQRCollector(BaseCollector):
             self.parts[idx] = s
             self.total_parts = num_parts
 
-        logger.debug(f"{round(self.estimated_percent_complete()*100)}% complete")
+        logger.debug(f"{self.__class__.__name__}: {round(self.estimated_percent_complete()*100)}% complete")
 
         return s
 
