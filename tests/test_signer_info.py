@@ -388,3 +388,46 @@ def test_ur_passport_single_sig_signer_infos():
     data = meta_data_handler.get_complete_data()
 
     assert data.data_type == DataType.SignerInfos
+
+    assert [d.__dict__ for d in data.data] == [
+        {
+            "fingerprint": "95CA6ECC",
+            "key_origin": "m/49h/0h/0h",
+            "xpub": "xpub6CGw3WjnMDMi7coJxjW68VjFoGXkBbdb1ebWQtQZASZYAdpZc7VN8UnMYADdp3n2qQJC9ChckeUSYjL4rn4htS1Roc29PTWkZJekP6iDiR8",
+            "derivation_path": None,
+            "name": "p2sh-p2wpkh",
+            "first_address": "386tNda5nQxtszkMjeGQfowWvDrM9NPU6G",
+        },
+        {
+            "fingerprint": "95CA6ECC",
+            "key_origin": "m/44h/0h/0h",
+            "xpub": "xpub6BrRgwnsTjxb7jHBvXDMWKhvcSS7D6wqRFofhCWhgw3h3YXfY6s4JRPrH1wAzyG5G1V2G2jfd5v6yUmR4vFFCb9uVK14kd8gf6MfZnVfzTd",
+            "derivation_path": None,
+            "name": "p2pkh",
+            "first_address": "1MXUhq7C5JAdgibyk67x48cUVmtzPNAaQB",
+        },
+        {
+            "fingerprint": "95CA6ECC",
+            "key_origin": "m/84h/0h/0h",
+            "xpub": "xpub6CJQ9dk1R9ssG4EcS3REdEJ24f5F4ahb5H7sKpP4a63jsjayxuqe6dJN4U3t7ce9sz3tCXSsP7AJKbsoa5y7vebHrhjF4vq65Yt2ZtZbCju",
+            "derivation_path": None,
+            "name": "p2wpkh",
+            "first_address": "bc1qgrmpdwzpcphrzauht53dhgtdfwh7vqt9peagqc",
+        },
+        {
+            "fingerprint": "95CA6ECC",
+            "key_origin": "m/48h/0h/0h/2h",
+            "xpub": "xpub6EzEVsAwvggBeYfsqWdi4e9JFk2HWbcorybrDtiGjvhewVKmMtV41HDK311zbpWQYbWfMLiULAX32LqDZqo5bNrRyC8KKweRB23gBnDoArP",
+            "derivation_path": None,
+            "name": "p2wsh",
+            "first_address": None,
+        },
+        {
+            "fingerprint": "95CA6ECC",
+            "key_origin": "m/48h/0h/0h/1h",
+            "xpub": "xpub6EzEVsAwvggBbFWKQB1Xk5VccTZmEMkqmDDDSbZ4GFQgapeLvAoMgp4F7wuAFgfJve6cAafoSeKy8RyCbqb9soYJcB9RZezn2BkngV2BADg",
+            "derivation_path": None,
+            "name": "p2sh-p2wsh",
+            "first_address": None,
+        },
+    ]
