@@ -8,6 +8,7 @@ from bitcoin_qr_tools.data import (
 )
 from bitcoin_qr_tools.multipath_descriptor import MultipathDescriptor
 from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
+from bitcoin_qr_tools.unified_encoder import QrExportTypes, UnifiedEncoder
 
 
 def test_descriptor():
@@ -164,12 +165,14 @@ def test_multipath_descriptor_to_qr_fragements():
 
     data = Data.from_str(s, network=bdk.Network.REGTEST)
 
-    ur_fragments = data.generate_fragments_for_qr(qr_type="ur", max_qr_size=100)
+    ur_fragments = UnifiedEncoder.generate_fragments_for_qr(
+        data, qr_export_type=QrExportTypes.ur, max_qr_size=100
+    )
     assert ur_fragments == [
         "ur:bytes/1-2/lpadaocsnscytnktlesphdglhdnyktjojeisdehpdyiydyeceneseeeodleteedidlehdidldydihljyjokpidfyfxemimflhshsgufeenengdjteeieiojyidfpfpjkjyieiheeidfxkkisgugojkeejpeogdethgisgthfkogdfwkkkoiabsndvsvw",
         "ur:bytes/2-2/lpaoaocsnscytnktlesphdglgmjpknjpktjsgukojofgesfliskseteohtehgsiyhfkpioflgmjpgufwjejlecgofegrfegsfxknesfdjlgtkoecjsgrjnfljseoiyjsjtjtidguecfeesjpdlfndyfrehfmdldrdtcnetenjoeyioiekskkhpkiwpcl",
     ]
-    bbqr_fragments = data.generate_fragments_for_qr(qr_type="bbqr")
+    bbqr_fragments = UnifiedEncoder.generate_fragments_for_qr(data, qr_export_type=QrExportTypes.bbqr)
     assert bbqr_fragments == [
         "B$ZU0100AXA5WCUCGAAABUEP5HA6UZNTJVZRJAO2GJIECHA2CQ63QTCHSKL2SU737LHJTWSKVQP3BAEGJEYAEFWWQCXADKB5Q53OIZ3X77Y3FDCR2OGGVHEXAO3627WI36MLXC3AJGHSLCVMTMEFGFJZRN5ML4RHU6HKT5SCHQYVX2FOA5CTVFS6FSMVGNKGIJ6RVOB7OJWUEZLU73L6WUGR2U2WOBRFCIOOCQJ7QHWWMZMZ5WXMZZ7FB4"
     ]
