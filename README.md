@@ -13,8 +13,9 @@
   * Animated QR Codes (BBQR)
   * Animated QR Codes ([UR](https://github.com/BlockchainCommons/Research/blob/master/papers/bcr-2020-005-ur.md)) (Transactions, Descriptors, Jade Wallet Export)
   * Animated QR Codes (Specter)
+  * Animated QR Codes (Foundation Passport)
 * Recognizes (and classifies)  **blazingly fast**  
-* QR Code generation via  `Data.generate_fragments_for_qr()`
+* QR Code generation via  `UnifiedEncoder.generate_fragments_for_qr()`
 * QR Code Widgets, via the widgets `QRCodeWidget`,  `QRCodeWidgetSVG`
 
 ### Demo

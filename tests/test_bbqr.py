@@ -2,6 +2,7 @@ import bdkpython as bdk
 
 from bitcoin_qr_tools.data import Data, DataType, serialized_to_hex
 from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
+from bitcoin_qr_tools.unified_encoder import QrExportTypes, UnifiedEncoder
 
 
 def test_qqbr_generator():
@@ -10,7 +11,7 @@ def test_qqbr_generator():
     s = "020000000001010000000000000000000000000000000000000000000000000000000000000000ffffffff0502ad000101ffffffff0200f9029500000000160014b947c0de955cd2ccdfcd5b33198d2656834d0cd50000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf90120000000000000000000000000000000000000000000000000000000000000000000000000"
     data = Data.from_str(s, network=bdk.Network.REGTEST)
 
-    fragments = data.generate_fragments_for_qr(qr_type="bbqr")
+    fragments = UnifiedEncoder.generate_fragments_for_qr(data, qr_export_type=QrExportTypes.bbqr)
     assert fragments == [
         "B$ZT0100MNRAAASGIYDAFYB7CCYDFLIFVICLDGAYPYZE2BIJRMYYR3DUH5YG62WMUUZ7PT2GDNF7NKUFGX57EXEF5FJMWUSZUW4PF3NDN4ZPNBIX5763KXZZ6P7OFTHA2KMEZNWOZKMUSW52L7PTBG7O27ZZGUMBSD2SAAAA"
     ]
@@ -28,7 +29,9 @@ def test_qqbr_generator():
     s = "cHNidP8BAMkCAAAAAw0LFe2nYZVhWGRFccsyZ1kWzineRsUq2xM/gJAqfHvYAAAAAAD/////T3KwcSU2a3qn8J9opvAs61NbbruFTmebo4ZCgIJ/sukAAAAAAP////939XUhgWBqk1icrzcEAFQmsv6hKPx9tlzuQi23gby5FwAAAAAA/////wKMz/AIAAAAABl2qRTsAZMBxEueuw2aJIjg8T6WUlNfLIisjM/wCAAAAAAZdqkU2HPa6z2Y7ajbpVoE6X4P6H4wpZiIrAAAAAAAAQBVAgAAAAGt3gAAAAAAAO++AAAAAAAAAAAAAAAAAAAAAAAAAAAAAEkAAAAA/////wEA4fUFAAAAABl2qRQLJTen1vPMZoyen6AwP/s8rW6bgYisAAAAACIGAyvjcoAdhGDdpSrheKrXdKVIALpW+UnJe4ovUeKZIJ0GDA8FaUMAAAAAAAAAAAABAFUCAAAAAa3eAAAAAAAA774AAAAAAAAAAAAAAAAAAAAAAAAAAAAASQAAAAD/////AQDh9QUAAAAAGXapFIKLdGycxuL7uJOU9U/0Dv/SpLZRiKwAAAAAIgYC2SKQO46ylbsjL8AwTYjPF1WmAXkVb6j4SXDw1ActX7sMDwVpQwAAAAABAAAAAAEAVQIAAAABrd4AAAAAAADvvgAAAAAAAAAAAAAAAAAAAAAAAAAAAABJAAAAAP////8BAOH1BQAAAAAZdqkUEYjZdEwP6Oj67HctDEgb+BQA+QmIrAAAAAAiBgIftCPUJRLknXWp0nQVBHp0N4JDz3ruB8G2m6faCgPUKAwPBWlDAAAAAAIAAAAAACICAvLUgjZaHo6bv8yDAUEEjplJ+O+66bnba7+r2FSYtfZHEA8FaUMMAAAAIgAAAGADAAAA"
     data = Data.from_str(s, network=bdk.Network.REGTEST)
 
-    fragments = data.generate_fragments_for_qr(qr_type="bbqr", max_qr_size=100)
+    fragments = UnifiedEncoder.generate_fragments_for_qr(
+        data, qr_export_type=QrExportTypes.bbqr, max_qr_size=100
+    )
 
     # read it back in
     meta_data_handler = UnifiedDecoder(bdk.Network.REGTEST)
@@ -47,7 +50,7 @@ def test_qqbr_generator():
     s = "wpkh([a42c6dd3]tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks/0/*)#h6kd9udr"
     data = Data.from_str(s, network=bdk.Network.REGTEST)
 
-    fragments = data.generate_fragments_for_qr(qr_type="bbqr")
+    fragments = UnifiedEncoder.generate_fragments_for_qr(data, qr_export_type=QrExportTypes.bbqr)
 
     # read it back in
     meta_data_handler = UnifiedDecoder(bdk.Network.REGTEST)
