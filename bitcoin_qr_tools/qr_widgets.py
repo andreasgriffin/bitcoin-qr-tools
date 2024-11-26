@@ -28,6 +28,7 @@
 
 
 import logging
+import os
 import sys
 from typing import List, Optional, Tuple
 
@@ -36,6 +37,7 @@ from PyQt6.QtCore import QByteArray, QEvent, QObject, QRectF, QSize, Qt, QTimer
 from PyQt6.QtGui import (
     QCloseEvent,
     QEnterEvent,
+    QIcon,
     QImage,
     QKeyEvent,
     QMouseEvent,
@@ -44,13 +46,29 @@ from PyQt6.QtGui import (
     QPixmap,
 )
 from PyQt6.QtSvg import QSvgRenderer
-from PyQt6.QtWidgets import QApplication, QDialog, QSizePolicy, QWidget
+from PyQt6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
 from bitcoin_qr_tools.data import Data
 from bitcoin_qr_tools.qr_generator import QRGenerator
 from bitcoin_qr_tools.unified_encoder import QrExportTypes, UnifiedEncoder
 
 logger = logging.getLogger(__name__)
+
+
+def resource_path(*parts: str):
+    pkg_dir = os.path.split(os.path.realpath(__file__))[0]
+    return os.path.join(pkg_dir, *parts)
+
+
+def icon_path(icon_basename: str):
+    return resource_path("gui", "icons", icon_basename)
 
 
 def pil_image_to_qimage(im: Image.Image):
@@ -115,7 +133,9 @@ class ImageWidget(QWidget):
 
 
 class EnlargableImageWidget(ImageWidget):
-    def __init__(self, pil_image: Image.Image = None, parent=None, size_hint: Tuple[int, int] = None):
+    def __init__(
+        self, pil_image: Image.Image | None = None, parent=None, size_hint: Tuple[int, int] | None = None
+    ):
         super().__init__(pil_image, parent, size_hint=size_hint)
         self.enlarged_image: Optional[EnlargedImage] = None
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -178,6 +198,32 @@ class EnlargedImage(ImageWidget):
     def keyPressEvent(self, event: QKeyEvent | None):
         if event and event.key() == Qt.Key.Key_Escape:
             self.close()
+
+
+class EnlargableImageWidgetWithButton(QWidget):
+    def __init__(
+        self,
+        pil_image: Image.Image | None = None,
+        parent: QWidget | None = None,
+        size_hint: Tuple[int, int] | None = None,
+    ):
+        super().__init__(parent)
+
+        layout = QVBoxLayout(self)
+        self.enlargable_widget = EnlargableImageWidget(pil_image=pil_image, parent=self, size_hint=size_hint)
+
+        layout.addWidget(self.enlargable_widget)
+
+        self.button_enlarge_qr = QPushButton()
+        self.button_enlarge_qr.setIcon(QIcon(icon_path("zoom.png")))
+        # self.button_enlarge_qr.setIconSize(QSize(30, 30))  # 24x24 pixels
+        self.button_enlarge_qr.clicked.connect(self.enlargable_widget.enlarge_image)
+        self.button_enlarge_qr.setText(self.tr("Enlarge"))
+        self.button_enlarge_qr.setMaximumWidth(200)
+        layout.addWidget(self.button_enlarge_qr, alignment=Qt.AlignmentFlag.AlignHCenter)
+
+    def load_from_file(self, filepath: str):
+        self.enlargable_widget.load_from_file(filepath=filepath)
 
 
 class QRCodeWidget(EnlargableImageWidget):
@@ -438,13 +484,21 @@ if __name__ == "__main__":
     import bdkpython as bdk
 
     app = QApplication(sys.argv)
-    widget = QRCodeWidgetSVG()
 
+    main = QWidget()
+    layout = QVBoxLayout(main)
+
+    svg_widget = QRCodeWidgetSVG()
     psbt = "cHNidP8BAHEBAAAAAXgQzjk+DTWQTPUtRMbYiheC0jfbipvw+jQ5lidmyABjAAAAAAD9////AgDh9QUAAAAAFgAUbBuOQOlcnz8vpruh2Kb3CFr4vlhkEQ2PAAAAABYAFN1n2hvBWYzshD42xwQzy9XYoji3BAEAAAABAKoCAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////BQKYAAEB/////wIA+QKVAAAAABYAFLlHwN6VXNLM381bMxmNJlaDTQzVAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkBIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBHwD5ApUAAAAAFgAUuUfA3pVc0szfzVszGY0mVoNNDNUiBgISCnRxeOxzC0MgK01AmiIRLrgS1AyIqKeBkdwL+nt/6RikLG3TVAAAgAEAAIAAAACAAAAAAAAAAAAAACICAlQcwExiTUk9f7olLkwPlQpiregRHc9jXXFJBlMoucgNGKQsbdNUAACAAQAAgAAAAIAAAAAAAQAAAAA="
     data: Data = Data.from_str(psbt, network=bdk.Network.REGTEST)
     fragments = UnifiedEncoder.generate_fragments_for_qr(data=data, qr_export_type=QrExportTypes.bbqr)
+    svg_widget.set_data_list(fragments)
 
-    widget.set_data_list(fragments)
-    widget.show()
+    enlarable_widget2 = EnlargableImageWidgetWithButton()
+    enlarable_widget2.load_from_file("docs/bad-light.png")
+
+    layout.addWidget(svg_widget)
+    layout.addWidget(enlarable_widget2)
+    main.show()
 
     sys.exit(app.exec())

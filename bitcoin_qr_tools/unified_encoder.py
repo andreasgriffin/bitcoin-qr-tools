@@ -23,7 +23,7 @@ class QrExportType:
 
 class QrExportTypes:
     bbqr = QrExportType("bbqr", "BBQr")
-    ur = QrExportType("ur", "Legacy")
+    ur = QrExportType("ur", "UR")
     text = QrExportType("text", "Text")
 
     @classmethod
