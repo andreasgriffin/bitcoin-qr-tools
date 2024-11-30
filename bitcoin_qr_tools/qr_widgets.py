@@ -30,6 +30,7 @@
 import logging
 import os
 import sys
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 from PIL import Image
@@ -346,37 +347,35 @@ class QRCodeWidgetSVG(QWidget):
             self.enlarge_image()
         super().mousePressEvent(event)
 
-    def save_file(self, base_filename: str, image_format="PNG", antialias=False):
+    def save_file(self, filename: Path, antialias=False):
         """Save all QR codes to files. If format is 'GIF', combines them into
         an animated GIF.
 
-        :param base_filename: Base path and filename without extension.
-        :param format: The format in which to save the image (e.g.,
-            'PNG', 'GIF').
+        :param filename:
         :param antialias: Boolean to indicate if anti-aliasing should be
             used.
         """
-        if image_format.upper() == "GIF":
-            images = []
+        if len(self.svg_renderers) > 1:
+            images: List[Image.Image] = []
             for renderer in self.svg_renderers:
                 if not renderer.isValid():
                     continue
-                images.append(self.renderer_to_pil(renderer, antialias, image_format))
+                images.append(self.renderer_to_pil(renderer, antialias))
             images[0].save(
-                f"{base_filename}.{image_format.lower()}",
+                str(filename),
+                format="gif",
                 save_all=True,
                 append_images=images[1:],
                 loop=0,
                 duration=1000,
             )
-        else:
-            for i, renderer in enumerate(self.svg_renderers):
-                if not renderer.isValid():
-                    continue
+        elif len(self.svg_renderers) == 1:
+            renderer = self.svg_renderers[0]
+            if renderer.isValid():
                 image = self.renderer_to_pil(renderer, antialias)
-                image.save(f"{base_filename}_{i}.{image_format.lower()}")
+                image.save(str(filename))
 
-    def renderer_to_pil(self, renderer: QSvgRenderer, antialias: bool, image_format="PNG"):
+    def renderer_to_pil(self, renderer: QSvgRenderer, antialias: bool) -> Image.Image:
         """Convert a QR code renderer to a PIL Image.
 
         :param renderer: The QR code renderer.
