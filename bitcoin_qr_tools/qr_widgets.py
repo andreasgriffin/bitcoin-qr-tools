@@ -270,7 +270,9 @@ class QRCodeWidgetSVG(QWidget):
             else:
                 self.enlarged_image.update_image(None)
         self.manage_animation()
-        self.update()
+        # if i update, when it is not visible, then I force the window to show
+        if self.isVisible():
+            self.update()
 
     def set_data_list(self, data_list: List[str]):
         self.set_renderers(
