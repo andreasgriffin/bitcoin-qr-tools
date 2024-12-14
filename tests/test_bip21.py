@@ -1,6 +1,6 @@
 import bdkpython as bdk
 
-from bitcoin_qr_tools.data import Data, DataType, DecodingException, is_bitcoin_address
+from bitcoin_qr_tools.data import ConverterAddress, Data, DataType, DecodingException
 
 # random addresses from mainnet blockchain
 TEST_ADDRESSES = [
@@ -19,7 +19,7 @@ def test_address():
         assert data.data == {"address": s}
 
         # test it is not a bitcoin address for regtest
-        assert not is_bitcoin_address(s, bdk.Network.REGTEST)
+        assert not ConverterAddress.is_bitcoin_address(s, bdk.Network.REGTEST)
 
     # test that it is only valid for this network
     for s in TEST_ADDRESSES:

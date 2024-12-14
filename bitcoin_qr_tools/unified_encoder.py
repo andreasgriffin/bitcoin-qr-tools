@@ -6,7 +6,12 @@ from typing import List
 import bdkpython as bdk
 
 from bitcoin_qr_tools.bbqr.split import split_qrs
-from bitcoin_qr_tools.data import Data, DataType, hex_to_serialized
+from bitcoin_qr_tools.data import Data, DataType
+from bitcoin_qr_tools.ur_tools import URTools
+from bitcoin_qr_tools.urtypes.bytes import BYTES
+from bitcoin_qr_tools.urtypes.crypto.output import CRYPTO_OUTPUT
+from bitcoin_qr_tools.urtypes.crypto.psbt import CRYPTO_PSBT
+from bitcoin_qr_tools.utils import hex_to_serialized
 
 from .ur.cbor_lite import CBOREncoder
 from .ur.ur import UR
@@ -146,11 +151,17 @@ class UnifiedEncoder:
 
             if data.data_type == DataType.Tx:
                 return cls.bytes_to_ur_byte_fragments(
-                    hex_to_serialized(serialized), type="bytes", max_qr_size=max_qr_size
+                    hex_to_serialized(serialized), type=BYTES.type, max_qr_size=max_qr_size
                 )
             elif data.data_type == DataType.PSBT:
                 return cls.bytes_to_ur_byte_fragments(
-                    base64.b64decode(serialized.encode()), type="crypto-psbt", max_qr_size=max_qr_size
+                    base64.b64decode(serialized.encode()), type=CRYPTO_PSBT.type, max_qr_size=max_qr_size
+                )
+            elif data.data_type == DataType.Descriptor:
+                return cls.bytes_to_ur_byte_fragments(
+                    URTools.encode_ur_output(descriptor_str=serialized).to_cbor(),
+                    type=CRYPTO_OUTPUT.type,
+                    max_qr_size=max_qr_size,
                 )
             else:
                 return cls.bytes_to_ur_byte_fragments(

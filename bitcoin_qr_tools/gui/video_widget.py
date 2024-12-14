@@ -35,7 +35,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from .cv2camera import CV2Camera
+from ..cv2camera import CV2Camera
 
 
 def threaded_list(f, args):

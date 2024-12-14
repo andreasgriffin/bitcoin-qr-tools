@@ -9,13 +9,13 @@
   * Multipath Descriptor (like Sparrow)
   * Partial descriptors (Specter DIY) (finger print , derivation, xpub)
   * TxId
-  * Wallet Export Infos (Sparrow Format, Coldcard Sparrow QR format, Specter DIY, ...)
-  * Animated QR Codes (BBQR)
-  * Animated QR Codes ([UR](https://github.com/BlockchainCommons/Research/blob/master/papers/bcr-2020-005-ur.md)) (Transactions, Descriptors, Jade Wallet Export)
-  * Animated QR Codes (Specter)
-  * Animated QR Codes (Foundation Passport)
+  * SignerInfo(s) for Hardware Signer Exports (Wallet Export)
+  * Animated QR Codes (BBQR), used by Coldcard
+  * Animated QR Codes ([UR](https://github.com/BlockchainCommons/Research/blob/master/papers/bcr-2020-005-ur.md)), used by Foundation Passport, Keystone
+  * Animated QR Codes used by Specter DIY
 * Recognizes (and classifies)  **blazingly fast**  
-* QR Code generation via  `UnifiedEncoder.generate_fragments_for_qr()`
+* Animated QR Code generation via  `UnifiedEncoder.generate_fragments_for_qr()`
+  * For BBQR, UR, and Specter DIY
 * QR Code Widgets, via the widgets `QRCodeWidget`,  `QRCodeWidgetSVG`
 
 ### Demo

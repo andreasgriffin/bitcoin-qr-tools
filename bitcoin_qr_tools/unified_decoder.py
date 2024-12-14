@@ -8,12 +8,19 @@ import bdkpython as bdk
 
 from bitcoin_qr_tools import bbqr
 from bitcoin_qr_tools.bbqr.consts import FILETYPE_NAMES, KNOWN_FILETYPES
-from bitcoin_qr_tools.data import Data
+from bitcoin_qr_tools.data import Data, DataType
+from bitcoin_qr_tools.signer_info import SignerInfo
+from bitcoin_qr_tools.ur_tools import URTools
+from bitcoin_qr_tools.urtypes.crypto.account import CRYPTO_ACCOUNT
+from bitcoin_qr_tools.urtypes.crypto.output import CRYPTO_OUTPUT
+from bitcoin_qr_tools.urtypes.crypto.psbt import CRYPTO_PSBT
 
 from .ur.ur_decoder import URDecoder
+from .urtypes.bytes import BYTES
 from .urtypes.bytes import Bytes as UR_BYTES
 from .urtypes.crypto import PSBT as UR_PSBT
-from .urtypes.crypto import Output as US_OUTPUT
+from .urtypes.crypto import Account as UR_ACCOUNT
+from .urtypes.crypto import Output as UR_OUTPUT
 
 logger = logging.getLogger(__name__)
 
@@ -126,20 +133,26 @@ class URCollector(BaseCollector):
         super().__init__(network)
         self.clear()
         self.last_received_part: Optional[str] = None
+        # self.all_parts: List = []
 
     def is_psbt(self, s: str):
-        return re.search("^UR:CRYPTO-PSBT/", s, re.IGNORECASE)
+        return re.search(f"^UR:{CRYPTO_PSBT.type.upper()}/", s, re.IGNORECASE)
 
     def is_descriptor(self, s: str):
-        return re.search("^UR:CRYPTO-OUTPUT/", s, re.IGNORECASE)
+        return re.search(f"^UR:{CRYPTO_OUTPUT.type.upper()}/", s, re.IGNORECASE)
+
+    def is_account(self, s: str):
+        return re.search(f"^UR:{CRYPTO_ACCOUNT.type.upper()}/", s, re.IGNORECASE)
 
     def is_bytes(self, s: str):
-        return re.search("^UR:BYTES/", s, re.IGNORECASE)
+        return re.search(f"^UR:{BYTES.type.upper()}/", s, re.IGNORECASE)
 
     def is_correct_data_format(self, s) -> bool:
         if self.is_psbt(s):
             return True
         if self.is_descriptor(s):
+            return True
+        if self.is_account(s):
             return True
         if self.is_bytes(s):
             return True
@@ -150,12 +163,26 @@ class URCollector(BaseCollector):
         return self.decoder.is_complete()
 
     def get_complete_data(self) -> Data:
-        if self.decoder.result.type == "crypto-psbt":
+        if self.decoder.result.type == CRYPTO_OUTPUT.type:
+            return Data(
+                data=SignerInfo.decode_descriptor_as_signer_info(
+                    UR_OUTPUT.from_cbor(self.decoder.result.cbor).descriptor(), network=self.network
+                ),
+                data_type=DataType.SignerInfo,
+                network=self.network,
+            )
+        elif self.decoder.result.type == CRYPTO_ACCOUNT.type:
+            return Data(
+                data=URTools.decode_account_as_signer_infos(
+                    UR_ACCOUNT.from_cbor(self.decoder.result.cbor), network=self.network
+                ),
+                data_type=DataType.SignerInfos,
+                network=self.network,
+            )
+        elif self.decoder.result.type == CRYPTO_PSBT.type:
             qr_content = UR_PSBT.from_cbor(self.decoder.result.cbor).data
             s = base64.b64encode(qr_content).decode("utf-8")
-        if self.decoder.result.type == "crypto-output":
-            s = US_OUTPUT.from_cbor(self.decoder.result.cbor).descriptor()
-        if self.decoder.result.type == "bytes":
+        elif self.decoder.result.type == BYTES.type:
             raw = UR_BYTES.from_cbor(self.decoder.result.cbor).data
             try:
                 # for UR text info
@@ -168,6 +195,7 @@ class URCollector(BaseCollector):
 
     def add(self, s: str) -> Optional[str]:
         self.decoder.receive_part(s)
+        # self.all_parts.append(s)
         logger.debug(f"{self.__class__.__name__}: {round(self.estimated_percent_complete()*100)}% complete")
 
         # if the decoder is stuck for some reason. reset it

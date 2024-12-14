@@ -105,7 +105,7 @@ def test_SignerInfo():
 
 
 def test_signer_infos():
-    #
+    # this is the  sparrow export  format of coldcard
     parts = [
         """{
         "chain": "XRT",
@@ -173,7 +173,7 @@ def test_signer_infos():
     # bdk returns '  instead of h  (which sparrrow does), so the checksum is different
     assert (
         data.data_as_string()
-        == """[SignerInfo({'fingerprint': '0F056943', 'key_origin': 'm/44h/1h/0h', 'xpub': 'tpubDCiHGUNYdRRBPNYm7CqeeLwPWfeb2ZT2rPsk4aEW3eUoJM93jbBa7hPpB1T9YKtigmjpxHrB1522kSsTxGm9V6cqKqrp1EDaYaeJZqcirYB', 'derivation_path': None, 'name': 'p2pkh', 'first_address': 'mtHSVByP9EYZmB26jASDdPVm19gvpecb5R'}), SignerInfo({'fingerprint': '0F056943', 'key_origin': 'm/49h/1h/0h', 'xpub': 'tpubDCDqt7XXvhAYY9HSwrCXB7BXqYM4RXB8WFtKgtTXGa6u3U6EV1NJJRFTcuTRyhSY5Vreg1LP8aPdyiAPQGrDJLikkHoc7VQg6DA9NtUxHtj', 'derivation_path': None, 'name': 'p2sh-p2wpkh', 'first_address': '2NCAJ5wD4GvmW32GFLVybKPNphNU8UYoEJv'}), SignerInfo({'fingerprint': '0F056943', 'key_origin': 'm/84h/1h/0h', 'xpub': 'tpubDC7jGaaSE66Pn4dgtbAAstde4bCyhSUs4r3P8WhMVvPByvcRrzrwqSvpF9Ghx83Z1LfVugGRrSBko5UEKELCz9HoMv5qKmGq3fqnnbS5E9r', 'derivation_path': None, 'name': 'p2wpkh', 'first_address': 'bcrt1qupyd58ndsh7lut0et0vtrq432jvu9jtdx8fgyv'}), SignerInfo({'fingerprint': '0F056943', 'key_origin': 'm/48h/1h/0h/1h', 'xpub': 'tpubDF2rnouQaaYrUEy2JM1YD3RFzew4onawGM4X2Re67gguTf5CbHonBRiFGe3Xjz7DK88dxBFGf2i7K1hef3PM4cFKyUjcbJXddaY9F5tJBoP', 'derivation_path': None, 'name': 'p2sh-p2wsh', 'first_address': None}), SignerInfo({'fingerprint': '0F056943', 'key_origin': 'm/48h/1h/0h/2h', 'xpub': 'tpubDF2rnouQaaYrXF4noGTv6rQYmx87cQ4GrUdhpvXkhtChwQPbdGTi8GA88NUaSrwZBwNsTkC9bFkkC8vDyGBVVAQTZ2AS6gs68RQXtXcCvkP', 'derivation_path': None, 'name': 'p2wsh', 'first_address': None}), SignerInfo({'fingerprint': '0F056943', 'key_origin': 'm/45h', 'xpub': 'tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n', 'derivation_path': None, 'name': 'p2sh', 'first_address': None})]"""
+        == '{"chain": "XRT", "xfp": "0F056943", "p2pkh": {"xpub": "tpubDCiHGUNYdRRBPNYm7CqeeLwPWfeb2ZT2rPsk4aEW3eUoJM93jbBa7hPpB1T9YKtigmjpxHrB1522kSsTxGm9V6cqKqrp1EDaYaeJZqcirYB", "deriv": "m/44h/1h/0h", "first": "mtHSVByP9EYZmB26jASDdPVm19gvpecb5R", "name": "p2pkh"}, "p2sh-p2wpkh": {"xpub": "tpubDCDqt7XXvhAYY9HSwrCXB7BXqYM4RXB8WFtKgtTXGa6u3U6EV1NJJRFTcuTRyhSY5Vreg1LP8aPdyiAPQGrDJLikkHoc7VQg6DA9NtUxHtj", "deriv": "m/49h/1h/0h", "first": "2NCAJ5wD4GvmW32GFLVybKPNphNU8UYoEJv", "name": "p2sh-p2wpkh"}, "p2wpkh": {"xpub": "tpubDC7jGaaSE66Pn4dgtbAAstde4bCyhSUs4r3P8WhMVvPByvcRrzrwqSvpF9Ghx83Z1LfVugGRrSBko5UEKELCz9HoMv5qKmGq3fqnnbS5E9r", "deriv": "m/84h/1h/0h", "first": "bcrt1qupyd58ndsh7lut0et0vtrq432jvu9jtdx8fgyv", "name": "p2wpkh"}, "p2sh-p2wsh": {"xpub": "tpubDF2rnouQaaYrUEy2JM1YD3RFzew4onawGM4X2Re67gguTf5CbHonBRiFGe3Xjz7DK88dxBFGf2i7K1hef3PM4cFKyUjcbJXddaY9F5tJBoP", "deriv": "m/48h/1h/0h/1h", "first": null, "name": "p2sh-p2wsh"}, "p2wsh": {"xpub": "tpubDF2rnouQaaYrXF4noGTv6rQYmx87cQ4GrUdhpvXkhtChwQPbdGTi8GA88NUaSrwZBwNsTkC9bFkkC8vDyGBVVAQTZ2AS6gs68RQXtXcCvkP", "deriv": "m/48h/1h/0h/2h", "first": null, "name": "p2wsh"}, "p2sh": {"xpub": "tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n", "deriv": "m/45h", "first": null, "name": "p2sh"}}'
     )
 
 
@@ -235,7 +235,7 @@ def test_multisig_signer_infos_coldcard_qr():
     # bdk returns '  instead of h  (which sparrrow does), so the checksum is different
     assert (
         data.data_as_string()
-        == """[SignerInfo({'fingerprint': '0F056943', 'key_origin': 'm/45h', 'xpub': 'tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n', 'derivation_path': None, 'name': 'p2sh', 'first_address': None}), SignerInfo({'fingerprint': '0F056943', 'key_origin': 'm/48h/1h/0h/1h', 'xpub': 'tpubDF2rnouQaaYrUEy2JM1YD3RFzew4onawGM4X2Re67gguTf5CbHonBRiFGe3Xjz7DK88dxBFGf2i7K1hef3PM4cFKyUjcbJXddaY9F5tJBoP', 'derivation_path': None, 'name': 'p2sh_p2wsh', 'first_address': None}), SignerInfo({'fingerprint': '0F056943', 'key_origin': 'm/48h/1h/0h/2h', 'xpub': 'tpubDF2rnouQaaYrXF4noGTv6rQYmx87cQ4GrUdhpvXkhtChwQPbdGTi8GA88NUaSrwZBwNsTkC9bFkkC8vDyGBVVAQTZ2AS6gs68RQXtXcCvkP', 'derivation_path': None, 'name': 'p2wsh', 'first_address': None})]"""
+        == '{"chain": "XRT", "xfp": "0F056943", "p2sh": {"xpub": "tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n", "deriv": "m/45h", "first": null, "name": "p2sh"}, "p2sh_p2wsh": {"xpub": "tpubDF2rnouQaaYrUEy2JM1YD3RFzew4onawGM4X2Re67gguTf5CbHonBRiFGe3Xjz7DK88dxBFGf2i7K1hef3PM4cFKyUjcbJXddaY9F5tJBoP", "deriv": "m/48h/1h/0h/1h", "first": null, "name": "p2sh_p2wsh"}, "p2wsh": {"xpub": "tpubDF2rnouQaaYrXF4noGTv6rQYmx87cQ4GrUdhpvXkhtChwQPbdGTi8GA88NUaSrwZBwNsTkC9bFkkC8vDyGBVVAQTZ2AS6gs68RQXtXcCvkP", "deriv": "m/48h/1h/0h/2h", "first": null, "name": "p2wsh"}}'
     )
 
 
