@@ -1,3 +1,5 @@
+import binascii
+
 import bdkpython as bdk
 
 from bitcoin_qr_tools.data import (
@@ -5,6 +7,7 @@ from bitcoin_qr_tools.data import (
     DataType,
     DecodingException,
     InconsistentDescriptors,
+    SignerInfo,
 )
 from bitcoin_qr_tools.multipath_descriptor import MultipathDescriptor
 from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
@@ -41,11 +44,10 @@ def test_descriptor():
     meta_data_handler.add(s)
     assert meta_data_handler.is_complete()
     data = meta_data_handler.get_complete_data()
-    assert isinstance(data.data, bdk.Descriptor)
-    print(s), print(data.data.as_string_private())
+    assert isinstance(data.data, SignerInfo)
     assert (
-        data.data.as_string_private()
-        == "wpkh([7d315cd9/84'/1'/0']tpubDCUCSorYswSAurXv7ZcwfkPR8ms2fmxkEW7LFHuLs85wsCngaNAEVFkAvZSabsnz2VH6NvH4uFd4tZ8J3PSaVaxchE8QCd9wxak5Sugnd9p)#ca2wu8zu"
+        str(data.data)
+        == "{'fingerprint': '7d315cd9', 'key_origin': 'm/84h/1h/0h', 'xpub': 'tpubDCUCSorYswSAurXv7ZcwfkPR8ms2fmxkEW7LFHuLs85wsCngaNAEVFkAvZSabsnz2VH6NvH4uFd4tZ8J3PSaVaxchE8QCd9wxak5Sugnd9p', 'derivation_path': None, 'name': 'p2wpkh', 'first_address': None}"
     )
 
 
@@ -158,6 +160,23 @@ def test_multipath_descriptor():
     assert exceptionwas_raised
 
 
+def test_descriptor_to_qr_fragements():
+    # test descriptor
+    s = "wpkh([a42c6dd3]tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks/0/*)#h6kd9udr"
+    data = Data.from_str(s, network=bdk.Network.REGTEST)
+    assert data.data_type == DataType.Descriptor
+    assert isinstance(data.data, bdk.Descriptor)
+    assert data.data.as_string_private() == s
+
+    ur_fragments = UnifiedEncoder.generate_fragments_for_qr(
+        data, qr_export_type=QrExportTypes.ur, max_qr_size=100
+    )
+    assert ur_fragments == [
+        "ur:crypto-output/1-2/lpadaocskicyioataxfmhdfhhdkgtaadmwtaaddlosaowkaxhdclaxeotbflaeneoxfpflweiotkonvthylocxpsjkambbgevodichflmdzowzcntlltaaaahdcxrkrsrdaavylncwfrhhlogahkfnbdmddyoy",
+        "ur:crypto-output/2-2/lpaoaocskicyioataxfmhdfhvakpoxwmnnjofhryjsmnbgpmfhynpmcxndcmpdahtaadehoeadaeaoadamtaaddyotadlaaocyoxdwjnteaxaeattaaddyoeadlraewklawkaxaeaycywywfjpwkaebdbtclnl",
+    ]
+
+
 def test_multipath_descriptor_to_qr_fragements():
 
     # 2 descriptors in 2 lines  (coldcard style)
@@ -180,9 +199,11 @@ def test_multipath_descriptor_to_qr_fragements():
 
 def test_jade_wallet_export_as_signer_infos():
     s = "23204578706f7274656420627920426c6f636b73747265616d204a6164650a4e616d653a206877693333373463326535356334620a506f6c6963793a2032206f6620330a466f726d61743a2050325753480a44657269766174696f6e3a206d2f3438272f31272f30272f32270a31346339343962343a20747075624444767444534774354a6d677867705270336e795a6a33554c5a76465775553941615336783355776b4e453676614e677a64366f794b594551557a5365765551733273746535517a6e70624e384e74356256625a76724a46704371773955505843746e43757445764577570a44657269766174696f6e3a206d2f3438272f31272f30272f32270a64386366373437353a207470756244454455695563776d6f433932514a326b4750517774696b47714c726a6479556675524d686d356162346e596d67526b6b4b5046396d70324663756e7a4d75397935456132757247554a683474316f375762364b6a4b64647a4a4b634538426f417954574b36756768464b0a44657269766174696f6e3a206d2f3438272f31272f30272f32270a64356234333534303a207470756244466e43634b5533695546347350655143363872326577446142423754764c6d514254733132686e4e53386e753643506a5a506d7a61707037576f7a36626b46754c66536a5370673667616368654b4261574268446e456245704b74436e564664516e666859476b5051460a"
+    decoded = binascii.unhexlify(s).decode("utf-8")
 
-    data = Data.from_str(s, network=bdk.Network.REGTEST)
+    data = Data.from_str(decoded, network=bdk.Network.REGTEST)
+    assert data.data_type == DataType.MultisigWalletExport
     assert (
         data.data_as_string()
-        == "[SignerInfo({'fingerprint': '14c949b4', 'key_origin': 'm/48h/1h/0h/2h', 'xpub': 'tpubDDvtDSGt5JmgxgpRp3nyZj3ULZvFWuU9AaS6x3UwkNE6vaNgzd6oyKYEQUzSevUQs2ste5QznpbN8Nt5bVbZvrJFpCqw9UPXCtnCutEvEwW', 'derivation_path': None, 'name': None, 'first_address': None}), SignerInfo({'fingerprint': 'd8cf7475', 'key_origin': 'm/48h/1h/0h/2h', 'xpub': 'tpubDEDUiUcwmoC92QJ2kGPQwtikGqLrjdyUfuRMhm5ab4nYmgRkkKPF9mp2FcunzMu9y5Ea2urGUJh4t1o7Wb6KjKddzJKcE8BoAyTWK6ughFK', 'derivation_path': None, 'name': None, 'first_address': None}), SignerInfo({'fingerprint': 'd5b43540', 'key_origin': 'm/48h/1h/0h/2h', 'xpub': 'tpubDFnCcKU3iUF4sPeQC68r2ewDaBB7TvLmQBTs12hnNS8nu6CPjZPmzapp7Woz6bkFuLfSjSpg6gacheKBaWBhDnEbEpKtCnVFdQnfhYGkPQF', 'derivation_path': None, 'name': None, 'first_address': None})]"
+        == "#  Multisig setup file (created by Bitcoin Safe)\n#\nName: hwi3374c2e55c4b\nPolicy: 2 of 3\nFormat: P2WSH\n\nDerivation: m/48h/1h/0h/2h\n14c949b4: tpubDDvtDSGt5JmgxgpRp3nyZj3ULZvFWuU9AaS6x3UwkNE6vaNgzd6oyKYEQUzSevUQs2ste5QznpbN8Nt5bVbZvrJFpCqw9UPXCtnCutEvEwW\nDerivation: m/48h/1h/0h/2h\nd8cf7475: tpubDEDUiUcwmoC92QJ2kGPQwtikGqLrjdyUfuRMhm5ab4nYmgRkkKPF9mp2FcunzMu9y5Ea2urGUJh4t1o7Wb6KjKddzJKcE8BoAyTWK6ughFK\nDerivation: m/48h/1h/0h/2h\nd5b43540: tpubDFnCcKU3iUF4sPeQC68r2ewDaBB7TvLmQBTs12hnNS8nu6CPjZPmzapp7Woz6bkFuLfSjSpg6gacheKBaWBhDnEbEpKtCnVFdQnfhYGkPQF"
     )

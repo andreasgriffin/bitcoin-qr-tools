@@ -1,338 +1,32 @@
 import base64
-import binascii
 import enum
-import hashlib
 import json
 import logging
 import re
 import urllib.parse
+from dataclasses import dataclass
 from decimal import Decimal
 from os import fdopen
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import base58
 import bdkpython as bdk
+
+from bitcoin_qr_tools.converter_xpub import ConverterXpub
+from bitcoin_qr_tools.i18n import translate
+from bitcoin_qr_tools.signer_info import SignerInfo
+from bitcoin_qr_tools.utils import (
+    DecodingException,
+    InconsistentDescriptors,
+    InvalidBitcoinURI,
+    WrongNetwork,
+    serialized_to_hex,
+)
 
 from .multipath_descriptor import MultipathDescriptor
 
 BITCOIN_BIP21_URI_SCHEME = "bitcoin"
 logger = logging.getLogger(__name__)
-
-
-def is_bitcoin_address(s, network: bdk.Network):
-    try:
-        bdkaddress = bdk.Address(s, network)
-        return bool(bdkaddress) and bdkaddress.is_valid_for_network(network=network)
-    except:
-        return False
-
-
-class InvalidBitcoinURI(Exception):
-    pass
-
-
-def serialized_to_hex(serialized):
-    return bytes(serialized).hex()
-
-
-def hex_to_serialized(hex_string):
-    return bytes.fromhex(hex_string)
-
-
-def decode_bip21_uri(uri: str, network: bdk.Network) -> dict:
-    """Raises InvalidBitcoinURI on malformed URI."""
-    TOTAL_COIN_SUPPLY_LIMIT_IN_BTC = 21000000
-    COIN = 100000000
-
-    if not isinstance(uri, str):
-        raise InvalidBitcoinURI(f"expected string, not {repr(uri)}")
-
-    if ":" not in uri:
-        if is_bitcoin_address(uri, network=network):
-            return {"address": uri}
-        else:
-            raise InvalidBitcoinURI("Not a bitcoin address")
-
-    u = urllib.parse.urlparse(uri)
-    if u.scheme.lower() != BITCOIN_BIP21_URI_SCHEME:
-        raise InvalidBitcoinURI("Not a bitcoin URI")
-    address = u.path
-
-    # python for android fails to parse query
-    if address.find("?") > 0:
-        address, query = u.path.split("?")
-        pq = urllib.parse.parse_qs(query)
-    else:
-        pq = urllib.parse.parse_qs(u.query)
-
-    for k, v in pq.items():
-        if len(v) != 1:
-            raise InvalidBitcoinURI(f"Duplicate Key: {repr(k)}")
-
-    out: Dict[str, Any] = {k: v[0] for k, v in pq.items()}
-    if address:
-        if not is_bitcoin_address(address, network=network):
-            raise InvalidBitcoinURI(f"Invalid bitcoin address: {address}")
-        out["address"] = address
-    if "amount" in out:
-        am = out["amount"]
-        try:
-            m = re.match(r"([0-9.]+)X([0-9])", am)
-            if m:
-                amount = Decimal(m.group(1)) * pow(Decimal(10), int(m.group(2)) - 8)
-            else:
-                amount = Decimal(am) * COIN
-            if amount > TOTAL_COIN_SUPPLY_LIMIT_IN_BTC * COIN:
-                raise InvalidBitcoinURI(f"amount is out-of-bounds: {amount!r} BTC")
-            out["amount"] = int(amount)
-        except Exception as e:
-            raise InvalidBitcoinURI(f"failed to parse 'amount' field: {repr(e)}") from e
-    if "message" in out:
-        out["message"] = out["message"]
-        out["memo"] = out["message"]
-    if "time" in out:
-        try:
-            out["time"] = int(out["time"])
-        except Exception as e:
-            raise InvalidBitcoinURI(f"failed to parse 'time' field: {repr(e)}") from e
-    if "exp" in out:
-        try:
-            out["exp"] = int(out["exp"])
-        except Exception as e:
-            raise InvalidBitcoinURI(f"failed to parse 'exp' field: {repr(e)}") from e
-    if "sig" in out:
-        try:
-            out["sig"] = serialized_to_hex(out["sig"])
-        except Exception as e:
-            raise InvalidBitcoinURI(f"failed to parse 'sig' field: {repr(e)}") from e
-
-    return out
-
-
-def is_xpub(s: str) -> bool:
-    if not s.isalnum():
-        return False
-    first_four_letters = s[:4]
-    return first_four_letters.endswith("pub")
-
-
-class SignerInfo:
-    def __init__(
-        self,
-        fingerprint: str,
-        key_origin: str,
-        xpub: str,
-        derivation_path: Optional[str] = None,
-        name: Optional[str] = None,
-        first_address: Optional[str] = None,
-    ) -> None:
-        self.fingerprint = fingerprint
-        self.key_origin = self.format_key_origin(key_origin)
-        self.xpub = xpub
-        self.derivation_path = derivation_path
-        self.name = name
-        self.first_address = first_address
-
-    def format_key_origin(self, value):
-        assert value.startswith("m/"), "The value must start with m/"
-        return value.replace("'", "h")
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.__dict__})"
-
-    def __str__(self) -> str:
-        return f"{self.__dict__}"
-
-    def __eq__(self, other: object) -> bool:
-        return self.__dict__ == other.__dict__
-
-
-def extract_signer_info(s: str) -> SignerInfo:
-    """
-    Splits 1 keystore,e.g. "[a42c6dd3/84'/1'/0']xpub/0/*"
-    into fingerprint, key_origin, xpub, wallet_path
-
-    It also replaces the "'" into "h"
-
-    It overwrites fingerprint, key_origin, xpub  in default_keystore.
-    """
-
-    def key_origin_contains_valid_characters(s: str) -> bool:
-        # Matches strings that consist of 'h', '/', digits, and optionally ends with a single quote
-        return re.fullmatch("[mh/0-9']*", s) is not None
-
-    def extract_groups(string: str, pattern):
-        match = re.match(pattern, string)
-        if match is None:
-            raise Exception(f"'{string}' does not match the required pattern!")
-        return match.groups()
-
-    groups = extract_groups(s, r"\[(.*?)\/(.*?)\](.*?)(\/.*?)?$")
-
-    key_origin = "m/" + groups[1].replace("'", "h")
-    # guard against false positive detections
-    assert key_origin_contains_valid_characters(key_origin)
-
-    return SignerInfo(
-        fingerprint=groups[0],
-        key_origin=key_origin,
-        xpub=groups[2],
-        derivation_path=groups[3],
-    )
-
-
-def is_valid_bitcoin_hash(hash: str) -> bool:
-    import re
-
-    if re.match("^[a-f0-9]{64}$", hash):
-        return True
-    else:
-        return False
-
-
-def is_valid_wallet_fingerprint(fingerprint: str) -> bool:
-    import re
-
-    if re.match("^[a-fA-F0-9]{8}$", fingerprint):
-        return True
-    else:
-        return False
-
-
-###############  here is the simplified electrum base43 code
-def base43_decode(v: str):
-    __b43chars = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$*+-./:"
-    assert len(__b43chars) == 43
-    __b43chars_inv = {v: k for k, v in enumerate(__b43chars)}
-
-    base = 43
-    num = 0
-
-    # Remove leading zeros and adjust length
-    v = v.lstrip("0")
-
-    # Convert each character to a number using the inverse character map
-    for char in v:
-        num = num * base + __b43chars_inv[ord(char)]
-
-    # Convert the number to bytes
-    return num.to_bytes((num.bit_length() + 7) // 8, "big")
-
-
-################ here is the slip132 part
-### see https://github.com/satoshilabs/slips/blob/master/slip-0132.md
-
-
-def get_slip132_version_bytes(slip132_key: str) -> bytes:
-    """Get the version bytes from a SLIP-132 key."""
-    raw_extended_key = base58.b58decode(slip132_key)
-    return raw_extended_key[:4]
-
-
-# Mapping of SLIP-132 version bytes to BIP32 version bytes
-version_bytes_map = {
-    bytes.fromhex("04b24746"): bytes.fromhex("0488b21e"),  # zpub to xpub
-    bytes.fromhex("04b2430c"): bytes.fromhex("0488ade4"),  # zprv to xprv
-    bytes.fromhex("049d7cb2"): bytes.fromhex("0488b21e"),  # ypub to xpub
-    bytes.fromhex("049d7878"): bytes.fromhex("0488ade4"),  # yprv to xprv
-    bytes.fromhex("0295b43f"): bytes.fromhex("0488b21e"),  # Ypub to xpub
-    bytes.fromhex("0295b005"): bytes.fromhex("0488ade4"),  # Yprv to xprv
-    bytes.fromhex("02aa7ed3"): bytes.fromhex("0488b21e"),  # Zpub to xpub
-    bytes.fromhex("02aa7a99"): bytes.fromhex("0488ade4"),  # Zprv to xprv
-    bytes.fromhex("045f1cf6"): bytes.fromhex("043587cf"),  # vpub to tpub
-    bytes.fromhex("045f18bc"): bytes.fromhex("04358394"),  # vprv to tprv
-    bytes.fromhex("044a5262"): bytes.fromhex("043587cf"),  # upub to tpub
-    bytes.fromhex("044a4e28"): bytes.fromhex("04358394"),  # uprv to tprv
-    bytes.fromhex("024289ef"): bytes.fromhex("043587cf"),  # Upub to tpub
-    bytes.fromhex("024285b5"): bytes.fromhex("04358394"),  # Uprv to tprv
-    bytes.fromhex("02575483"): bytes.fromhex("043587cf"),  # Vpub to tpub
-    bytes.fromhex("02575048"): bytes.fromhex("04358394"),  # Vprv to tprv
-}
-
-
-def base58check_decode(s: str) -> bytes:
-    """Decode a Base58Check encoded string to bytes"""
-    # Decode the string
-    data = base58.b58decode(s)
-
-    # Split the data into the payload and the checksum
-    check_sum = data[-4:]
-    payload = data[:-4]
-
-    # Calculate the checksum of the payload
-    calculated_check_sum = hashlib.sha256(hashlib.sha256(payload).digest()).digest()[:4]
-
-    # Compare the calculated checksum with the checksum from the data
-    if check_sum != calculated_check_sum:
-        raise ValueError("Invalid checksum")
-
-    return payload
-
-
-def convert_slip132_to_bip32(slip132_key: str) -> str:
-    """Convert a SLIP-132 extended key to a BIP32 extended key."""
-    raw_extended_key = base58check_decode(slip132_key)
-    slip132_version_bytes = raw_extended_key[:4]
-
-    # Lookup the corresponding BIP32 version bytes
-    bip32_version_bytes = version_bytes_map.get(slip132_version_bytes)
-    if bip32_version_bytes is None:
-        raise ValueError("Unsupported SLIP-132 version bytes")
-
-    # Replace the version bytes of the raw key
-    replaced_version_key = bip32_version_bytes + raw_extended_key[4:]
-
-    # Calculate the checksum of the replaced version key
-    check_sum = hashlib.sha256(hashlib.sha256(replaced_version_key).digest()).digest()[:4]
-
-    # Encode the replaced version key + checksum into Base58
-    bip32_key = base58.b58encode(replaced_version_key + check_sum).decode()
-
-    return bip32_key
-
-
-def is_slip132(key: str) -> bool:
-    try:
-        return get_slip132_version_bytes(key) in version_bytes_map
-    except:
-        return False
-
-
-def is_ndjson_with_keys(s: str, keys: List[str]):
-    """
-    Checks if the input string s is newline-delimited JSON and each JSON object contains the specified keys.
-
-    Args:
-    s (str): The input string to check.
-    keys (list of str): The keys that must be present in each JSON object.
-
-    Returns:
-    bool: True if the string is newline-delimited JSON and each object contains the specified keys, False otherwise.
-    """
-    lines = s.splitlines()
-
-    # Check if there's at least one line
-    if not lines:
-        return False
-
-    for line in lines:
-        try:
-            obj = json.loads(line)
-            # Check if all specified keys are present in the JSON object
-            if not all(key in obj for key in keys):
-                logger.debug(f"ndjson check: Not all required keys {keys} are present in {obj}")
-                return False
-        except json.JSONDecodeError:
-            return False
-
-    return True
-
-
-def is_bip329(s: str) -> bool:
-    try:
-        return is_ndjson_with_keys(s, keys=["type", "ref", "label"])
-    except:
-        return False
 
 
 class DataType(enum.Enum):
@@ -345,8 +39,14 @@ class DataType(enum.Enum):
     PSBT = enum.auto()
     Txid = enum.auto()
     Tx = enum.auto()
-    SignerInfos = enum.auto()  # a list of SignerInfo
+    SignerInfos = (
+        enum.auto()
+    )  # a list of SignerInfo with matching fingerprints (fingerprint, means here the root fingerprint)
     LabelsBip329 = enum.auto()
+    UnrelatedSignerInfos = (
+        enum.auto()
+    )  # a list of SignerInfo, that do not (necessarily share the root fingerprint)
+    MultisigWalletExport = enum.auto()
 
     @classmethod
     def from_value(cls, value: int) -> "DataType":
@@ -359,129 +59,367 @@ class DataType(enum.Enum):
         return list(cls)[names.index(value)]
 
 
-class DecodingException(Exception):
-    pass
-
-
-class InconsistentDescriptors(Exception):
-    pass
-
-
-class WrongNetwork(Exception):
-    pass
-
-
-class Data:
-    """
-    Recognized bitcoin data in a string, gives the data and the DataType
-    """
-
-    def __init__(self, data, data_type: DataType) -> None:
-        self.data = data
-        self.data_type = data_type
-
-    def dump(self) -> Dict:
-        return {"data": self.data_as_string(), "data_type": self.data_type.name}
-
+class ConverterTools:
     @classmethod
-    def from_dump(cls, d: Dict, network: bdk.Network) -> "Data":
-        data = cls.from_str(d["data"], network=network)
-        d["data_type"] = DataType.from_name(d["data_type"])
-        assert d["data_type"] == data.data_type
-        return data
+    def base43_decode(cls, v: str):
+        "here is the simplified electrum base43 code"
+        __b43chars = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$*+-./:"
+        assert len(__b43chars) == 43
+        __b43chars_inv = {v: k for k, v in enumerate(__b43chars)}
 
-    def data_as_string(self) -> str:
-        if isinstance(self.data, str):
-            return self.data
-        if self.data_type == DataType.Bip21:
-            return str(self.data)
-        if self.data_type == DataType.Descriptor:
-            return self.data.as_string_private() if self.data else self.data
-        if self.data_type == DataType.MultiPathDescriptor:
-            return self.data.as_string_private() if self.data else self.data
-        if self.data_type == DataType.SignerInfo:
-            return str(self.data)
-        if self.data_type == DataType.SignerInfos:
-            return str(self.data)
-        if self.data_type == DataType.PSBT:
-            return str(self.data.serialize())
-        if self.data_type == DataType.Tx:
-            return str(serialized_to_hex(self.data.serialize()))
-        if self.data_type == DataType.LabelsBip329:
-            return str(self.data)
+        base = 43
+        num = 0
 
-        return str(self.data)
+        # Remove leading zeros and adjust length
+        v = v.lstrip("0")
 
-    def __str__(self) -> str:
-        return f"{self.data_type.name}: {self.data_as_string()}"
+        # Convert each character to a number using the inverse character map
+        for char in v:
+            num = num * base + __b43chars_inv[ord(char)]
 
-    @classmethod
-    def _try_decode_bip21(cls, s, network: bdk.Network):
-        try:
-            return decode_bip21_uri(s, network=network)
-        except Exception:
-            pass
-
-    @classmethod
-    def _try_get_descriptor(cls, s, network: bdk.Network):
-        try:
-            assert "<" not in s, "This contains characters of a multipath descriptor"
-            assert ">" not in s, "This contains characters of a multipath descriptor"
-            descriptor = bdk.Descriptor(s, network)
-            if descriptor:
-                logger.debug("detected descriptor")
-                return descriptor
-        except Exception:
-            pass
-
-        try:
-            specter_dict = json.loads(s)
-            if "descriptor" in specter_dict:
-                return cls._try_get_descriptor(specter_dict["descriptor"], network=network)
-        except Exception:
-            pass
-
-    @classmethod
-    def _try_get_multipath_descriptor(cls, s, network: bdk.Network):
-        # if new lines are presnt, try checking if there are descriptors in the lines
-        if "\n" in s:
-            splitted_lines = s.split("\n")
-            results = [cls._try_get_multipath_descriptor(line.strip(), network) for line in splitted_lines]
-            # check that all entries return the same multipath descriptor
-            # "None" entries are disallowed, to ensure that no depection is possible
-            if all(results):
-                all_identical = all(
-                    element.as_string_private() == results[0].as_string_private() for element in results
-                )
-                if all_identical:
-                    return results[0]
-                else:
-                    # the string contins multiple inconsitent descriptors.
-                    # Don't know how to handle this properly.
-                    raise InconsistentDescriptors(f"The descriptors {splitted_lines} are inconsistent.")
-            else:
-                # if splitting lines didnt work, then remove the \n and try to recognize all as 1 descriptor
-                s = s.replace("\n", "")
-
-        try:
-            multipath_descriptor = MultipathDescriptor.from_descriptor_str(s, network)
-            if multipath_descriptor:
-                logger.debug("detected descriptor")
-                return multipath_descriptor
-        except Exception:
-            pass
+        # Convert the number to bytes
+        return num.to_bytes((num.bit_length() + 7) // 8, "big")
 
     @classmethod
     def _decoding_strategies(cls):
         return [
             lambda x: base64.b64decode(x),  # base64 decoding
             lambda x: bytes.fromhex(x),  # hex decoding
-            lambda x: base43_decode(x),  # base43 decoding
+            lambda x: cls.base43_decode(x),  # base43 decoding
             lambda x: base58.b58decode(x),
         ]
 
+
+class ConverterTxid:
     @classmethod
-    def _try_decode_psbt_binary(cls, raw: bytes):
+    def is_valid_bitcoin_hash(cls, hash: str) -> bool:
+        import re
+
+        if re.match("^[a-f0-9]{64}$", hash):
+            return True
+        else:
+            return False
+
+
+class ConverterFingerprint:
+    @classmethod
+    def is_valid_wallet_fingerprint(cls, fingerprint: str) -> bool:
+        import re
+
+        if re.match("^[a-fA-F0-9]{8}$", fingerprint):
+            return True
+        else:
+            return False
+
+
+class ConverterAddress:
+    @classmethod
+    def is_bitcoin_address(cls, s, network: bdk.Network):
+        try:
+            bdkaddress = bdk.Address(s, network)
+            return bool(bdkaddress) and bdkaddress.is_valid_for_network(network=network)
+        except:
+            return False
+
+
+@dataclass
+class ConverterMultisigWalletExport:
+    name: str
+    threshold: int
+    address_type_short_name: str
+    signer_infos: List[SignerInfo]
+
+    def to_str(self) -> str:
+        return self.to_custom_str(hardware_signer_name="")
+
+    def to_custom_str(self, hardware_signer_name="Passport") -> str:
+        return f"""# {hardware_signer_name} Multisig setup file (created by Bitcoin Safe)
+#
+Name: {self.name}
+Policy: {self.threshold} of {len(self.signer_infos)}
+Format: {self.address_type_short_name.upper()}
+
+""" + "\n".join(
+            [
+                f"Derivation: {spk_provider.key_origin}\n{spk_provider.fingerprint}: {spk_provider.xpub}"
+                for spk_provider in self.signer_infos
+            ]
+        )
+
+    @classmethod
+    def parse_from_legacy_coldcard(
+        cls, s: str, network: bdk.Network
+    ) -> "Optional[ConverterMultisigWalletExport]":
+        """
+
+        Can parse a string like
+            # Exported by Blockstream Jade
+            Name: hwi3374c2e55c4b
+            Policy: 2 of 3
+            Format: P2WSH
+            Derivation: m/48'/1'/0'/2'
+            14c949b4: tpubDDvtDSGt5JmgxgpRp3nyZj3ULZvFWuU9AaS6x3UwkNE6vaNgzd6oyKYEQUzSevUQs2ste5QznpbN8Nt5bVbZvrJFpCqw9UPXCtnCutEvEwW
+            Derivation: m/48'/1'/0'/2'
+            d8cf7475: tpubDEDUiUcwmoC92QJ2kGPQwtikGqLrjdyUfuRMhm5ab4nYmgRkkKPF9mp2FcunzMu9y5Ea2urGUJh4t1o7Wb6KjKddzJKcE8BoAyTWK6ughFK
+            Derivation: m/48'/1'/0'/2'
+            d5b43540: tpubDFnCcKU3iUF4sPeQC68r2ewDaBB7TvLmQBTs12hnNS8nu6CPjZPmzapp7Woz6bkFuLfSjSpg6gacheKBaWBhDnEbEpKtCnVFdQnfhYGkPQF"
+
+
+        Args:
+            s (str): _description_
+            network (bdk.Network): _description_
+
+        Returns:
+            Optional[ConverterWalletExport]: _description_
+        """
+        lines = s.split("\n")
+
+        def extract_value(line: str, key: str) -> Optional[str]:
+            if line.startswith(key):
+                return line[len(key) :].strip()
+            return None
+
+        def extract_unique(key: str) -> Optional[str]:
+            for line in lines:
+                res = extract_value(line, key=key)
+                if res:
+                    return res
+            return None
+
+        name = extract_unique("Name:")
+        if not name:
+            return None
+
+        policy = extract_unique("Policy:")
+        if not policy:
+            return None
+        if not " of " in policy:
+            return None
+        policy_parts = policy.split(" of ")
+        if len(policy_parts) != 2:
+            return None
+        _threshold, _num_signers = policy_parts
+        try:
+            threshold = int(_threshold.strip())
+            num_signers = int(_num_signers.strip())
+        except:
+            return None
+        if not (0 < threshold <= num_signers):
+            return None
+
+        format = extract_unique("Format:")
+        if not format:
+            return None
+        address_type_short_name = format.strip().lower()
+
+        current_derivation = None
+        # get the signer_infos
+        signer_infos: List[SignerInfo] = []
+        for line in lines:
+            if line.startswith("#"):
+                continue
+
+            # if it is a derivation line
+            if this_derivation := extract_value(line, "Derivation:"):
+                current_derivation = this_derivation
+
+            # if it is a fingerprint
+            if not ":" in line:
+                continue
+            parts = line.split(":")
+            if len(parts) != 2:
+                continue
+            first, last = parts
+            if not ConverterFingerprint.is_valid_wallet_fingerprint(first):
+                continue
+
+            fingerprint = first.strip()
+
+            last = last.strip()
+            if not ConverterXpub.is_xpub(last):
+                continue
+            if not ConverterXpub.xpub_matches_network(last, network=network):
+                raise WrongNetwork(f"xpub doesnt match network {network.name}")
+            xpub = last
+
+            #  ensure that current_derivation is set
+            if not current_derivation:
+                continue
+
+            signer_infos.append(SignerInfo(xpub=xpub, fingerprint=fingerprint, key_origin=current_derivation))
+
+        if not signer_infos or num_signers != len(signer_infos):
+            return None
+
+        return ConverterMultisigWalletExport(
+            name=name,
+            threshold=threshold,
+            address_type_short_name=address_type_short_name,
+            signer_infos=signer_infos,
+        )
+
+
+class ConverterBip329:
+    @classmethod
+    def is_ndjson_with_keys(cls, s: str, keys: List[str]):
+        """
+        Checks if the input string s is newline-delimited JSON and each JSON object contains the specified keys.
+
+        Args:
+        s (str): The input string to check.
+        keys (list of str): The keys that must be present in each JSON object.
+
+        Returns:
+        bool: True if the string is newline-delimited JSON and each object contains the specified keys, False otherwise.
+        """
+        lines = s.splitlines()
+
+        # Check if there's at least one line
+        if not lines:
+            return False
+
+        for line in lines:
+            try:
+                obj = json.loads(line)
+                # Check if all specified keys are present in the JSON object
+                if not all(key in obj for key in keys):
+                    logger.debug(f"ndjson check: Not all required keys {keys} are present in {obj}")
+                    return False
+            except json.JSONDecodeError:
+                return False
+
+        return True
+
+    @classmethod
+    def is_bip329(cls, s: str) -> bool:
+        try:
+            return cls.is_ndjson_with_keys(s, keys=["type", "ref", "label"])
+        except:
+            return False
+
+
+class ConverterBip21:
+    def __init__(self, data: Dict) -> None:
+        self.data = data
+
+    def to_json(self):
+        return json.dumps(self.data)
+
+    @classmethod
+    def decode_bip21_uri(cls, uri: str, network: bdk.Network) -> dict:
+        """Raises InvalidBitcoinURI on malformed URI."""
+        TOTAL_COIN_SUPPLY_LIMIT_IN_BTC = 21000000
+        COIN = 100000000
+
+        if not isinstance(uri, str):
+            raise InvalidBitcoinURI(f"expected string, not {repr(uri)}")
+
+        if ":" not in uri:
+            if ConverterAddress.is_bitcoin_address(uri, network=network):
+                return {"address": uri}
+            else:
+                raise InvalidBitcoinURI("Not a bitcoin address")
+
+        u = urllib.parse.urlparse(uri)
+        if u.scheme.lower() != BITCOIN_BIP21_URI_SCHEME:
+            raise InvalidBitcoinURI("Not a bitcoin URI")
+        address = u.path
+
+        # python for android fails to parse query
+        if address.find("?") > 0:
+            address, query = u.path.split("?")
+            pq = urllib.parse.parse_qs(query)
+        else:
+            pq = urllib.parse.parse_qs(u.query)
+
+        for k, v in pq.items():
+            if len(v) != 1:
+                raise InvalidBitcoinURI(f"Duplicate Key: {repr(k)}")
+
+        out: Dict[str, Any] = {k: v[0] for k, v in pq.items()}
+        if address:
+            if not ConverterAddress.is_bitcoin_address(address, network=network):
+                raise InvalidBitcoinURI(f"Invalid bitcoin address: {address}")
+            out["address"] = address
+        if "amount" in out:
+            am = out["amount"]
+            try:
+                m = re.match(r"([0-9.]+)X([0-9])", am)
+                if m:
+                    amount = Decimal(m.group(1)) * pow(Decimal(10), int(m.group(2)) - 8)
+                else:
+                    amount = Decimal(am) * COIN
+                if amount > TOTAL_COIN_SUPPLY_LIMIT_IN_BTC * COIN:
+                    raise InvalidBitcoinURI(f"amount is out-of-bounds: {amount!r} BTC")
+                out["amount"] = int(amount)
+            except Exception as e:
+                raise InvalidBitcoinURI(f"failed to parse 'amount' field: {repr(e)}") from e
+        if "message" in out:
+            out["message"] = out["message"]
+            out["memo"] = out["message"]
+        if "time" in out:
+            try:
+                out["time"] = int(out["time"])
+            except Exception as e:
+                raise InvalidBitcoinURI(f"failed to parse 'time' field: {repr(e)}") from e
+        if "exp" in out:
+            try:
+                out["exp"] = int(out["exp"])
+            except Exception as e:
+                raise InvalidBitcoinURI(f"failed to parse 'exp' field: {repr(e)}") from e
+        if "sig" in out:
+            try:
+                out["sig"] = serialized_to_hex(out["sig"])
+            except Exception as e:
+                raise InvalidBitcoinURI(f"failed to parse 'sig' field: {repr(e)}") from e
+
+        return out
+
+    @classmethod
+    def _try_decode_bip21(cls, s, network: bdk.Network):
+        try:
+            return cls.decode_bip21_uri(s, network=network)
+        except Exception:
+            pass
+
+
+class ConverterTx:
+    def __init__(self, tx: bdk.Transaction) -> None:
+        self.tx = tx
+
+    def to_str(self):
+        return str(serialized_to_hex(self.tx.serialize()))
+
+    @classmethod
+    def _try_transaction_binary(cls, raw: bytes) -> Optional[bdk.Transaction]:
+        # Try each decoding strategy in the loop
+        try:
+            return bdk.Transaction(raw)
+        except Exception:
+            return None
+
+    @classmethod
+    def _try_decode_serialized_transaction(cls, s: str) -> Optional[bdk.Transaction]:
+        # Try each decoding strategy in the loop
+        for decode in ConverterTools._decoding_strategies():
+            try:
+                decoded = decode(s)
+                return bdk.Transaction(decoded)
+            except Exception:
+                continue  # If one strategy fails, try the next
+
+        return None
+
+
+class ConverterPSBT:
+    def __init__(self, psbt: bdk.PartiallySignedTransaction) -> None:
+        self.psbt = psbt
+
+    def to_str(self):
+        return str(self.psbt.serialize())
+
+    @classmethod
+    def _try_decode_psbt_binary(cls, raw: bytes) -> Optional[bdk.PartiallySignedTransaction]:
         psbt_magic_bytes = b"psbt\xff"
 
         # Try each decoding strategy in the loop
@@ -493,11 +431,11 @@ class Data:
         return None
 
     @classmethod
-    def _try_decode_psbt(cls, s):
+    def _try_decode_psbt(cls, s) -> Optional[bdk.PartiallySignedTransaction]:
         psbt_magic_bytes = b"psbt\xff"
 
         # Try each decoding strategy in the loop
-        for decode in cls._decoding_strategies():
+        for decode in ConverterTools._decoding_strategies():
             try:
                 decoded = decode(s)
                 if decoded[:5] == psbt_magic_bytes:
@@ -507,38 +445,24 @@ class Data:
 
         return None
 
-    @classmethod
-    def _try_transaction_binary(cls, raw: bytes):
-        # Try each decoding strategy in the loop
-        try:
-            return bdk.Transaction(raw)
-        except Exception:
-            return None
+
+class ConverterSignerInfo:
+    def __init__(self, info: SignerInfo) -> None:
+        self.data = info
+
+    def to_json(self):
+        return self.data.to_json()
 
     @classmethod
-    def _try_decode_serialized_transaction(cls, s: str):
-        # Try each decoding strategy in the loop
-        for decode in cls._decoding_strategies():
-            try:
-                decoded = decode(s)
-                return bdk.Transaction(decoded)
-            except Exception:
-                continue  # If one strategy fails, try the next
-
-        return None
-
-    @classmethod
-    def _try_extract_signer_info(cls, s, network: bdk.Network):
+    def _try_extract_signer_info(cls, s: str) -> Optional[SignerInfo]:
         signer_info = None
         try:
-            signer_info = extract_signer_info(s)
+            signer_info = SignerInfo.from_str(s)
         except:
             pass
 
         if signer_info:
-            logger.debug("detected signer_info")
-            if is_slip132(signer_info.xpub):
-                signer_info.xpub = convert_slip132_to_bip32(signer_info.xpub)
+            signer_info.xpub = ConverterXpub.normalized_to_bip32(signer_info.xpub)
             return signer_info
 
         # try to load from a generic json (and cobo)
@@ -547,6 +471,7 @@ class Data:
             fingerprint = None
             key_origin = None
             xpub = None
+            derivation_path = None
             if d.get("fingerprint"):
                 fingerprint = d.get("fingerprint")
             if d.get("xfp"):
@@ -560,15 +485,79 @@ class Data:
                 key_origin = d.get("path")
             if d.get("xpub"):
                 xpub = d.get("xpub")
+            if d.get("derivation_path"):
+                derivation_path = d.get("derivation_path")
             if fingerprint and key_origin and xpub:
-                return SignerInfo(fingerprint=fingerprint, key_origin=key_origin, xpub=xpub)
+                return SignerInfo(
+                    fingerprint=fingerprint, key_origin=key_origin, xpub=xpub, derivation_path=derivation_path
+                )
         except Exception:
             pass
 
         return None
 
+
+class ConverterSignerInfos:
+    def __init__(self, infos: List[SignerInfo], network: bdk.Network) -> None:
+        self.data = infos
+        self.network = network
+
     @classmethod
-    def _try_extract_sparrow_signer_infos(cls, s, network: bdk.Network):
+    def _try_multisig_wallet_export(
+        cls, s: str, network: bdk.Network
+    ) -> Optional[ConverterMultisigWalletExport]:
+        """_summary_
+
+        Args:
+            s (str): _description_
+            network (bdk.Network): _description_
+
+        Raises:
+            e: WrongNetwork, if the format is correct, but it is WrongNetwork
+
+        Returns:
+            Optional[ConverterMultisigWalletExport]: _description_
+        """
+        try:
+            return ConverterMultisigWalletExport.parse_from_legacy_coldcard(s, network=network)
+        except Exception as e:
+            if isinstance(e, WrongNetwork):
+                raise e
+        return None
+
+    def sparrow_format(self) -> str:
+        first_signer_info = self.data[0]
+        assert isinstance(first_signer_info, SignerInfo)
+
+        d: Dict[str, Any] = {
+            "chain": "BTC"
+            if self.network
+            in [
+                bdk.Network.BITCOIN,
+            ]
+            else "XRT",
+            "xfp": first_signer_info.fingerprint,  # root fingerprint
+        }
+
+        for i, signer_info in enumerate(self.data):
+            assert isinstance(signer_info, SignerInfo)
+            assert first_signer_info.fingerprint == signer_info.fingerprint, translate(
+                "data",
+                "The fingerprints differ.  Only same fingerprints are supported, ensuring all derived keys belong to the same signer!",
+            )
+
+            key = signer_info.name if signer_info.name and (signer_info.name not in d) else str(i)
+            d[key] = {
+                "xpub": signer_info.xpub,
+                # "xfp" :  do not give here the fingerprint, because the the sparrow format assumes the fingerprint at this derived key, rather than the root_fingerprint
+                "deriv": signer_info.key_origin,
+                "first": signer_info.first_address,
+                "name": signer_info.name,
+            }
+        return json.dumps(d)
+
+    @classmethod
+    def _try_extract_sparrow_signer_infos(cls, s, network: bdk.Network) -> Optional[List[SignerInfo]]:
         # if it is a json
         json_data = None
         try:
@@ -577,7 +566,7 @@ class Data:
             # check if it is in sparrow export format
             assert "chain" in json_data
             assert "xfp" in json_data
-            assert "xpub" in json_data
+            # assert "xpub" in json_data  # this is not necessarily always known
         except:
             return None
 
@@ -585,15 +574,15 @@ class Data:
             if json_data["chain"] != "BTC":
                 raise WrongNetwork(f"""Expected Network {network}, but got {json_data["chain"]}""")
         if network == bdk.Network.REGTEST:
-            if json_data["chain"] != "XRT":
+            if json_data["chain"] not in ["XRT", "TBTC"]:  # XTR is coinkite
                 raise WrongNetwork(f"""Expected Network {network}, but got {json_data["chain"]}""")
         if network == bdk.Network.TESTNET:
-            if json_data["chain"] not in ["XTN", "TBTC"]:
+            if json_data["chain"] not in ["XTN", "TBTC"]:  # XTN is coinkite
                 raise WrongNetwork(f"""Expected Network {network}, but got {json_data["chain"]}""")
         if network == bdk.Network.SIGNET:
             # unclear which chain value is used for signet in coldcard
             # https://coldcard.com/docs/upgrade/#mk4-version-511-feb-27-2023
-            if json_data["chain"] not in ["XTN", "XRT"]:
+            if json_data["chain"] not in ["XTN", "XRT", "TBTC"]:
                 raise WrongNetwork(f"""Expected Network {network}, but got {json_data["chain"]}""")
 
         # the fingerprint in the top level is the relevant one
@@ -607,12 +596,14 @@ class Data:
                 first_address=v["first"] if "first" in v else None,
                 name=v["name"],
             )
-            for k, v in json_data.items()
-            if k.lower().startswith("bip")
+            for v in json_data.values()
+            if isinstance(v, dict)
         ]
 
     @classmethod
-    def _try_extract_multisig_signer_infos_coldcard_and_passport_qr(cls, s, network: bdk.Network):
+    def _try_extract_multisig_signer_infos_coldcard_and_passport_qr(
+        cls, s, network: bdk.Network
+    ) -> Optional[List[SignerInfo]]:
         # if it is a json
         json_data = None
         try:
@@ -634,9 +625,7 @@ class Data:
 
         signer_infos = [
             SignerInfo(
-                xpub=convert_slip132_to_bip32(json_data[address_type_name])
-                if is_slip132(json_data[address_type_name])
-                else json_data[address_type_name],
+                xpub=ConverterXpub.normalized_to_bip32(json_data[address_type_name]),
                 fingerprint=fingerprint,
                 key_origin=json_data[address_type_name + "_deriv"],
                 name=address_type_name,
@@ -644,77 +633,120 @@ class Data:
             for address_type_name in address_type_names
         ]
         for signer_info in signer_infos:
-            cls.ensure_xpub_matches_network(signer_info.xpub, network=network)
+            ConverterXpub.ensure_xpub_matches_network(signer_info.xpub, network=network)
         return signer_infos
 
-    @classmethod
-    def ensure_xpub_matches_network(cls, xpub: str, network: bdk.Network):
-        if network == bdk.Network.BITCOIN:
-            if not xpub.startswith("xpub"):
-                raise WrongNetwork(f"{xpub} doesnt start with xpub, which is required for {network}")
-        else:
-            if not xpub.startswith("tpub"):
-                raise WrongNetwork(f"{xpub} doesnt start with tpub, which is required for {network}")
+
+class ConverterDescriptor:
+    def __init__(self, descriptor: Union[bdk.Descriptor, MultipathDescriptor]) -> None:
+        self.descriptor = descriptor
+
+    def to_str(self):
+        return self.descriptor.as_string_private()
 
     @classmethod
-    def _try_jade_wallet_export_to_signer_infos(
-        cls, s: str, network: bdk.Network
-    ) -> Optional[List[SignerInfo]]:
-        def convert_to_signer_infos(data: str) -> List[SignerInfo]:
-            # Initialize variables
-            lines = data.strip().split("\n")
-            # wallet_info = {}
-            signer_infos: List[SignerInfo] = []
-            key_origin = None
-
-            # # Iterate through each line
-            # for line in lines:
-            #     if line.startswith("# Exported by"):
-            #         wallet_info["Exported_by"] = line.split(" by ")[-1]
-            #     elif line.startswith("Name:"):
-            #         wallet_info["Name"] = line.split(": ")[-1]
-            #     elif line.startswith("Policy:"):
-            #         wallet_info["Policy"] = line.split(": ")[-1]
-            #     elif line.startswith("Format:"):
-            #         wallet_info["Format"] = line.split(": ")[-1]
-
-            for line_key_origin, line_xpub_fingeprint in zip(lines, lines[1:]):
-                if line_key_origin.startswith("Derivation:"):
-                    key_origin = line_key_origin.split(":")[-1].strip()
-                    if not key_origin.startswith("m/"):
-                        continue
-
-                    fingerprint, xpub = line_xpub_fingeprint.split(":")
-                    fingerprint = fingerprint.strip()
-                    xpub = xpub.strip()
-                    if len(fingerprint) != 8:
-                        continue
-
-                    signer_infos.append(SignerInfo(fingerprint=fingerprint, key_origin=key_origin, xpub=xpub))
-
-            for signer_info in signer_infos:
-                cls.ensure_xpub_matches_network(signer_info.xpub, network=network)
-            return signer_infos
+    def _try_get_descriptor(cls, s, network: bdk.Network) -> Optional[bdk.Descriptor]:
+        try:
+            assert "<" not in s, "This contains characters of a multipath descriptor"
+            assert ">" not in s, "This contains characters of a multipath descriptor"
+            descriptor = bdk.Descriptor(s, network)
+            if descriptor:
+                logger.debug("detected descriptor")
+                return descriptor
+        except Exception:
+            pass
 
         try:
-            # Decode the hex string to ASCII
-            decoded_text = binascii.unhexlify(s).decode("utf-8")
-
-            # the data now looks like
-            # "# Exported by Blockstream Jade
-            # Name: hwi3374c2e55c4b
-            # Policy: 2 of 3
-            # Format: P2WSH
-            # Derivation: m/48'/1'/0'/2'
-            # 14c949b4: tpubDDvtDSGt5JmgxgpRp3nyZj3ULZvFWuU9AaS6x3UwkNE6vaNgzd6oyKYEQUzSevUQs2ste5QznpbN8Nt5bVbZvrJFpCqw9UPXCtnCutEvEwW
-            # Derivation: m/48'/1'/0'/2'
-            # d8cf7475: tpubDEDUiUcwmoC92QJ2kGPQwtikGqLrjdyUfuRMhm5ab4nYmgRkkKPF9mp2FcunzMu9y5Ea2urGUJh4t1o7Wb6KjKddzJKcE8BoAyTWK6ughFK
-            # Derivation: m/48'/1'/0'/2'
-            # d5b43540: tpubDFnCcKU3iUF4sPeQC68r2ewDaBB7TvLmQBTs12hnNS8nu6CPjZPmzapp7Woz6bkFuLfSjSpg6gacheKBaWBhDnEbEpKtCnVFdQnfhYGkPQF"
-            return convert_to_signer_infos(decoded_text)
-        except:
+            specter_dict = json.loads(s)
+            if "descriptor" in specter_dict:
+                return cls._try_get_descriptor(specter_dict["descriptor"], network=network)
+        except Exception:
             pass
         return None
+
+    @classmethod
+    def _try_get_multipath_descriptor(cls, s, network: bdk.Network) -> Optional[MultipathDescriptor]:
+        # if new lines are presnt, try checking if there are descriptors in the lines
+        if "\n" in s:
+            splitted_lines = s.split("\n")
+            raw_results = [
+                cls._try_get_multipath_descriptor(line.strip(), network) for line in splitted_lines
+            ]
+            # check that all entries return the same multipath descriptor
+            # "None" entries are disallowed, to ensure that no deception is possible
+            results = [r for r in raw_results if r]
+            if results == raw_results:
+                all_identical = all(
+                    element.as_string_private() == results[0].as_string_private() for element in results
+                )
+                if all_identical:
+                    return results[0]
+                else:
+                    # the string contins multiple inconsitent descriptors.
+                    # Don't know how to handle this properly.
+                    raise InconsistentDescriptors(f"The descriptors {splitted_lines} are inconsistent.")
+            else:
+                # if splitting lines didnt work, then remove the \n and try to recognize all as 1 descriptor
+                s = s.replace("\n", "")
+
+        try:
+            multipath_descriptor = MultipathDescriptor.from_descriptor_str(s, network)
+            if multipath_descriptor:
+                logger.debug("detected descriptor")
+                return multipath_descriptor
+        except Exception:
+            pass
+        return None
+
+
+class Data:
+    """
+    Recognized bitcoin data in a string, gives the data and the DataType
+    """
+
+    def __init__(self, data, data_type: DataType, network: bdk.Network) -> None:
+        self.data = data
+        self.data_type = data_type
+        self.network = network
+
+    def dump(self) -> Dict:
+        return {"data": self.data_as_string(), "data_type": self.data_type.name}
+
+    @classmethod
+    def from_dump(cls, d: Dict, network: bdk.Network) -> "Data":
+        data = cls.from_str(d["data"], network=network)
+        d["data_type"] = DataType.from_name(d["data_type"])
+        assert d["data_type"] == data.data_type
+        return data
+
+    def data_as_string(self) -> str:
+        if not self.data:
+            return str(self.data)
+        if isinstance(self.data, str):
+            return self.data
+        if self.data_type == DataType.Bip21:
+            return ConverterBip21(data=self.data).to_json()
+        if self.data_type == DataType.Descriptor:
+            return ConverterDescriptor(descriptor=self.data).to_str()
+        if self.data_type == DataType.MultiPathDescriptor:
+            return ConverterDescriptor(descriptor=self.data).to_str()
+        if self.data_type == DataType.SignerInfo:
+            return ConverterSignerInfo(info=self.data).to_json()
+        if self.data_type == DataType.SignerInfos:
+            return ConverterSignerInfos(infos=self.data, network=self.network).sparrow_format()
+        if self.data_type == DataType.PSBT:
+            return ConverterPSBT(psbt=self.data).to_str()
+        if self.data_type == DataType.Tx:
+            return ConverterTx(tx=self.data).to_str()
+        if self.data_type == DataType.MultisigWalletExport and isinstance(
+            self.data, ConverterMultisigWalletExport
+        ):
+            return self.data.to_str()
+
+        return str(self.data)
+
+    def __str__(self) -> str:
+        return f"{self.data_type.name}: {self.data_as_string()}"
 
     @classmethod
     def from_binary(cls, raw: bytes, network: bdk.Network) -> "Data":
@@ -738,11 +770,11 @@ class Data:
         # if is_valid_wallet_fingerprint(s):
         #     return Data(s, DataType.Fingerprint)
 
-        if psbt := cls._try_decode_psbt_binary(raw):
-            return Data(psbt, DataType.PSBT)
+        if psbt := ConverterPSBT._try_decode_psbt_binary(raw):
+            return Data(psbt, DataType.PSBT, network=network)
 
-        if tx := cls._try_transaction_binary(raw):
-            return Data(tx, DataType.Tx)
+        if tx := ConverterTx._try_transaction_binary(raw):
+            return Data(tx, DataType.Tx, network=network)
 
         # if signer_info := cls._try_extract_signer_info(s, network):
         #     return Data(signer_info, DataType.SignerInfo)
@@ -756,24 +788,26 @@ class Data:
         raise DecodingException(f"{raw} Could not be decoded with from_binary")  # type: ignore
 
     @classmethod
-    def from_tx(cls, tx: bdk.Transaction) -> "Data":
+    def from_tx(cls, tx: bdk.Transaction, network: bdk.Network) -> "Data":
         assert isinstance(tx, bdk.Transaction)
-        return Data(tx, DataType.Tx)
+        return Data(tx, DataType.Tx, network=network)
 
     @classmethod
-    def from_psbt(cls, psbt: bdk.PartiallySignedTransaction) -> "Data":
+    def from_psbt(cls, psbt: bdk.PartiallySignedTransaction, network: bdk.Network) -> "Data":
         assert isinstance(psbt, bdk.PartiallySignedTransaction)
-        return Data(psbt, DataType.PSBT)
+        return Data(psbt, DataType.PSBT, network=network)
 
     @classmethod
-    def from_descriptor(cls, descriptor: bdk.Descriptor) -> "Data":
+    def from_descriptor(cls, descriptor: bdk.Descriptor, network: bdk.Network) -> "Data":
         assert isinstance(descriptor, bdk.Descriptor)
-        return Data(descriptor, DataType.Descriptor)
+        return Data(descriptor, DataType.Descriptor, network=network)
 
     @classmethod
-    def from_multipath_descriptor(cls, multipath_descriptor: MultipathDescriptor) -> "Data":
+    def from_multipath_descriptor(
+        cls, multipath_descriptor: MultipathDescriptor, network: bdk.Network
+    ) -> "Data":
         assert isinstance(multipath_descriptor, MultipathDescriptor)
-        return Data(multipath_descriptor, DataType.MultiPathDescriptor)
+        return Data(multipath_descriptor, DataType.MultiPathDescriptor, network=network)
 
     @classmethod
     def from_str(cls, s: str, network: bdk.Network) -> "Data":
@@ -781,45 +815,48 @@ class Data:
         data = None
 
         # Sequence of checks to identify the type of data in `s`
-        if decoded_bip21 := cls._try_decode_bip21(s, network=network):
-            return Data(decoded_bip21, DataType.Bip21)
+        if decoded_bip21 := ConverterBip21._try_decode_bip21(s, network=network):
+            return Data(decoded_bip21, DataType.Bip21, network=network)
 
-        if is_xpub(s):
-            data = convert_slip132_to_bip32(s) if is_slip132(s) else s
-            return Data(data, DataType.Xpub)
+        if ConverterXpub.is_xpub(s):
+            data = ConverterXpub.normalized_to_bip32(s)
+            return Data(data, DataType.Xpub, network=network)
 
-        if descriptor := cls._try_get_descriptor(s, network):
-            return Data(descriptor, DataType.Descriptor)
+        if descriptor := ConverterDescriptor._try_get_descriptor(s, network):
+            return Data(descriptor, DataType.Descriptor, network=network)
 
-        if descriptor := cls._try_get_multipath_descriptor(s, network):
-            return Data(descriptor, DataType.MultiPathDescriptor)
+        if descriptor := ConverterDescriptor._try_get_multipath_descriptor(s, network):
+            return Data(descriptor, DataType.MultiPathDescriptor, network=network)
 
-        if is_valid_bitcoin_hash(s):
-            return Data(s, DataType.Txid)
+        if ConverterTxid.is_valid_bitcoin_hash(s):
+            return Data(s, DataType.Txid, network=network)
 
-        if is_valid_wallet_fingerprint(s):
-            return Data(s, DataType.Fingerprint)
+        if ConverterFingerprint.is_valid_wallet_fingerprint(s):
+            return Data(s, DataType.Fingerprint, network=network)
 
-        if psbt := cls._try_decode_psbt(s):
-            return Data(psbt, DataType.PSBT)
+        if psbt := ConverterPSBT._try_decode_psbt(s):
+            return Data(psbt, DataType.PSBT, network=network)
 
-        if tx := cls._try_decode_serialized_transaction(s):
-            return Data(tx, DataType.Tx)
+        if tx := ConverterTx._try_decode_serialized_transaction(s):
+            return Data(tx, DataType.Tx, network=network)
 
-        if signer_info := cls._try_extract_signer_info(s, network):
-            return Data(signer_info, DataType.SignerInfo)
+        if signer_info := ConverterSignerInfo._try_extract_signer_info(s):
+            return Data(signer_info, DataType.SignerInfo, network=network)
 
-        if signer_infos := cls._try_extract_sparrow_signer_infos(s, network):
-            return Data(signer_infos, DataType.SignerInfos)
+        if signer_infos := ConverterSignerInfos._try_extract_sparrow_signer_infos(s, network):
+            return Data(signer_infos, DataType.SignerInfos, network=network)
 
-        if signer_infos := cls._try_extract_multisig_signer_infos_coldcard_and_passport_qr(s, network):
-            return Data(signer_infos, DataType.SignerInfos)
+        if signer_infos := ConverterSignerInfos._try_extract_multisig_signer_infos_coldcard_and_passport_qr(
+            s, network
+        ):
+            return Data(signer_infos, DataType.SignerInfos, network=network)
 
-        if is_bip329(s):
-            return Data(s, DataType.LabelsBip329)
+        if ConverterBip329.is_bip329(s):
+            return Data(s, DataType.LabelsBip329, network=network)
 
-        if signer_infos := cls._try_jade_wallet_export_to_signer_infos(s, network=network):
-            return Data(signer_infos, DataType.SignerInfos)
+        if wallet_export := ConverterSignerInfos._try_multisig_wallet_export(s, network=network):
+            # this is the Multisig wallet export of jade, and the signers (of course)  are different
+            return Data(wallet_export, DataType.MultisigWalletExport, network=network)
 
         raise DecodingException(f"{s} Could not be decoded with from_str")
 

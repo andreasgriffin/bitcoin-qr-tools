@@ -12,7 +12,7 @@ from PyQt6.QtCore import pyqtSignal
 
 from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
 
-from .data import Data
+from ..data import Data
 from .video_widget import VideoWidget
 
 

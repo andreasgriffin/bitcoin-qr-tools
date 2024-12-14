@@ -26,7 +26,6 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-
 import logging
 import os
 import sys
@@ -49,6 +48,7 @@ from PyQt6.QtGui import (
 from PyQt6.QtSvg import QSvgRenderer
 from PyQt6.QtWidgets import (
     QApplication,
+    QComboBox,
     QDialog,
     QPushButton,
     QSizePolicy,
@@ -484,22 +484,76 @@ class EnlargedSVG(QDialog):
 if __name__ == "__main__":
     import bdkpython as bdk
 
+    testdata = [
+        Data.from_str(
+            "cHNidP8BAHEBAAAAAXgQzjk+DTWQTPUtRMbYiheC0jfbipvw+jQ5lidmyABjAAAAAAD9////AgDh9QUAAAAAFgAUbBuOQOlcnz8vpruh2Kb3CFr4vlhkEQ2PAAAAABYAFN1n2hvBWYzshD42xwQzy9XYoji3BAEAAAABAKoCAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////BQKYAAEB/////wIA+QKVAAAAABYAFLlHwN6VXNLM381bMxmNJlaDTQzVAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkBIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBHwD5ApUAAAAAFgAUuUfA3pVc0szfzVszGY0mVoNNDNUiBgISCnRxeOxzC0MgK01AmiIRLrgS1AyIqKeBkdwL+nt/6RikLG3TVAAAgAEAAIAAAACAAAAAAAAAAAAAACICAlQcwExiTUk9f7olLkwPlQpiregRHc9jXXFJBlMoucgNGKQsbdNUAACAAQAAgAAAAIAAAAAAAQAAAAA=",
+            network=bdk.Network.REGTEST,
+        ),
+        Data.from_str(
+            "wsh(sortedmulti(2,[829074ff/48'/1'/0'/2']tpubDDx9arPwEvHGnnkKN1YJXFE4W6JZXyVX9HGjZW75nWe1FCsTYu2k3i7VtCwhGR9zj6UUYnseZUnwL7T6Znru3NmXkcjEQxMqRx7Rxz8rPp4/<0;1>/*,[45f35351/48'/1'/0'/2']tpubDEY3tNWvDs8J6xAmwoirxgff61gPN1V6U5numeb6xjvZRB883NPPpRYHt2A6fUE3YyzDLezFfuosBdXsdXJhJUcpqYWF9EEBmWqG3rG8sdy/<0;1>/*,[d5b43540/48'/1'/0'/2']tpubDFnCcKU3iUF4sPeQC68r2ewDaBB7TvLmQBTs12hnNS8nu6CPjZPmzapp7Woz6bkFuLfSjSpg6gacheKBaWBhDnEbEpKtCnVFdQnfhYGkPQF/<0;1>/*))#2jxldwxn",
+            network=bdk.Network.REGTEST,
+        ),
+        Data.from_str(
+            "wpkh([a42c6dd3/84h/1h/0h]tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks/0/*)",
+            network=bdk.Network.REGTEST,
+        ),
+        Data.from_str(
+            "0100000000010177ff6b4de45caf689a95367958ff6b912c2385d4d7563a09ba41cb0a2c30f5220000000000fdffffff02a0cee90100000000160014f22e4b1c92222a38b286fdd39ee2e35d4b581c47d62019930000000016001412c9e0c94dd6c71cfec7bcff16feea0a0fb8bc5d0247304402205c88d4d7e3059f16c6f74debb9754efeba89f92a237b7d09d9732e59b8a7d6de02202ce0ef338af77ebd8c14ae88f7e83116e0ba27a89aee7829ef70d1fc8d99af06012102802e1fda05b62b1f071d35bcd129fc0f9cf3517c6af7b3bb0ce76d76c7de068d00000000",
+            network=bdk.Network.REGTEST,
+        ),
+        Data.from_str(
+            "[a42c6dd3/84'/1'/0']tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks/0/*",
+            network=bdk.Network.REGTEST,
+        ),
+        Data.from_str(
+            '{"chain": "XRT", "xfp": "0F056943", "p2sh": {"xpub": "tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n", "deriv": "m/45h", "first": null, "name": "p2sh"}, "p2sh_p2wsh": {"xpub": "tpubDF2rnouQaaYrUEy2JM1YD3RFzew4onawGM4X2Re67gguTf5CbHonBRiFGe3Xjz7DK88dxBFGf2i7K1hef3PM4cFKyUjcbJXddaY9F5tJBoP", "deriv": "m/48h/1h/0h/1h", "first": null, "name": "p2sh_p2wsh"}, "p2wsh": {"xpub": "tpubDF2rnouQaaYrXF4noGTv6rQYmx87cQ4GrUdhpvXkhtChwQPbdGTi8GA88NUaSrwZBwNsTkC9bFkkC8vDyGBVVAQTZ2AS6gs68RQXtXcCvkP", "deriv": "m/48h/1h/0h/2h", "first": null, "name": "p2wsh"}}',
+            network=bdk.Network.REGTEST,
+        ),
+    ]
+
+    class ComboBoxDemo(QWidget):
+        def __init__(self):
+            super().__init__()
+
+            # Setup the layout
+            layout = QVBoxLayout()
+
+            # enlarable_widget2 = EnlargableImageWidgetWithButton()
+            # enlarable_widget2.load_from_file("docs/bad-light.png")
+            # layout.addWidget(enlarable_widget2)
+
+            self.svg_widget = QRCodeWidgetSVG()
+            self.svg_widget.set_always_animate(True)
+            layout.addWidget(self.svg_widget)
+
+            # Initialize combo box 1
+            self.combo_data = QComboBox()
+            for data in testdata:
+                self.combo_data.addItem(data.data_type.name, data)
+            self.combo_data.currentIndexChanged.connect(self.on_combo_changed)
+            layout.addWidget(self.combo_data)
+
+            # Initialize combo box 2
+            self.combo_qrtype = QComboBox()
+            for qr_type in QrExportTypes.as_list():
+                self.combo_qrtype.addItem(qr_type.display_name, qr_type)
+            self.combo_qrtype.currentIndexChanged.connect(self.on_combo_changed)
+            layout.addWidget(self.combo_qrtype)
+
+            # Set the layout to the QWidget
+            self.setLayout(layout)
+
+            self.on_combo_changed()
+
+        def on_combo_changed(self):
+            # Get current data from both combo boxes
+            data = self.combo_data.currentData()
+            qrtype = self.combo_qrtype.currentData()
+
+            fragments = UnifiedEncoder.generate_fragments_for_qr(data=data, qr_export_type=qrtype)
+            self.svg_widget.set_data_list(fragments)
+
     app = QApplication(sys.argv)
-
-    main = QWidget()
-    layout = QVBoxLayout(main)
-
-    svg_widget = QRCodeWidgetSVG()
-    psbt = "cHNidP8BAHEBAAAAAXgQzjk+DTWQTPUtRMbYiheC0jfbipvw+jQ5lidmyABjAAAAAAD9////AgDh9QUAAAAAFgAUbBuOQOlcnz8vpruh2Kb3CFr4vlhkEQ2PAAAAABYAFN1n2hvBWYzshD42xwQzy9XYoji3BAEAAAABAKoCAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////BQKYAAEB/////wIA+QKVAAAAABYAFLlHwN6VXNLM381bMxmNJlaDTQzVAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkBIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBHwD5ApUAAAAAFgAUuUfA3pVc0szfzVszGY0mVoNNDNUiBgISCnRxeOxzC0MgK01AmiIRLrgS1AyIqKeBkdwL+nt/6RikLG3TVAAAgAEAAIAAAACAAAAAAAAAAAAAACICAlQcwExiTUk9f7olLkwPlQpiregRHc9jXXFJBlMoucgNGKQsbdNUAACAAQAAgAAAAIAAAAAAAQAAAAA="
-    data: Data = Data.from_str(psbt, network=bdk.Network.REGTEST)
-    fragments = UnifiedEncoder.generate_fragments_for_qr(data=data, qr_export_type=QrExportTypes.bbqr)
-    svg_widget.set_data_list(fragments)
-
-    enlarable_widget2 = EnlargableImageWidgetWithButton()
-    enlarable_widget2.load_from_file("docs/bad-light.png")
-
-    layout.addWidget(svg_widget)
-    layout.addWidget(enlarable_widget2)
-    main.show()
-
+    window = ComboBoxDemo()
+    window.show()
     sys.exit(app.exec())

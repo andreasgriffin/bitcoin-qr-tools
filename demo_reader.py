@@ -1,6 +1,6 @@
 import logging
 
-from bitcoin_qr_tools.bitcoin_video_widget import DemoBitcoinVideoWidget
+from bitcoin_qr_tools.gui.bitcoin_video_widget import DemoBitcoinVideoWidget
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
 
