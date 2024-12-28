@@ -119,4 +119,8 @@ class DemoBitcoinVideoWidget(BitcoinVideoWidget):
         self.layout().addWidget(self.label_qr)  # type: ignore
 
     def result_callback(self, qr_data):
-        self.label_qr.setText(str(qr_data))
+        new_text = str(qr_data)
+        if self.label_qr.toPlainText() == new_text:
+            return
+
+        self.label_qr.setText(new_text)
