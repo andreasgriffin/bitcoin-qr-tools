@@ -39,7 +39,7 @@ class SignerInfo:
         self.first_address = first_address
 
     def format_key_origin(self, value):
-        assert value.startswith("m/"), "The value must start with m/"
+        assert value.startswith("m"), "The value must start with m"
         return value.replace("'", "h")
 
     def __repr__(self) -> str:
