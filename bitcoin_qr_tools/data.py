@@ -394,7 +394,7 @@ class ConverterTx:
     def _try_transaction_binary(cls, raw: bytes) -> Optional[bdk.Transaction]:
         # Try each decoding strategy in the loop
         try:
-            return bdk.Transaction(raw)
+            return bdk.Transaction(list(raw))
         except Exception:
             return None
 
@@ -404,7 +404,7 @@ class ConverterTx:
         for decode in ConverterTools._decoding_strategies():
             try:
                 decoded = decode(s)
-                return bdk.Transaction(decoded)
+                return bdk.Transaction(list(decoded))
             except Exception:
                 continue  # If one strategy fails, try the next
 
