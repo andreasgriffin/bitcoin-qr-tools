@@ -9,6 +9,7 @@ import bdkpython as bdk
 import pygame
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtGui import QKeySequence, QShortcut
 
 from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
 
@@ -42,6 +43,11 @@ class BitcoinVideoWidget(VideoWidget):
         self.switch_network([n.name for n in bdk.Network].index(self.network.name))
         self.combo_network.currentIndexChanged.connect(self.switch_network)
         self.signal_raw_qr_data.connect(self.on_raw_qr_data)
+
+        self.shortcut_close = QShortcut(QKeySequence("Ctrl+W"), self)
+        self.shortcut_close.activated.connect(self.close)
+        self.shortcut_close2 = QShortcut(QKeySequence("ESC"), self)
+        self.shortcut_close2.activated.connect(self.close)
 
     def switch_network(self, idx):
         networks = [n for n in bdk.Network]
