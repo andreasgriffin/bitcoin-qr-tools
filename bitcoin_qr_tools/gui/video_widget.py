@@ -1,16 +1,9 @@
 import logging
-from collections import deque
-from concurrent.futures import ThreadPoolExecutor
-
-from bitcoin_qr_tools.i18n import translate
-from bitcoin_qr_tools.rtsp_camera import RTSPCamera
-from bitcoin_qr_tools.screen_camera import ScreenCamera
-
-logger = logging.getLogger(__name__)
-
 import signal
 import sys
 import time
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, List, Tuple, Union
 
 import cv2
@@ -19,7 +12,7 @@ import pygame
 import pygame.camera
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QCloseEvent
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -35,7 +28,13 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from bitcoin_qr_tools.i18n import translate
+from bitcoin_qr_tools.rtsp_camera import RTSPCamera
+from bitcoin_qr_tools.screen_camera import ScreenCamera
+
 from ..cv2camera import CV2Camera
+
+logger = logging.getLogger(__name__)
 
 
 def threaded_list(f, args):
@@ -57,6 +56,7 @@ TypeSomeCamera = Union[CV2Camera, RTSPCamera, pygame.camera.Camera, ScreenCamera
 
 
 class VideoWidget(QWidget):
+    aboutToClose = pyqtSignal(QWidget)
     signal_raw_qr_data = pyqtSignal(object)
 
     def __init__(self, parent=None):
@@ -248,10 +248,9 @@ class VideoWidget(QWidget):
                     # if it is already closed, it gives an exception.
                     logger.debug(str(e))
 
-    def closeEvent(self, event: QtGui.QCloseEvent | None) -> None:
+    def closeEvent(self, event: QCloseEvent | None) -> None:
+        self.aboutToClose.emit(self)  # Emit the signal when the window is about to close
         self.stop_timer_and_stop_all_cameras()
-
-        # If you call the parent's closeEvent(), it will proceed to close the widget
         super().closeEvent(event)
 
     def set_brightness(self, value=128, camera=None):
