@@ -355,15 +355,19 @@ class VideoWidget(QWidget):
 
         return None
 
+    def _get_camera(self, camera_name: str | int, index: int) -> TypeSomeCamera | None:
+        # default is opencv, since  pygame doesnt work on mac
+        return self.get_cv2camera(index) or self.get_pygame_camera(camera_name, index)
+
     def get_valid_cameras(self) -> List[Tuple[int, str, TypeSomeCamera]]:
         valid_cameras: List[Tuple[int, str, TypeSomeCamera]] = []
         for index, camera_name in enumerate(pygame.camera.list_cameras()):
-            temp_camera = self.get_pygame_camera(camera_name, index) or self.get_cv2camera(index)
+            temp_camera = self._get_camera(camera_name, index)
             if temp_camera:
                 valid_cameras.append((index, camera_name, temp_camera))
 
         if not valid_cameras:
-            temp_camera = self.get_pygame_camera(0, 0) or self.get_cv2camera(0)
+            temp_camera = self._get_camera(0, 0)
             if temp_camera:
                 valid_cameras.append((0, str(0), temp_camera))
 
@@ -520,8 +524,8 @@ class VideoWidget(QWidget):
         if self.current_camera:
             try:
                 surface = self.current_camera.get_image()
-            except:
-                # logger.debug("Could not get image")
+            except Exception as e:
+                logger.debug(str(e))
                 return
         else:
             return
