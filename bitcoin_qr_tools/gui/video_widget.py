@@ -422,10 +422,7 @@ class VideoWidget(QWidget):
             current_position += surface.get_height() if current_position != 0 else 0
 
         start_point = (0, current_position)
-        end_point = (
-            surface.get_width(),
-            current_position,
-        )
+        end_point = (surface.get_width(), current_position)
 
         # Draw the line on the Pygame surface
         pygame.draw.line(surface, color, start_point, end_point, thickness)
