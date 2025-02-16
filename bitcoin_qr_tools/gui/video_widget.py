@@ -67,6 +67,7 @@ class VideoWidget(QWidget):
         self.last_display_fps = time.time()
         self.cv2 = None
         self.pyzbar = None
+        self.scan_animation_position = 0
         try:
             # check if loading works
             # it depend on zlib installed in the os
@@ -403,9 +404,29 @@ class VideoWidget(QWidget):
         # Convert numpy image (RGB) to pygame surface
         return pygame.surfarray.make_surface(numpy_image.transpose((1, 0, 2)))
 
-    def _on_draw_surface(self, surface, barcode: BarcodeData):
+    def _on_draw_surface(self, surface: pygame.Surface, barcode: BarcodeData):
         x, y, w, h = barcode.rect
         pygame.draw.rect(surface, (0, 255, 0), (x, y, w, h), 2)
+
+    def _draw_scan_animation_frame(self, surface: pygame.Surface):
+        # Define the color of the line (green)
+        color = (0, 255, 0)  # RGB for green
+        self.scan_animation_position -= int(surface.get_height() / 64)
+
+        # Define the thickness of the line
+        thickness = 5
+
+        # the camera image has inverted x/y axis, so height and width are also flipped
+        current_position = self.scan_animation_position % surface.get_height()
+        if current_position < 0:
+            current_position += surface.get_height() if current_position != 0 else 0
+
+        start_point = (0, current_position)
+        end_point = (surface.get_width(), current_position)
+
+        # Draw the line on the Pygame surface
+        pygame.draw.line(surface, color, start_point, end_point, thickness)
+        self.scan_animation_position = current_position
 
     @staticmethod
     def crop(
@@ -574,8 +595,11 @@ class VideoWidget(QWidget):
 
         if selected_barcode:
             self._on_draw_surface(surface, selected_barcode)
+        else:
+            self._draw_scan_animation_frame(surface)
 
         surface = pygame.transform.flip(surface, False, True)
+
         self.showSurface(surface, scale_to=(640, 480))
 
         if selected_barcode:
