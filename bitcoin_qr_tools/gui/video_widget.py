@@ -67,7 +67,7 @@ class VideoWidget(QWidget):
         self.last_display_fps = time.time()
         self.cv2 = None
         self.pyzbar = None
-        self.scan_animation_x_position = 0
+        self.scan_animation_position = 0
         try:
             # check if loading works
             # it depend on zlib installed in the os
@@ -411,27 +411,25 @@ class VideoWidget(QWidget):
     def _draw_scan_animation_frame(self, surface: pygame.Surface):
         # Define the color of the line (green)
         color = (0, 255, 0)  # RGB for green
-        self.scan_animation_x_position -= int(surface.get_height() / 64)
+        self.scan_animation_position -= int(surface.get_height() / 64)
 
         # Define the thickness of the line
         thickness = 5
 
-        # Calculate the current x position using modulus to wrap it around the surface width
-        # Ensuring it's always positive
-        current_x_position = self.scan_animation_x_position % surface.get_height()
-        if current_x_position < 0:
-            current_x_position += surface.get_height() if current_x_position != 0 else 0
+        # the camera image has inverted x/y axis, so height and width are also flipped
+        current_position = self.scan_animation_position % surface.get_height()
+        if current_position < 0:
+            current_position += surface.get_height() if current_position != 0 else 0
 
-        # Draw the line across the current y-coordinate from the top to the bottom of the frame
-        start_point = (0, current_x_position)  # Starting at the top of the frame at the current x position
+        start_point = (0, current_position)
         end_point = (
             surface.get_width(),
-            current_x_position,
-        )  # Ending at the bottom of the frame
+            current_position,
+        )
 
         # Draw the line on the Pygame surface
         pygame.draw.line(surface, color, start_point, end_point, thickness)
-        self.scan_animation_x_position = current_x_position
+        self.scan_animation_position = current_position
 
     @staticmethod
     def crop(
