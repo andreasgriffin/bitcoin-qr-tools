@@ -207,3 +207,24 @@ def test_jade_wallet_export_as_signer_infos():
         data.data_as_string()
         == "#  Multisig setup file (created by Bitcoin Safe)\n#\nName: hwi3374c2e55c4b\nPolicy: 2 of 3\nFormat: P2WSH\n\nDerivation: m/48h/1h/0h/2h\n14c949b4: tpubDDvtDSGt5JmgxgpRp3nyZj3ULZvFWuU9AaS6x3UwkNE6vaNgzd6oyKYEQUzSevUQs2ste5QznpbN8Nt5bVbZvrJFpCqw9UPXCtnCutEvEwW\nDerivation: m/48h/1h/0h/2h\nd8cf7475: tpubDEDUiUcwmoC92QJ2kGPQwtikGqLrjdyUfuRMhm5ab4nYmgRkkKPF9mp2FcunzMu9y5Ea2urGUJh4t1o7Wb6KjKddzJKcE8BoAyTWK6ughFK\nDerivation: m/48h/1h/0h/2h\nd5b43540: tpubDFnCcKU3iUF4sPeQC68r2ewDaBB7TvLmQBTs12hnNS8nu6CPjZPmzapp7Woz6bkFuLfSjSpg6gacheKBaWBhDnEbEpKtCnVFdQnfhYGkPQF"
     )
+
+
+def test_jade_format():
+    # jade has a format where they provide an invalid descriptor to conveigh the signer infos
+    desc = "wsh([75b600b9/48'/0'/1'/1']xpub6EtDryAmnRPFkJMnrGGnv3zc8CMsqcWkBAeaHw7CXhv8TFxPkA7ZQWjg6epsNMxguzz5BkqfaTMY7yHzY1phCMyJyY9nrouMoSPiBAtH7ei)"
+    assert (
+        str(SignerInfo.decode_descriptor_as_signer_info(descriptor_str=desc, network=bdk.Network.BITCOIN))
+        == "{'fingerprint': '75b600b9', 'key_origin': 'm/48h/0h/1h/1h', 'xpub': 'xpub6EtDryAmnRPFkJMnrGGnv3zc8CMsqcWkBAeaHw7CXhv8TFxPkA7ZQWjg6epsNMxguzz5BkqfaTMY7yHzY1phCMyJyY9nrouMoSPiBAtH7ei', 'derivation_path': None, 'name': 'p2wsh', 'first_address': None}"
+    )
+
+    desc = "sh(wsh([75b600b9/48'/0'/1'/1']xpub6EtDryAmnRPFkJMnrGGnv3zc8CMsqcWkBAeaHw7CXhv8TFxPkA7ZQWjg6epsNMxguzz5BkqfaTMY7yHzY1phCMyJyY9nrouMoSPiBAtH7ei))"
+    assert (
+        str(SignerInfo.decode_descriptor_as_signer_info(descriptor_str=desc, network=bdk.Network.BITCOIN))
+        == "{'fingerprint': '75b600b9', 'key_origin': 'm/48h/0h/1h/1h', 'xpub': 'xpub6EtDryAmnRPFkJMnrGGnv3zc8CMsqcWkBAeaHw7CXhv8TFxPkA7ZQWjg6epsNMxguzz5BkqfaTMY7yHzY1phCMyJyY9nrouMoSPiBAtH7ei', 'derivation_path': None, 'name': 'p2sh-wsh', 'first_address': None}"
+    )
+
+    desc = "sh([75b600b9/45']xpub68kgMRTM3H3bz4ZeCVPSWgJvAJQFCqTfRYv24WwzweGpu9494gb1oeJLmPEaFR87fRfyASha9pKL147Zw2ZCA4SoHjEfuiNqKdiMZ5XAoNX)#k7sya4f9"
+    assert (
+        str(SignerInfo.decode_descriptor_as_signer_info(descriptor_str=desc, network=bdk.Network.BITCOIN))
+        == "{'fingerprint': '75b600b9', 'key_origin': 'm/45h', 'xpub': 'xpub68kgMRTM3H3bz4ZeCVPSWgJvAJQFCqTfRYv24WwzweGpu9494gb1oeJLmPEaFR87fRfyASha9pKL147Zw2ZCA4SoHjEfuiNqKdiMZ5XAoNX', 'derivation_path': None, 'name': 'p2sh', 'first_address': None}"
+    )

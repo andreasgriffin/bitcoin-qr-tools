@@ -4,7 +4,12 @@ import re
 from typing import Dict, List, Optional, Tuple
 
 import bdkpython as bdk
-from hwilib.descriptor import Descriptor, PubkeyProvider, parse_descriptor
+from hwilib.descriptor import (
+    Descriptor,
+    PubkeyProvider,
+    _get_func_expr,
+    parse_descriptor,
+)
 
 from bitcoin_qr_tools.utils import WrongNetwork, _flatten_descriptors
 
@@ -110,17 +115,23 @@ class SignerInfo:
         )
 
     @classmethod
-    def _handle_incomplete_descritpor_bare_p2wsh(cls, descriptor_str: str) -> "Optional[SignerInfo]":
-        if not (descriptor_str.startswith("wsh([") and "]" in descriptor_str):
-            return None
-        # handle_incorrect_output_descriptor_from_keystone
-        # extract just the inner part
-        names = ["wsh"]
-        descriptor_str = descriptor_str.split("#")[0] if "#" in descriptor_str else descriptor_str
-        inner_pubkey_str = descriptor_str.replace("wsh(", "").rstrip(")")
+    def _get_inner_most_signer_info(cls, expr: str) -> Tuple[str, str]:
+        funcs = []
+        error = False
+        while not error:
+            try:
+                func, expr = _get_func_expr(expr)
+                funcs.append(func)
+            except:
+                error = True
+        return "p2" + "-".join([func for func in funcs]), expr
+
+    @classmethod
+    def _handle_incomplete_descriptor_bare_p2wsh(cls, descriptor_str: str) -> "Optional[SignerInfo]":
         try:
-            signer_info = SignerInfo.from_str(inner_pubkey_str)
-            signer_info.name = "-".join(["p2" + name for name in names])
+            name, most_inner_expr = cls._get_inner_most_signer_info(descriptor_str)
+            signer_info = SignerInfo.from_str(most_inner_expr)
+            signer_info.name = name
         except:
             return None
         return signer_info
@@ -135,7 +146,7 @@ class SignerInfo:
             )
         except ValueError as e:
             if "A matching pair of parentheses cannot be found" in e.args:
-                signer_info = cls._handle_incomplete_descritpor_bare_p2wsh(descriptor_str=descriptor_str)
+                signer_info = cls._handle_incomplete_descriptor_bare_p2wsh(descriptor_str=descriptor_str)
                 if signer_info:
                     return signer_info
             raise e
