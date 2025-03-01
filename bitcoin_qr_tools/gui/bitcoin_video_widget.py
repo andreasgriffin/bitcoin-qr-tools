@@ -1,5 +1,4 @@
 import logging
-import math
 
 from bitcoin_qr_tools.data import DecodingException
 
@@ -14,7 +13,7 @@ from PyQt6.QtGui import QKeySequence, QShortcut
 from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
 
 from ..data import Data
-from .video_widget import VideoWidget
+from .video_widget import BarcodeData, VideoWidget
 
 
 class BitcoinVideoWidget(VideoWidget):
@@ -30,11 +29,18 @@ class BitcoinVideoWidget(VideoWidget):
     ):
         super().__init__(parent=parent)
         self.network: bdk.Network = network
+        # self.last_barcode_rect = (0,0,0,0)
+        # self.frames_since_last_barcode = 0
+
+        self.progress_bar = QtWidgets.QProgressBar(self)
+        self.progress_bar.setMinimum(0)
+        self.progress_bar.setMaximum(100)
+        self._layout.insertWidget(1, self.progress_bar)
 
         self.combo_network = QtWidgets.QComboBox(self)
         self.combo_network.addItems([n.name for n in bdk.Network])
         self.combo_network.setCurrentText(self.network.name)
-        self.layout().addWidget(self.combo_network)  # type: ignore
+        self._layout.addWidget(self.combo_network)
         self.combo_network.setVisible(show_network_switch)
 
         self.close_on_result = close_on_result
@@ -71,39 +77,13 @@ class BitcoinVideoWidget(VideoWidget):
                 logger.warning(f"Could not decode data.  {e}")
                 self.signal_recognize_exception.emit(e)
 
-    def draw_pie_progress_bar(self, surface, rect, percentage, color):
-        x, y, w, h = rect
-        # Calculate the center and radius based on the barcode rectangle
-        center_x, center_y = x + w / 2, y + h / 2
-        radius = min(w, h) / 2  # Adjust the divisor as needed
-
-        # Draw a filled arc (which is actually a filled pie slice)
-        radius = min(w, h) // 4  # Radius should not exceed the rectangle
-        start_angle = -math.pi  # For example
-        stop_angle = -math.pi - math.pi * 2 * percentage
-
-        # Draw lots of small lines to create the filled arc
-        num_segments = 100  # Increase this for a smoother arc
-        angle_step = (stop_angle - start_angle) / num_segments
-        points = [(center_x, center_y)]
-        for i in range(num_segments + 1):
-            angle = start_angle + i * angle_step
-            point_x = center_x + radius * math.cos(angle)
-            point_y = center_y + radius * math.sin(angle)
-            points.append((point_x, point_y))
-
-        # Use pygame.draw.polygon to draw the filled arc
-        pygame.draw.polygon(surface, (0, 255, 0), points)
-
-    def _on_draw_surface(self, surface, barcode):
-        super()._on_draw_surface(surface, barcode)
-
+    def set_progress_bar(self):
         estimated_percent_complete = self.meta_data_handler.estimated_percent_complete()
-        logger.debug(estimated_percent_complete)
-        if 0 == estimated_percent_complete:
-            return
+        self.progress_bar.setValue(int((estimated_percent_complete or 0) * 100))
 
-        self.draw_pie_progress_bar(surface, barcode.rect, estimated_percent_complete, (0, 255, 0))
+    def _on_draw_surface(self, surface: pygame.Surface, barcode: BarcodeData):
+        super()._on_draw_surface(surface, barcode)
+        self.set_progress_bar()
 
 
 class DemoBitcoinVideoWidget(BitcoinVideoWidget):

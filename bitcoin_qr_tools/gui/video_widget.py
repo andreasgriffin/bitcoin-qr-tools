@@ -161,13 +161,13 @@ class VideoWidget(QWidget):
         for index, camera_name, camera in self.get_valid_cameras():
             self.combo_cameras.addItem(str(camera_name), userData=camera)
 
-        layout = QVBoxLayout()
-        layout.addWidget(self.label_image)
-        layout.addWidget(self.preset_process_checkbox)
-        layout.addWidget(self.middle_widget)
-        layout.addWidget(self.lower_widget)
+        self._layout = QVBoxLayout()
+        self._layout.addWidget(self.label_image)
+        self._layout.addWidget(self.preset_process_checkbox)
+        self._layout.addWidget(self.middle_widget)
+        self._layout.addWidget(self.lower_widget)
 
-        self.setLayout(layout)
+        self.setLayout(self._layout)
 
         self.current_camera: TypeSomeCamera | None = None
 
