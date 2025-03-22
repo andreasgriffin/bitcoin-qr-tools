@@ -14,6 +14,7 @@ import bdkpython as bdk
 
 from bitcoin_qr_tools.converter_xpub import ConverterXpub
 from bitcoin_qr_tools.i18n import translate
+from bitcoin_qr_tools.sign_message_request import SignMessageRequest
 from bitcoin_qr_tools.signer_info import SignerInfo
 from bitcoin_qr_tools.utils import (
     DecodingException,
@@ -47,6 +48,7 @@ class DataType(enum.Enum):
         enum.auto()
     )  # a list of SignerInfo, that do not (necessarily share the root fingerprint)
     MultisigWalletExport = enum.auto()
+    SignMessageRequest = enum.auto()
 
     @classmethod
     def from_value(cls, value: int) -> "DataType":
@@ -446,6 +448,27 @@ class ConverterPSBT:
         return None
 
 
+class ConverterSignMessageRequest:
+    def __init__(self, smq: SignMessageRequest) -> None:
+        self.data = smq
+
+    def to_json(self):
+        return self.data.to_json()
+
+    @classmethod
+    def _try_extract_sign_message_request(cls, s: str) -> Optional[SignMessageRequest]:
+        pass
+        # try to load from a generic json (and cobo)
+        try:
+            d = json.loads(s)
+
+            return SignMessageRequest(**d)
+        except Exception:
+            pass
+
+        return None
+
+
 class ConverterSignerInfo:
     def __init__(self, info: SignerInfo) -> None:
         self.data = info
@@ -742,6 +765,8 @@ class Data:
             self.data, ConverterMultisigWalletExport
         ):
             return self.data.to_str()
+        if self.data_type == DataType.SignMessageRequest:
+            return ConverterSignMessageRequest(smq=self.data).to_json()
 
         return str(self.data)
 
@@ -857,6 +882,9 @@ class Data:
         if wallet_export := ConverterSignerInfos._try_multisig_wallet_export(s, network=network):
             # this is the Multisig wallet export of jade, and the signers (of course)  are different
             return Data(wallet_export, DataType.MultisigWalletExport, network=network)
+
+        if sign_message_request := ConverterSignMessageRequest._try_extract_sign_message_request(s):
+            return Data(sign_message_request, DataType.SignMessageRequest, network=network)
 
         raise DecodingException(f"{s} Could not be decoded with from_str")
 
