@@ -2,7 +2,7 @@ import base64
 import logging
 import re
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import bdkpython as bdk
 
@@ -39,10 +39,6 @@ class BaseCollector(ABC):
         pass
 
     @abstractmethod
-    def get_complete_data(self) -> Optional[Data]:
-        pass
-
-    @abstractmethod
     def add(self, s: str):
         pass
 
@@ -53,6 +49,14 @@ class BaseCollector(ABC):
     def estimated_percent_complete(self):
         pass
 
+    @abstractmethod
+    def get_complete_raw(self) -> Optional[Any]:
+        pass
+
+    @abstractmethod
+    def get_complete_data(self) -> Optional[Data]:
+        pass
+
 
 class SinglePassCollector(BaseCollector):
     def is_correct_data_format(self, s) -> bool:
@@ -61,8 +65,8 @@ class SinglePassCollector(BaseCollector):
     def is_complete(self) -> bool:
         return bool(self.last)
 
-    def get_complete_data(self) -> Optional[Data]:
-        return Data.from_str(self.last, network=self.network)
+    def get_complete_raw(self) -> Optional[str]:
+        return self.last
 
     def add(self, s: str) -> str:
         self.last = s
@@ -70,6 +74,12 @@ class SinglePassCollector(BaseCollector):
 
     def estimated_percent_complete(self):
         return float(bool(self.data))
+
+    def get_complete_data(self) -> Optional[Data]:
+        raw = self.get_complete_raw()
+        if raw is None:
+            return None
+        return Data.from_str(raw, network=self.network)
 
 
 class SpecterDIYCollector(BaseCollector):
@@ -84,14 +94,20 @@ class SpecterDIYCollector(BaseCollector):
     def is_complete(self) -> bool:
         return len(self.parts) == self.total_parts
 
-    def get_complete_data(self) -> Optional[Data]:
+    def get_complete_raw(self) -> Optional[str]:
         if (self.total_parts is None) or not self.is_complete():
             return None
 
         total_s = ""
         for i in range(1, self.total_parts + 1):
             total_s += self.parts[i]
-        return Data.from_str(total_s, network=self.network)
+        return total_s
+
+    def get_complete_data(self) -> Optional[Data]:
+        raw = self.get_complete_raw()
+        if raw is None:
+            return None
+        return Data.from_str(raw, network=self.network)
 
     def extract_specter_diy_qr_part(self, s) -> Optional[Tuple[int, int, str]]:
         "pMofM something  ->  (M,N,something)"
@@ -162,22 +178,15 @@ class URCollector(BaseCollector):
     def is_complete(self) -> bool:
         return self.decoder.is_complete()
 
-    def get_complete_data(self) -> Data:
+    def get_complete_raw(self) -> Optional[Any]:
+        s = None
         if self.decoder.result.type == CRYPTO_OUTPUT.type:
-            return Data(
-                data=SignerInfo.decode_descriptor_as_signer_info(
-                    UR_OUTPUT.from_cbor(self.decoder.result.cbor).descriptor(), network=self.network
-                ),
-                data_type=DataType.SignerInfo,
-                network=self.network,
+            return SignerInfo.decode_descriptor_as_signer_info(
+                UR_OUTPUT.from_cbor(self.decoder.result.cbor).descriptor(), network=self.network
             )
         elif self.decoder.result.type == CRYPTO_ACCOUNT.type:
-            return Data(
-                data=URTools.decode_account_as_signer_infos(
-                    UR_ACCOUNT.from_cbor(self.decoder.result.cbor), network=self.network
-                ),
-                data_type=DataType.SignerInfos,
-                network=self.network,
+            return URTools.decode_account_as_signer_infos(
+                UR_ACCOUNT.from_cbor(self.decoder.result.cbor), network=self.network
             )
         elif self.decoder.result.type == CRYPTO_PSBT.type:
             qr_content = UR_PSBT.from_cbor(self.decoder.result.cbor).data
@@ -191,7 +200,29 @@ class URCollector(BaseCollector):
                 # for UR tx
                 s = raw.hex()
 
-        return Data.from_str(s, network=self.network)
+        return s
+
+    def get_complete_data(self) -> Optional[Data]:
+        raw = self.get_complete_raw()
+        if raw is None:
+            return None
+
+        if isinstance(raw, SignerInfo):
+            return Data(
+                data=raw,
+                data_type=DataType.SignerInfo,
+                network=self.network,
+            )
+        elif raw and isinstance(raw, list) and all([isinstance(e, SignerInfo) for e in raw]):
+            return Data(
+                data=raw,
+                data_type=DataType.SignerInfos,
+                network=self.network,
+            )
+        elif isinstance(raw, str):
+            return Data.from_str(raw, network=self.network)
+
+        return None
 
     def add(self, s: str) -> Optional[str]:
         self.decoder.receive_part(s)
@@ -271,7 +302,7 @@ class BBQRCollector(BaseCollector):
     def is_complete(self) -> bool:
         return self.estimated_percent_complete() >= 1
 
-    def get_complete_data(self) -> Optional[Data]:
+    def get_complete_raw(self) -> Optional[Any]:
         if not self.is_complete():
             return None
 
@@ -282,14 +313,24 @@ class BBQRCollector(BaseCollector):
             return None
 
         if FILETYPE_NAMES[file_type] in ["Transaction", "Binary"]:
-            return Data.from_binary(raw, network=self.network)
+            return raw
         if FILETYPE_NAMES[file_type] in ["PSBT"]:
-
-            return Data.from_binary(raw, network=self.network)
+            return raw
 
         if FILETYPE_NAMES[file_type] in ["JSON", "Unicode Text"]:
-            return Data.from_str(raw.decode(), network=self.network)
+            return raw.decode()
 
+        return None
+
+    def get_complete_data(self) -> Optional[Data]:
+        raw = self.get_complete_raw()
+        if raw is None:
+            return None
+
+        if isinstance(raw, bytes):
+            return Data.from_binary(raw, network=self.network)
+        elif isinstance(raw, str):
+            return Data.from_str(raw, network=self.network)
         return None
 
     def _are_consistent(self, *parts) -> bool:
@@ -365,7 +406,13 @@ class UnifiedDecoder:
             return False
         return self.last_used_collector.is_complete()
 
+    def get_complete_raw_preserve_memory(self) -> Optional[Any]:
+        if not self.last_used_collector:
+            return None
+        return self.last_used_collector.get_complete_raw()
+
     def get_complete_data(self) -> Optional[Data]:
+        "Calling this erases the memory"
         if not self.last_used_collector:
             return None
         data = self.last_used_collector.get_complete_data()
