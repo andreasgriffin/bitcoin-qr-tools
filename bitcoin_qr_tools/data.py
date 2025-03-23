@@ -457,8 +457,6 @@ class ConverterSignMessageRequest:
 
     @classmethod
     def _try_extract_sign_message_request(cls, s: str) -> Optional[SignMessageRequest]:
-        pass
-        # try to load from a generic json (and cobo)
         try:
             d = json.loads(s)
 

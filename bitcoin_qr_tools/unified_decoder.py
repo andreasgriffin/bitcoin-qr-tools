@@ -53,9 +53,16 @@ class BaseCollector(ABC):
     def get_complete_raw(self) -> Optional[Any]:
         pass
 
-    @abstractmethod
     def get_complete_data(self) -> Optional[Data]:
-        pass
+        raw = self.get_complete_raw()
+        if raw is None:
+            return None
+
+        if isinstance(raw, bytes):
+            return Data.from_binary(raw, network=self.network)
+        elif isinstance(raw, str):
+            return Data.from_str(raw, network=self.network)
+        return None
 
 
 class SinglePassCollector(BaseCollector):
@@ -74,12 +81,6 @@ class SinglePassCollector(BaseCollector):
 
     def estimated_percent_complete(self):
         return float(bool(self.data))
-
-    def get_complete_data(self) -> Optional[Data]:
-        raw = self.get_complete_raw()
-        if raw is None:
-            return None
-        return Data.from_str(raw, network=self.network)
 
 
 class SpecterDIYCollector(BaseCollector):
@@ -102,12 +103,6 @@ class SpecterDIYCollector(BaseCollector):
         for i in range(1, self.total_parts + 1):
             total_s += self.parts[i]
         return total_s
-
-    def get_complete_data(self) -> Optional[Data]:
-        raw = self.get_complete_raw()
-        if raw is None:
-            return None
-        return Data.from_str(raw, network=self.network)
 
     def extract_specter_diy_qr_part(self, s) -> Optional[Tuple[int, int, str]]:
         "pMofM something  ->  (M,N,something)"
@@ -179,7 +174,6 @@ class URCollector(BaseCollector):
         return self.decoder.is_complete()
 
     def get_complete_raw(self) -> Optional[Any]:
-        s = None
         if self.decoder.result.type == CRYPTO_OUTPUT.type:
             return SignerInfo.decode_descriptor_as_signer_info(
                 UR_OUTPUT.from_cbor(self.decoder.result.cbor).descriptor(), network=self.network
@@ -190,17 +184,17 @@ class URCollector(BaseCollector):
             )
         elif self.decoder.result.type == CRYPTO_PSBT.type:
             qr_content = UR_PSBT.from_cbor(self.decoder.result.cbor).data
-            s = base64.b64encode(qr_content).decode("utf-8")
+            return base64.b64encode(qr_content).decode("utf-8")
         elif self.decoder.result.type == BYTES.type:
             raw = UR_BYTES.from_cbor(self.decoder.result.cbor).data
             try:
                 # for UR text info
-                s = raw.decode()
+                return raw.decode()
             except:
                 # for UR tx
-                s = raw.hex()
+                return raw.hex()
 
-        return s
+        return None
 
     def get_complete_data(self) -> Optional[Data]:
         raw = self.get_complete_raw()
@@ -219,10 +213,8 @@ class URCollector(BaseCollector):
                 data_type=DataType.SignerInfos,
                 network=self.network,
             )
-        elif isinstance(raw, str):
-            return Data.from_str(raw, network=self.network)
 
-        return None
+        return super().get_complete_data()
 
     def add(self, s: str) -> Optional[str]:
         self.decoder.receive_part(s)
@@ -320,17 +312,6 @@ class BBQRCollector(BaseCollector):
         if FILETYPE_NAMES[file_type] in ["JSON", "Unicode Text"]:
             return raw.decode()
 
-        return None
-
-    def get_complete_data(self) -> Optional[Data]:
-        raw = self.get_complete_raw()
-        if raw is None:
-            return None
-
-        if isinstance(raw, bytes):
-            return Data.from_binary(raw, network=self.network)
-        elif isinstance(raw, str):
-            return Data.from_str(raw, network=self.network)
         return None
 
     def _are_consistent(self, *parts) -> bool:

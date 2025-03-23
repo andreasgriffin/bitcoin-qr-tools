@@ -18,7 +18,7 @@ from .video_widget import BarcodeData, VideoWidget
 
 class BitcoinVideoWidget(VideoWidget):
     signal_data = pyqtSignal(Data)
-    signal_raw_decoded = pyqtSignal(object)
+    signal_raw_content = pyqtSignal(object)
     signal_recognize_exception = pyqtSignal(Exception)
 
     def __init__(
@@ -72,7 +72,7 @@ class BitcoinVideoWidget(VideoWidget):
 
             try:
                 raw = self.meta_data_handler.get_complete_raw_preserve_memory()
-                self.signal_raw_decoded.emit(raw)
+                self.signal_raw_content.emit(raw)
                 data = self.meta_data_handler.get_complete_data()
                 if data:
                     self.signal_data.emit(data)
@@ -103,12 +103,12 @@ class DemoBitcoinVideoWidget(BitcoinVideoWidget):
             show_network_switch=True,
         )
         self.signal_data.connect(self.result_callback)
-        self.signal_raw_decoded.connect(self.callback_raw)
+        self.signal_raw_content.connect(self.callback_raw_content)
         self.label_qr = QtWidgets.QTextEdit()
 
         self.layout().addWidget(self.label_qr)  # type: ignore
 
-    def callback_raw(self, o: object):
+    def callback_raw_content(self, o: object):
         logger.info(f"Decoded raw: {o}")
 
     def result_callback(self, qr_data):

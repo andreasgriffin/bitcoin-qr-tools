@@ -8,7 +8,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class SignMessageRequest:
-    """Example {"msg":"test message", "subpath": "m/84h/0h/0h/0/10","addr_fmt": "p2wpkh"}
+    """
+    Example {"msg":"test message", "subpath": "m/84h/0h/0h/0/10","addr_fmt": "p2wpkh"}
     See: https://coldcard.com/docs/message-signing/
     """
 
