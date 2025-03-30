@@ -397,8 +397,8 @@ class VideoWidget(QWidget):
         b_min, b_max, b = self.get_brightness(self.current_camera)
         self.brightness_slider.setMinimum(int(b_min))
         self.brightness_slider.setMaximum(int(b_max))
-        self.brightness_slider.setValue(int(b))
         self.on_preset_process_checkbox(self.preset_process_checkbox.isChecked())
+        self.brightness_slider.setValue(int(b_min + (b_max - b_min) / 5))
 
     def _numpy_to_surface(self, numpy_image: np.ndarray) -> pygame.Surface:
         # Convert numpy image (RGB) to pygame surface
