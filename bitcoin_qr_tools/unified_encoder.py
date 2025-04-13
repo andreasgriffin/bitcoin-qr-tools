@@ -181,9 +181,13 @@ class UnifiedEncoder:
                 file_type = "U"
                 raw = data.data_as_string().encode()
 
-            version, parts = split_qrs(
-                raw, file_type, max_version=cls._max_qr_code_version(num_modules=max_qr_size)
-            )
-            return parts
+            return cls.raw_generate_fragments_for_bbqr(raw=raw, file_type=file_type, max_qr_size=max_qr_size)
 
         raise Exception(f"Unknown qr_type {qr_export_type}")
+
+    @classmethod
+    def raw_generate_fragments_for_bbqr(cls, raw: bytes, file_type="U", max_qr_size=50) -> List[str]:
+        version, parts = split_qrs(
+            raw, file_type, max_version=cls._max_qr_code_version(num_modules=max_qr_size)
+        )
+        return parts

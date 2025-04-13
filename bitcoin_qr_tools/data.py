@@ -240,6 +240,7 @@ Format: {self.address_type_short_name.upper()}
             last = last.strip()
             if not ConverterXpub.is_xpub(last):
                 continue
+            last = ConverterXpub.normalized_to_bip32(last)
             if not ConverterXpub.xpub_matches_network(last, network=network):
                 raise WrongNetwork(f"xpub doesnt match network {network.name}")
             xpub = last
@@ -453,7 +454,33 @@ class ConverterSignMessageRequest:
         self.data = smq
 
     def to_json(self):
+        "This is compatible with coldcard Q"
         return self.data.to_json()
+
+    def to_text_str(self):
+        """
+        Compatible with Foundation Passport, Jade, Keystone, SpecterDIY
+        Returns a string like:
+        signmessage m/84h/1h/0h/0/5 ascii:hello
+        """
+        ascii_str = self.data.msg.encode("ascii", "replace").decode("ascii")
+        return f"signmessage {self.data.subpath} ascii:{ascii_str}"
+
+    @classmethod
+    def _try_extract_sign_message_request_text(cls, s: str) -> Optional[SignMessageRequest]:
+        prefix = "signmessage "
+        if not s.startswith(prefix):
+            return None
+
+        try:
+            # remove prefix
+            s = s[len(prefix) :].strip()
+
+            subpath, msg = s.split("ascii:")
+            logger.warning(f"No addres format can be filled for SignMessageRequest")
+            return SignMessageRequest(msg=msg, subpath=subpath, addr_fmt="")
+        except:
+            return None
 
     @classmethod
     def _try_extract_sign_message_request(cls, s: str) -> Optional[SignMessageRequest]:
@@ -462,7 +489,9 @@ class ConverterSignMessageRequest:
 
             return SignMessageRequest(**d)
         except Exception:
-            pass
+            result = cls._try_extract_sign_message_request_text(s)
+            if result:
+                return result
 
         return None
 

@@ -12,13 +12,13 @@ logger = logging.getLogger(__name__)
 class ConverterXpub:
     # Mapping of SLIP-132 version bytes to BIP32 version bytes
     version_bytes_map = {
-        bytes.fromhex("04b24746"): bytes.fromhex("0488b21e"),  # zpub to xpub
+        bytes.fromhex("04b24746"): bytes.fromhex("0488b21e"),  # zpub to xpub  p2wpkh
         bytes.fromhex("04b2430c"): bytes.fromhex("0488ade4"),  # zprv to xprv
-        bytes.fromhex("049d7cb2"): bytes.fromhex("0488b21e"),  # ypub to xpub
+        bytes.fromhex("049d7cb2"): bytes.fromhex("0488b21e"),  # ypub to xpub  p2sh-p2wpkh
         bytes.fromhex("049d7878"): bytes.fromhex("0488ade4"),  # yprv to xprv
-        bytes.fromhex("0295b43f"): bytes.fromhex("0488b21e"),  # Ypub to xpub
+        bytes.fromhex("0295b43f"): bytes.fromhex("0488b21e"),  # Ypub to xpub  p2sh-p2wsh
         bytes.fromhex("0295b005"): bytes.fromhex("0488ade4"),  # Yprv to xprv
-        bytes.fromhex("02aa7ed3"): bytes.fromhex("0488b21e"),  # Zpub to xpub
+        bytes.fromhex("02aa7ed3"): bytes.fromhex("0488b21e"),  # Zpub to xpub  p2wsh
         bytes.fromhex("02aa7a99"): bytes.fromhex("0488ade4"),  # Zprv to xprv
         bytes.fromhex("045f1cf6"): bytes.fromhex("043587cf"),  # vpub to tpub
         bytes.fromhex("045f18bc"): bytes.fromhex("04358394"),  # vprv to tprv
