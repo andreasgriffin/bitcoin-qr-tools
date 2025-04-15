@@ -183,7 +183,7 @@ def test_encode_descriptor_single_sig():
     excpected_output_cbor = meta_data_handler.last_used_collector.decoder.result.cbor
 
     data = meta_data_handler.get_complete_data()
-    assert data.data_type == DataType.SignerInfo
+    assert data.data_type == DataType.Descriptor
 
     expected_output = UR_OUTPUT.from_cbor(excpected_output_cbor)
     expected_descriptor_str = "wpkh([0f056943/84'/1'/0']tpubDCx8y86cKonoPyTtj3f9NZLpBYoBNkbAzUdafMHhggjxkhF8Dny2aekWfDafywEMZEQaQjkK9Gxn7aN7usLRUQdYbvDgcnmYRf72khPEouL)#mm3znrc9"

@@ -175,9 +175,7 @@ class URCollector(BaseCollector):
 
     def get_complete_raw(self) -> Optional[Any]:
         if self.decoder.result.type == CRYPTO_OUTPUT.type:
-            return SignerInfo.decode_descriptor_as_signer_info(
-                UR_OUTPUT.from_cbor(self.decoder.result.cbor).descriptor(), network=self.network
-            )
+            return UR_OUTPUT.from_cbor(self.decoder.result.cbor).descriptor()
         elif self.decoder.result.type == CRYPTO_ACCOUNT.type:
             return URTools.decode_account_as_signer_infos(
                 UR_ACCOUNT.from_cbor(self.decoder.result.cbor), network=self.network
