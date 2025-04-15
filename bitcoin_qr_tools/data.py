@@ -455,6 +455,8 @@ class ConverterSignMessageRequest:
 
     def to_json(self):
         "This is compatible with coldcard Q"
+        # if the message is not ascii, then coldcard Q gives a helpful error message,
+        # notifying the user, that only ascii is OK.
         return self.data.to_json()
 
     def to_text_str(self):
