@@ -44,10 +44,10 @@ def test_descriptor():
     meta_data_handler.add(s)
     assert meta_data_handler.is_complete()
     data = meta_data_handler.get_complete_data()
-    assert isinstance(data.data, SignerInfo)
+    assert data.data_type == DataType.Descriptor
     assert (
-        str(data.data)
-        == "{'fingerprint': '7d315cd9', 'key_origin': 'm/84h/1h/0h', 'xpub': 'tpubDCUCSorYswSAurXv7ZcwfkPR8ms2fmxkEW7LFHuLs85wsCngaNAEVFkAvZSabsnz2VH6NvH4uFd4tZ8J3PSaVaxchE8QCd9wxak5Sugnd9p', 'derivation_path': None, 'name': 'p2wpkh', 'first_address': None}"
+        data.data_as_string()
+        == "wpkh([7d315cd9/84'/1'/0']tpubDCUCSorYswSAurXv7ZcwfkPR8ms2fmxkEW7LFHuLs85wsCngaNAEVFkAvZSabsnz2VH6NvH4uFd4tZ8J3PSaVaxchE8QCd9wxak5Sugnd9p)#ca2wu8zu"
     )
 
 
@@ -227,4 +227,15 @@ def test_jade_format():
     assert (
         str(SignerInfo.decode_descriptor_as_signer_info(descriptor_str=desc, network=bdk.Network.BITCOIN))
         == "{'fingerprint': '75b600b9', 'key_origin': 'm/45h', 'xpub': 'xpub68kgMRTM3H3bz4ZeCVPSWgJvAJQFCqTfRYv24WwzweGpu9494gb1oeJLmPEaFR87fRfyASha9pKL147Zw2ZCA4SoHjEfuiNqKdiMZ5XAoNX', 'derivation_path': None, 'name': 'p2sh', 'first_address': None}"
+    )
+
+
+def test_sparrow_descriptor_qr_export():
+    s = "pkh([ff9f466a/44'/1'/0']tpubDDgB8TAzEbPhcj26514bW3efj4F5x9Xni2FiahV9iSnxdr8sjBQr378L5ke1KXMbadBYw5aAUxAKP33j8LD4y1ZRY6cSySfUN6cu832cXiM)#hl2ce2je"
+
+    data = Data.from_str(s, network=bdk.Network.REGTEST)
+    assert data.data_type == DataType.Descriptor
+    assert (
+        data.data_as_string()
+        == "pkh([ff9f466a/44'/1'/0']tpubDDgB8TAzEbPhcj26514bW3efj4F5x9Xni2FiahV9iSnxdr8sjBQr378L5ke1KXMbadBYw5aAUxAKP33j8LD4y1ZRY6cSySfUN6cu832cXiM)#hl2ce2je"
     )
