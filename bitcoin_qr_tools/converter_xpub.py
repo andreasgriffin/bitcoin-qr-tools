@@ -12,21 +12,21 @@ logger = logging.getLogger(__name__)
 class ConverterXpub:
     # Mapping of SLIP-132 version bytes to BIP32 version bytes
     version_bytes_map = {
-        bytes.fromhex("04b24746"): bytes.fromhex("0488b21e"),  # zpub to xpub
+        bytes.fromhex("04b24746"): bytes.fromhex("0488b21e"),  # zpub to xpub  p2wpkh
         bytes.fromhex("04b2430c"): bytes.fromhex("0488ade4"),  # zprv to xprv
-        bytes.fromhex("049d7cb2"): bytes.fromhex("0488b21e"),  # ypub to xpub
+        bytes.fromhex("049d7cb2"): bytes.fromhex("0488b21e"),  # ypub to xpub  p2sh-p2wpkh
         bytes.fromhex("049d7878"): bytes.fromhex("0488ade4"),  # yprv to xprv
-        bytes.fromhex("0295b43f"): bytes.fromhex("0488b21e"),  # Ypub to xpub
+        bytes.fromhex("0295b43f"): bytes.fromhex("0488b21e"),  # Ypub to xpub  p2sh-p2wsh
         bytes.fromhex("0295b005"): bytes.fromhex("0488ade4"),  # Yprv to xprv
-        bytes.fromhex("02aa7ed3"): bytes.fromhex("0488b21e"),  # Zpub to xpub
+        bytes.fromhex("02aa7ed3"): bytes.fromhex("0488b21e"),  # Zpub to xpub  p2wsh
         bytes.fromhex("02aa7a99"): bytes.fromhex("0488ade4"),  # Zprv to xprv
-        bytes.fromhex("045f1cf6"): bytes.fromhex("043587cf"),  # vpub to tpub
+        bytes.fromhex("045f1cf6"): bytes.fromhex("043587cf"),  # vpub to tpub  p2wpkh
         bytes.fromhex("045f18bc"): bytes.fromhex("04358394"),  # vprv to tprv
-        bytes.fromhex("044a5262"): bytes.fromhex("043587cf"),  # upub to tpub
+        bytes.fromhex("044a5262"): bytes.fromhex("043587cf"),  # upub to tpub  p2sh-p2wpkh
         bytes.fromhex("044a4e28"): bytes.fromhex("04358394"),  # uprv to tprv
-        bytes.fromhex("024289ef"): bytes.fromhex("043587cf"),  # Upub to tpub
+        bytes.fromhex("024289ef"): bytes.fromhex("043587cf"),  # Upub to tpub  p2sh-p2wsh
         bytes.fromhex("024285b5"): bytes.fromhex("04358394"),  # Uprv to tprv
-        bytes.fromhex("02575483"): bytes.fromhex("043587cf"),  # Vpub to tpub
+        bytes.fromhex("02575483"): bytes.fromhex("043587cf"),  # Vpub to tpub  p2wsh
         bytes.fromhex("02575048"): bytes.fromhex("04358394"),  # Vprv to tprv
     }
 

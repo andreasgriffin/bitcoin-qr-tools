@@ -95,3 +95,48 @@ d5b43540: tpubDFnCcKU3iUF4sPeQC68r2ewDaBB7TvLmQBTs12hnNS8nu6CPjZPmzapp7Woz6bkFuL
         Data.from_str(data.data_as_string(), network=bdk.Network.REGTEST).data_as_string()
         == data.data_as_string()
     )
+
+
+def test_parse_from_legacy_coldcard():
+    s = """# Keystone Multisig setup file (created on 0439f926)
+#
+Name: MultiSig
+Policy: 2 of 3
+Format: P2WSH
+
+Derivation: m/48'/0'/0'/2'
+0439F926: Zpub74Jru6aftwwHxCUCWEvP6DgrfFsdA4U6ZRtQ5i8qJpMcC39yZGv3egBhQfV3MS9pZtH5z8iV5qWkJsK6ESs6mSzt4qvGhzJxPeeVS2e1zUG
+Derivation: m/48'/0'/0'/2'
+A32EFFFD: Zpub75UB4yd3NBeRmYLa6cjEMLH512cBgqS5SmVhhQoF6NFciXhKosNFQr74cjDAqtGapYBXJL7D3YN59kGr8d6aSNcrVNgZLLSS3Z1EHURN8qG
+Derivation: m/48'/0'/0'/2'
+95AF25EF: Zpub75PxF38JVVfjW4whYWpS7CMs4g88N7D187jnJx5RKPzRrxq3jMgCdRyz1ayQHrw9NhWbHmrzrB9UhpTxHwUWGSuHNzbdv9hZ6q74DBxpRQ6
+"""
+
+    data = Data.from_str(s, network=bdk.Network.BITCOIN)
+    assert data.data_type == DataType.MultisigWalletExport
+    assert (
+        data.data_as_string()
+        == "#  Multisig setup file (created by Bitcoin Safe)\n#\nName: MultiSig\nPolicy: 2 of 3\nFormat: P2WSH\n\nDerivation: m/48h/0h/0h/2h\n0439F926: xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf\nDerivation: m/48h/0h/0h/2h\nA32EFFFD: xpub6EuZLQYmVs16eNnxVEh175kFwJH2bEmVJGobDMjvxafSz9VxY9er5bvrmcLXHdjqmnsvvnuyF1GUG1RxQ17bhR8yvEBJm7LTcNc4vKY7xds\nDerivation: m/48h/0h/0h/2h\n95AF25EF: xpub6EqLWU42dB2QNuQ5w8nCrwq3zwnyGWYQyd3fpu27BcQG8adgTdxoJBonAU6kjcQQKxCzvEfm3e3sp5d4ZKVXXVRQor6PLvbafehtr8QwtgS"
+    )
+
+    assert isinstance(data.data, ConverterMultisigWalletExport)
+    assert (
+        data.data.to_custom_str(hardware_signer_name="Keystone")
+        == "# Keystone Multisig setup file (created by Bitcoin Safe)\n#\nName: MultiSig\nPolicy: 2 of 3\nFormat: P2WSH\n\nDerivation: m/48h/0h/0h/2h\n0439F926: xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf\nDerivation: m/48h/0h/0h/2h\nA32EFFFD: xpub6EuZLQYmVs16eNnxVEh175kFwJH2bEmVJGobDMjvxafSz9VxY9er5bvrmcLXHdjqmnsvvnuyF1GUG1RxQ17bhR8yvEBJm7LTcNc4vKY7xds\nDerivation: m/48h/0h/0h/2h\n95AF25EF: xpub6EqLWU42dB2QNuQ5w8nCrwq3zwnyGWYQyd3fpu27BcQG8adgTdxoJBonAU6kjcQQKxCzvEfm3e3sp5d4ZKVXXVRQor6PLvbafehtr8QwtgS"
+    )
+
+
+def test_try_extract_sign_message_request_text():
+    s = "signmessage m/84h/1h/0h/0/5 ascii:hello"
+
+    data = Data.from_str(s, network=bdk.Network.BITCOIN)
+    assert data.data_type == DataType.SignMessageRequest
+    assert data.data_as_string() == '{"msg": "hello", "subpath": "m/84h/1h/0h/0/5 ", "addr_fmt": ""}'
+
+
+def test_try_extract_sign_message_request():
+    s = '{"msg": "hello", "subpath": "m/84h/1h/0h/0/5 ", "addr_fmt": "p2wpkh"}'
+
+    data = Data.from_str(s, network=bdk.Network.BITCOIN)
+    assert data.data_type == DataType.SignMessageRequest
+    assert data.data_as_string() == '{"msg": "hello", "subpath": "m/84h/1h/0h/0/5 ", "addr_fmt": "p2wpkh"}'
