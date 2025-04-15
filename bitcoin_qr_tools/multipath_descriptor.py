@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import List, Tuple
 
 import bdkpython as bdk
 from hwilib.descriptor import Descriptor, PubkeyProvider, parse_descriptor
@@ -35,14 +35,15 @@ class MultipathDescriptor:
 
         for bdk_descriptor in self.bdk_descriptors:
             # check that the self.bdk_descriptors each have equal derivation_paths
-            derivation_path = self.get_equal_derivation_path(bdk_descriptor.as_string())
+            all_equal, derivation_paths = self.get_equal_derivation_path(bdk_descriptor.as_string())
             assert (
-                derivation_path
+                all_equal
             ), f"Derivation paths in {bdk_descriptor.as_string()} are not all equal. MultipathDescriptor does not  support this."
+            assert all(derivation_paths), f"The {derivation_paths=} cannot be empty"
 
     @classmethod
-    def get_equal_derivation_path(cls, descriptor_str: str) -> Optional[str]:
-        "Returns the derivation_path is all derivation_paths are equal. Otherwise None"
+    def get_equal_derivation_path(cls, descriptor_str: str) -> Tuple[bool, List[str | None]]:
+        "Returns the derivation_path if all derivation_paths are equal. Otherwise None"
 
         hwi_descriptor = parse_descriptor(descriptor_str)
         pubkey_providers = get_all_pubkey_providers(hwi_descriptor=hwi_descriptor)
@@ -51,10 +52,7 @@ class MultipathDescriptor:
         derivation_paths = [pubkey_provider.deriv_path for pubkey_provider in pubkey_providers]
         all_equal = all(x == derivation_paths[0] for x in derivation_paths)
 
-        if all_equal:
-            return pubkey_providers[0].deriv_path
-        else:
-            return None
+        return all_equal, derivation_paths
 
     @classmethod
     def is_valid(cls, descriptor_str: str, network: bdk.Network) -> bool:
@@ -66,19 +64,20 @@ class MultipathDescriptor:
 
     @classmethod
     def from_descriptor_str(cls, descriptor_str: str, network: bdk.Network):
-        derivation_path = cls.get_equal_derivation_path(descriptor_str)
+        all_equal, derivation_paths = cls.get_equal_derivation_path(descriptor_str)
 
         assert (
-            derivation_path
+            all_equal
         ), f"Derivation paths are not all equal, and from this no MultiPathDescriptor can be created."
 
         # sparrow qr code misses the change derivation path completely
-        assert derivation_path in [
+        assert derivation_paths[0] in [
+            None,
             "",
             "/0/*",
             "/1/*",
             "/<0;1>/*",
-        ], f"Unknown derivation path {derivation_path}, and from this no MultiPathDescriptor can be created."
+        ], f"Unknown derivation path {derivation_paths}, and from this no MultiPathDescriptor can be created."
 
         receive_descriptor = get_adapted_hwi_descriptor(descriptor_str, new_derivation_path="/0/*")
         change_descriptor = get_adapted_hwi_descriptor(descriptor_str, new_derivation_path="/1/*")

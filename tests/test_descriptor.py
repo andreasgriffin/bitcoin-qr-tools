@@ -1,6 +1,7 @@
 import binascii
 
 import bdkpython as bdk
+import pytest
 
 from bitcoin_qr_tools.data import (
     Data,
@@ -239,3 +240,26 @@ def test_sparrow_descriptor_qr_export():
         data.data_as_string()
         == "pkh([ff9f466a/44'/1'/0']tpubDDgB8TAzEbPhcj26514bW3efj4F5x9Xni2FiahV9iSnxdr8sjBQr378L5ke1KXMbadBYw5aAUxAKP33j8LD4y1ZRY6cSySfUN6cu832cXiM)#hl2ce2je"
     )
+
+
+def test_sparrow_descriptor_qr_export_to_multi_pathdescriptor():
+    s = "pkh([ff9f466a/44'/1'/0']tpubDDgB8TAzEbPhcj26514bW3efj4F5x9Xni2FiahV9iSnxdr8sjBQr378L5ke1KXMbadBYw5aAUxAKP33j8LD4y1ZRY6cSySfUN6cu832cXiM)#hl2ce2je"
+
+    descriptor = MultipathDescriptor.from_descriptor_str(s, network=bdk.Network.REGTEST)
+
+    assert (
+        descriptor.as_string()
+        == "pkh([ff9f466a/44'/1'/0']tpubDDgB8TAzEbPhcj26514bW3efj4F5x9Xni2FiahV9iSnxdr8sjBQr378L5ke1KXMbadBYw5aAUxAKP33j8LD4y1ZRY6cSySfUN6cu832cXiM/<0;1>/*)#e666jeka"
+    )
+
+
+def test_disallow_import_of_descriptors_without_derivation_path():
+    r = "pkh([ff9f466a/44'/1'/0']tpubDDgB8TAzEbPhcj26514bW3efj4F5x9Xni2FiahV9iSnxdr8sjBQr378L5ke1KXMbadBYw5aAUxAKP33j8LD4y1ZRY6cSySfUN6cu832cXiM/0/*)"
+    c = "pkh([ff9f466a/44'/1'/0']tpubDDgB8TAzEbPhcj26514bW3efj4F5x9Xni2FiahV9iSnxdr8sjBQr378L5ke1KXMbadBYw5aAUxAKP33j8LD4y1ZRY6cSySfUN6cu832cXiM)"
+
+    with pytest.raises(Exception) as exc_info:
+        MultipathDescriptor(
+            bdk_descriptor=bdk.Descriptor(r, network=bdk.Network.REGTEST),
+            change_descriptor=bdk.Descriptor(c, network=bdk.Network.REGTEST),
+        )
+    assert str(exc_info.value) == "The derivation_paths=[None] cannot be empty"
