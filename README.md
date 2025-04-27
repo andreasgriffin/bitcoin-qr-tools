@@ -6,7 +6,6 @@
   * PSBT
   * Xpub
   * Descriptor
-  * Multipath Descriptor (like Sparrow)
   * Partial descriptors (Specter DIY) (finger print , derivation, xpub)
   * TxId
   * SignerInfo(s) for Hardware Signer Exports (Wallet Export)

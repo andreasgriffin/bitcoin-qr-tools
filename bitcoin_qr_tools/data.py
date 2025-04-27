@@ -7,13 +7,17 @@ import urllib.parse
 from dataclasses import dataclass
 from decimal import Decimal
 from os import fdopen
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 import base58
 import bdkpython as bdk
 
 from bitcoin_qr_tools.converter_xpub import ConverterXpub
 from bitcoin_qr_tools.i18n import translate
+from bitcoin_qr_tools.multipath_descriptor import (
+    convert_to_bdk_descriptor,
+    convert_to_multipath_descriptor,
+)
 from bitcoin_qr_tools.sign_message_request import SignMessageRequest
 from bitcoin_qr_tools.signer_info import SignerInfo
 from bitcoin_qr_tools.utils import (
@@ -24,8 +28,6 @@ from bitcoin_qr_tools.utils import (
     serialized_to_hex,
 )
 
-from .multipath_descriptor import MultipathDescriptor
-
 BITCOIN_BIP21_URI_SCHEME = "bitcoin"
 logger = logging.getLogger(__name__)
 
@@ -33,7 +35,7 @@ logger = logging.getLogger(__name__)
 class DataType(enum.Enum):
     Bip21 = enum.auto()  # https://bips.dev/21/
     Descriptor = enum.auto()
-    MultiPathDescriptor = enum.auto()
+    MultiPathDescriptor = enum.auto()  # legacy.  TODO: remove in a backward compatible way
     Xpub = enum.auto()
     Fingerprint = enum.auto()
     SignerInfo = enum.auto()  # FingerPrint, Derivation path, Xpub
@@ -415,26 +417,26 @@ class ConverterTx:
 
 
 class ConverterPSBT:
-    def __init__(self, psbt: bdk.PartiallySignedTransaction) -> None:
+    def __init__(self, psbt: bdk.Psbt) -> None:
         self.psbt = psbt
 
     def to_str(self):
         return str(self.psbt.serialize())
 
     @classmethod
-    def _try_decode_psbt_binary(cls, raw: bytes) -> Optional[bdk.PartiallySignedTransaction]:
+    def _try_decode_psbt_binary(cls, raw: bytes) -> Optional[bdk.Psbt]:
         psbt_magic_bytes = b"psbt\xff"
 
         # Try each decoding strategy in the loop
         try:
             if raw[: len(psbt_magic_bytes)] == psbt_magic_bytes:
-                return bdk.PartiallySignedTransaction(base64.b64encode(raw).decode())
+                return bdk.Psbt(base64.b64encode(raw).decode())
         except Exception:
             return None
         return None
 
     @classmethod
-    def _try_decode_psbt(cls, s) -> Optional[bdk.PartiallySignedTransaction]:
+    def _try_decode_psbt(cls, s) -> Optional[bdk.Psbt]:
         psbt_magic_bytes = b"psbt\xff"
 
         # Try each decoding strategy in the loop
@@ -442,7 +444,7 @@ class ConverterPSBT:
             try:
                 decoded = decode(s)
                 if decoded[:5] == psbt_magic_bytes:
-                    return bdk.PartiallySignedTransaction(base64.b64encode(decoded).decode())
+                    return bdk.Psbt(base64.b64encode(decoded).decode())
             except Exception:
                 continue  # If one strategy fails, try the next
 
@@ -690,18 +692,16 @@ class ConverterSignerInfos:
 
 
 class ConverterDescriptor:
-    def __init__(self, descriptor: Union[bdk.Descriptor, MultipathDescriptor]) -> None:
+    def __init__(self, descriptor: bdk.Descriptor) -> None:
         self.descriptor = descriptor
 
     def to_str(self):
-        return self.descriptor.as_string_private()
+        return self.descriptor.to_string_with_secret()
 
     @classmethod
     def _try_get_descriptor(cls, s, network: bdk.Network) -> Optional[bdk.Descriptor]:
         try:
-            assert "<" not in s, "This contains characters of a multipath descriptor"
-            assert ">" not in s, "This contains characters of a multipath descriptor"
-            descriptor = bdk.Descriptor(s, network)
+            descriptor = convert_to_bdk_descriptor(s, network)
             if descriptor:
                 logger.debug("detected descriptor")
                 return descriptor
@@ -717,32 +717,41 @@ class ConverterDescriptor:
         return None
 
     @classmethod
-    def _try_get_multipath_descriptor(cls, s, network: bdk.Network) -> Optional[MultipathDescriptor]:
+    def _try_get_multipath_descriptor(cls, s: str, network: bdk.Network) -> Optional[bdk.Descriptor]:
         # if new lines are presnt, try checking if there are descriptors in the lines
         if "\n" in s:
+
             splitted_lines = s.split("\n")
-            raw_results = [
-                cls._try_get_multipath_descriptor(line.strip(), network) for line in splitted_lines
-            ]
+            raw_results = [cls._try_get_descriptor(line.strip(), network) for line in splitted_lines]
             # check that all entries return the same multipath descriptor
             # "None" entries are disallowed, to ensure that no deception is possible
             results = [r for r in raw_results if r]
-            if results == raw_results:
-                all_identical = all(
-                    element.as_string_private() == results[0].as_string_private() for element in results
+            if results:
+                # assume the lines are multipath descriptors written out
+                assumed_multipath_descriptor = convert_to_multipath_descriptor(
+                    results[0].to_string_with_secret(),
+                    network=network,
                 )
-                if all_identical:
-                    return results[0]
-                else:
-                    # the string contins multiple inconsitent descriptors.
-                    # Don't know how to handle this properly.
+                if not isinstance(assumed_multipath_descriptor, bdk.Descriptor):
                     raise InconsistentDescriptors(f"The descriptors {splitted_lines} are inconsistent.")
+                if not assumed_multipath_descriptor.is_multipath():
+                    raise InconsistentDescriptors(f"The descriptors {splitted_lines} are inconsistent.")
+                assumed_single_descritpors = assumed_multipath_descriptor.to_single_descriptors()
+
+                if not len(results) == len(assumed_single_descritpors):
+                    raise InconsistentDescriptors(f"The descriptors {splitted_lines} are inconsistent.")
+                for result, assumed_single_descritpor in zip(results, assumed_single_descritpors):
+                    if (
+                        not result.to_string_with_secret()
+                        == assumed_single_descritpor.to_string_with_secret()
+                    ):
+                        raise InconsistentDescriptors(f"The descriptors {splitted_lines} are inconsistent.")
+                return assumed_multipath_descriptor
             else:
-                # if splitting lines didnt work, then remove the \n and try to recognize all as 1 descriptor
                 s = s.replace("\n", "")
 
         try:
-            multipath_descriptor = MultipathDescriptor.from_descriptor_str(s, network)
+            multipath_descriptor = convert_to_multipath_descriptor(s, network)
             if multipath_descriptor:
                 logger.debug("detected descriptor")
                 return multipath_descriptor
@@ -847,21 +856,14 @@ class Data:
         return Data(tx, DataType.Tx, network=network)
 
     @classmethod
-    def from_psbt(cls, psbt: bdk.PartiallySignedTransaction, network: bdk.Network) -> "Data":
-        assert isinstance(psbt, bdk.PartiallySignedTransaction)
+    def from_psbt(cls, psbt: bdk.Psbt, network: bdk.Network) -> "Data":
+        assert isinstance(psbt, bdk.Psbt)
         return Data(psbt, DataType.PSBT, network=network)
 
     @classmethod
     def from_descriptor(cls, descriptor: bdk.Descriptor, network: bdk.Network) -> "Data":
         assert isinstance(descriptor, bdk.Descriptor)
         return Data(descriptor, DataType.Descriptor, network=network)
-
-    @classmethod
-    def from_multipath_descriptor(
-        cls, multipath_descriptor: MultipathDescriptor, network: bdk.Network
-    ) -> "Data":
-        assert isinstance(multipath_descriptor, MultipathDescriptor)
-        return Data(multipath_descriptor, DataType.MultiPathDescriptor, network=network)
 
     @classmethod
     def from_str(cls, s: str, network: bdk.Network) -> "Data":
@@ -880,7 +882,9 @@ class Data:
             return Data(descriptor, DataType.Descriptor, network=network)
 
         if descriptor := ConverterDescriptor._try_get_multipath_descriptor(s, network):
-            return Data(descriptor, DataType.MultiPathDescriptor, network=network)
+            return Data(
+                descriptor, DataType.Descriptor, network=network
+            )  # bdk.Descriptor supports multipath descriptors
 
         if ConverterTxid.is_valid_bitcoin_hash(s):
             return Data(s, DataType.Txid, network=network)

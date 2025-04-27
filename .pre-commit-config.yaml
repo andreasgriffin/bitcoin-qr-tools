@@ -5,7 +5,8 @@ repos:
       - id: isort
         args:
           - --profile=black  # Set the import order style (change 'google' to your preferred style)          
-        exclude: 'urtypes/__init__.py'          
+        exclude: 'urtypes/__init__.py'     
+             
   - repo: https://github.com/myint/autoflake
     rev: v2.2.1  # Use the latest version of autoflake
     hooks:
@@ -43,7 +44,8 @@ repos:
           - --non-interactive   
           - --ignore-missing-imports
           - --show-error-codes 
+        language: python  # Required for additional_dependencies https://docs.renovatebot.com/modules/manager/pre-commit/
         additional_dependencies: 
           - types-requests
           - pyqt6 
-          - bdkpython
+          - bdkpython==1.0.0b7
