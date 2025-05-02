@@ -288,7 +288,7 @@ class ConverterBip329:
                 obj = json.loads(line)
                 # Check if all specified keys are present in the JSON object
                 if not all(key in obj for key in keys):
-                    logger.debug(f"ndjson check: Not all required keys {keys} are present in {obj}")
+                    logger.debug(f"is_ndjson_with_keys: Not all required keys are present in obj")
                     return False
             except json.JSONDecodeError:
                 return False

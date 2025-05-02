@@ -639,5 +639,5 @@ class DemoVideoWidget(VideoWidget):
 
     def show_qr(self, qr_data):
         s = qr_data.decode("utf-8")
-        logger.debug(s)
+        logger.info(s)
         self.label_qr.setText(s)

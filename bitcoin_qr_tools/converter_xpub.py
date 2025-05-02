@@ -89,7 +89,7 @@ class ConverterXpub:
     def normalized_to_bip32(cls, xpub: str) -> str:
         if ConverterXpub.is_slip132(xpub):
             converted = cls.convert_slip132_to_bip32(xpub)
-            logger.debug(f"Converting SLIP132 to Bip32: {xpub} -> {converted}")
+            logger.debug(f"Converting SLIP132 to Bip32: {xpub[:4]=} -> {converted[:4]=}")
             return converted
         return xpub
 

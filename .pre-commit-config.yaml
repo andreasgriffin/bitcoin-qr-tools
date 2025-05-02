@@ -48,4 +48,4 @@ repos:
         additional_dependencies: 
           - types-requests
           - pyqt6 
-          - bdkpython==1.0.0b7
+          - bdkpython==1.2.0

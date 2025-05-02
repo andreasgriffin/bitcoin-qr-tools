@@ -335,7 +335,7 @@ class BBQRCollector(BaseCollector):
         if self.parts:
             existing_part = list(self.parts.values())[0]
             if not self._are_consistent(existing_part, s):
-                logger.debug(f"Clearing cache, because {existing_part} if inconsistent with {s}")
+                logger.debug(f"Clearing cache, because existing_part not _are_consistent s")
                 self.clear()
 
         meta_data = self.get_splitted_data(s)
