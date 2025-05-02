@@ -6,13 +6,13 @@
   * PSBT
   * Xpub
   * Descriptor
-  * Multipath Descriptor (like Sparrow)
   * Partial descriptors (Specter DIY) (finger print , derivation, xpub)
   * TxId
   * SignerInfo(s) for Hardware Signer Exports (Wallet Export)
   * Animated QR Codes (BBQR), used by Coldcard
   * Animated QR Codes ([UR](https://github.com/BlockchainCommons/Research/blob/master/papers/bcr-2020-005-ur.md)), used by Foundation Passport, Keystone
   * Animated QR Codes used by Specter DIY
+  * SignMessageRequest  (supports `signmessage m/84h/1h/0h/0/5 ascii:hello` and the json format https://coldcard.com/docs/message-signing/)
 * Recognizes (and classifies)  **blazingly fast**  
 * Animated QR Code generation via  `UnifiedEncoder.generate_fragments_for_qr()`
   * For BBQR, UR, and Specter DIY

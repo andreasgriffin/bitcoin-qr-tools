@@ -3,16 +3,70 @@ import binascii
 import bdkpython as bdk
 import pytest
 
-from bitcoin_qr_tools.data import (
-    Data,
-    DataType,
-    DecodingException,
-    InconsistentDescriptors,
-    SignerInfo,
+from bitcoin_qr_tools.data import Data, DataType, InconsistentDescriptors, SignerInfo
+from bitcoin_qr_tools.multipath_descriptor import (
+    convert_to_bdk_descriptor,
+    convert_to_multipath_descriptor,
 )
-from bitcoin_qr_tools.multipath_descriptor import MultipathDescriptor
 from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
 from bitcoin_qr_tools.unified_encoder import QrExportTypes, UnifiedEncoder
+
+
+def test_convert_to_multipath_descriptor():
+    "convert_to_multipath_descriptor can be removed once, https://github.com/bitcoindevkit/bdk/issues/1845 is fixed"
+
+    def do(s: str, is_multipath: bool, right_network: bdk.Network, wrong_network: bdk.Network):
+        descriptor = convert_to_bdk_descriptor(s, right_network)
+        assert isinstance(descriptor, bdk.Descriptor)
+        assert descriptor.is_multipath() == is_multipath
+
+        if not descriptor.is_multipath():
+            assert convert_to_multipath_descriptor(s, right_network).is_multipath()
+
+        with pytest.raises(Exception) as exc_info:
+            descriptor = convert_to_bdk_descriptor(s, wrong_network)
+
+    # no path
+    do(
+        "wpkh([a42c6dd3/84'/1'/0']tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks)",
+        is_multipath=False,
+        right_network=bdk.Network.TESTNET,
+        wrong_network=bdk.Network.BITCOIN,
+    )
+    do(
+        "wpkh([a42c6dd3/84'/1'/0']xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM)",
+        is_multipath=False,
+        right_network=bdk.Network.BITCOIN,
+        wrong_network=bdk.Network.TESTNET,
+    )
+
+    # single path
+    do(
+        "wpkh([a42c6dd3/84'/1'/0']tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks/0/*)",
+        is_multipath=False,
+        right_network=bdk.Network.TESTNET,
+        wrong_network=bdk.Network.BITCOIN,
+    )
+    do(
+        "wpkh([a42c6dd3/84'/1'/0']xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM/0/*)",
+        is_multipath=False,
+        right_network=bdk.Network.BITCOIN,
+        wrong_network=bdk.Network.TESTNET,
+    )
+
+    # multipath
+    do(
+        "wpkh([a42c6dd3/84'/1'/0']tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks/<0;1>/*)",
+        is_multipath=True,
+        right_network=bdk.Network.TESTNET,
+        wrong_network=bdk.Network.BITCOIN,
+    )
+    do(
+        "wpkh([a42c6dd3/84'/1'/0']xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM/<0;1>/*)",
+        is_multipath=True,
+        right_network=bdk.Network.BITCOIN,
+        wrong_network=bdk.Network.TESTNET,
+    )
 
 
 def test_descriptor():
@@ -21,14 +75,14 @@ def test_descriptor():
     data = Data.from_str(s, network=bdk.Network.REGTEST)
     assert data.data_type == DataType.Descriptor
     assert isinstance(data.data, bdk.Descriptor)
-    assert data.data.as_string_private() == s
+    assert data.data.to_string_with_secret() == s
 
     # test descriptor without hashsum
     s = "wpkh([a42c6dd3/84'/1'/0']tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks/0/*)"
     data = Data.from_str(s, network=bdk.Network.REGTEST)
     assert data.data_type == DataType.Descriptor
     assert isinstance(data.data, bdk.Descriptor)
-    assert data.data.as_string_private().startswith(s)
+    assert data.data.to_string_with_secret().startswith(s)
 
     # test descriptor with h instead of '
     s = "wpkh([a42c6dd3/84h/1h/0h]tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks/0/*)"
@@ -58,17 +112,17 @@ def test_descriptor_master_xpub():
     data = Data.from_str(s, network=bdk.Network.REGTEST)
     assert data.data_type == DataType.Descriptor
     assert isinstance(data.data, bdk.Descriptor)
-    assert data.data.as_string_private() == s
+    assert data.data.to_string_with_secret() == s
 
     # sparrow format for root keys (created by other wallets)
     # bdk.Descriptor cannot handle that but  MultipathDescriptor can
     s = "wpkh([a42c6dd3/m]tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks/0/*)#lrp3pclf"
     data = Data.from_str(s, network=bdk.Network.REGTEST)
-    assert data.data_type == DataType.MultiPathDescriptor
-    assert isinstance(data.data, MultipathDescriptor)
+    assert data.data_type == DataType.Descriptor
+    assert isinstance(data.data, bdk.Descriptor)
     assert (
-        data.data.as_string_private()
-        == "wpkh([a42c6dd3]tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks/<0;1>/*)#lmk222x0"
+        data.data.to_string_with_secret()
+        == "wpkh([a42c6dd3]tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks/0/*)#h6kd9udr"
     )
 
 
@@ -83,11 +137,11 @@ def test_multipath_descriptor1():
         meta_data_handler.add(part)
     assert meta_data_handler.is_complete()
     data = meta_data_handler.get_complete_data()
-    assert data.data_type == DataType.MultiPathDescriptor, "Wrong type"
+    assert data.data_type == DataType.Descriptor, "Wrong type"
     # bdk returns '  instead of h  (which sparrrow does), so the checksum is different
     assert (
         data.data_as_string()
-        == "wsh(sortedmulti(2,[829074ff/48'/1'/0'/2']tpubDDx9arPwEvHGnnkKN1YJXFE4W6JZXyVX9HGjZW75nWe1FCsTYu2k3i7VtCwhGR9zj6UUYnseZUnwL7T6Znru3NmXkcjEQxMqRx7Rxz8rPp4/<0;1>/*,[45f35351/48'/1'/0'/2']tpubDEY3tNWvDs8J6xAmwoirxgff61gPN1V6U5numeb6xjvZRB883NPPpRYHt2A6fUE3YyzDLezFfuosBdXsdXJhJUcpqYWF9EEBmWqG3rG8sdy/<0;1>/*,[d5b43540/48'/1'/0'/2']tpubDFnCcKU3iUF4sPeQC68r2ewDaBB7TvLmQBTs12hnNS8nu6CPjZPmzapp7Woz6bkFuLfSjSpg6gacheKBaWBhDnEbEpKtCnVFdQnfhYGkPQF/<0;1>/*))#2jxldwxn"
+        == "wsh(sortedmulti(2,[45f35351/48'/1'/0'/2']tpubDEY3tNWvDs8J6xAmwoirxgff61gPN1V6U5numeb6xjvZRB883NPPpRYHt2A6fUE3YyzDLezFfuosBdXsdXJhJUcpqYWF9EEBmWqG3rG8sdy/<0;1>/*,[829074ff/48'/1'/0'/2']tpubDDx9arPwEvHGnnkKN1YJXFE4W6JZXyVX9HGjZW75nWe1FCsTYu2k3i7VtCwhGR9zj6UUYnseZUnwL7T6Znru3NmXkcjEQxMqRx7Rxz8rPp4/<0;1>/*,[d5b43540/48'/1'/0'/2']tpubDFnCcKU3iUF4sPeQC68r2ewDaBB7TvLmQBTs12hnNS8nu6CPjZPmzapp7Woz6bkFuLfSjSpg6gacheKBaWBhDnEbEpKtCnVFdQnfhYGkPQF/<0;1>/*))#62l47g2m"
     )
 
     # mainnet
@@ -101,12 +155,40 @@ def test_multipath_descriptor1():
         meta_data_handler.add(part)
     assert meta_data_handler.is_complete()
     data = meta_data_handler.get_complete_data()
-    assert data.data_type == DataType.MultiPathDescriptor, "Wrong type"
+    assert data.data_type == DataType.Descriptor, "Wrong type"
     # bdk returns '  instead of h  (which sparrrow does), so the checksum is different
     assert (
         data.data_as_string()
-        == "wsh(sortedmulti(2,[b4b8e8de/48'/0'/0'/2']xpub6DfgZZfpDv5JRrigvK9ce264NmRofrevrcmx1N5Y2yA9yPBQ7iSu2bmxVcW6yXT4g7GhaTe97nWTQifHLzksEWDC7va8dV5ygSGRqzDsUyW/<0;1>/*,[c40fbbb2/48'/0'/0'/2']xpub6ESDx8itWPF2Evgg5WTrBJwXoz3KFAbrdFemct7452QMyXa9G2NKsyNPmi2HPCzAPDop44wGPYVGHBBAZ92o24H6aENRTgzhB9g7mVYfHWr/<0;1>/*,[829074ff/48'/0'/0'/2']xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM/<0;1>/*))#hc239s8u"
+        == "wsh(sortedmulti(2,[b4b8e8de/48'/0'/0'/2']xpub6DfgZZfpDv5JRrigvK9ce264NmRofrevrcmx1N5Y2yA9yPBQ7iSu2bmxVcW6yXT4g7GhaTe97nWTQifHLzksEWDC7va8dV5ygSGRqzDsUyW/<0;1>/*,[829074ff/48'/0'/0'/2']xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM/<0;1>/*,[c40fbbb2/48'/0'/0'/2']xpub6ESDx8itWPF2Evgg5WTrBJwXoz3KFAbrdFemct7452QMyXa9G2NKsyNPmi2HPCzAPDop44wGPYVGHBBAZ92o24H6aENRTgzhB9g7mVYfHWr/<0;1>/*))#6uw6zqx6"
     )
+
+
+def test_derivation_path():
+    # convert to multipath
+    inputs = [
+        """wpkh([45f35351/48h/1h/0h/2h]tpubDEY3tNWvDs8J6xAmwoirxgff61gPN1V6U5numeb6xjvZRB883NPPpRYHt2A6fUE3YyzDLezFfuosBdXsdXJhJUcpqYWF9EEBmWqG3rG8sdy)""",
+        """wpkh([45f35351/48h/1h/0h/2h]tpubDEY3tNWvDs8J6xAmwoirxgff61gPN1V6U5numeb6xjvZRB883NPPpRYHt2A6fUE3YyzDLezFfuosBdXsdXJhJUcpqYWF9EEBmWqG3rG8sdy/0/*)""",
+        """wpkh([45f35351/48h/1h/0h/2h]tpubDEY3tNWvDs8J6xAmwoirxgff61gPN1V6U5numeb6xjvZRB883NPPpRYHt2A6fUE3YyzDLezFfuosBdXsdXJhJUcpqYWF9EEBmWqG3rG8sdy/1/*)""",
+        """wpkh([45f35351/48h/1h/0h/2h]tpubDEY3tNWvDs8J6xAmwoirxgff61gPN1V6U5numeb6xjvZRB883NPPpRYHt2A6fUE3YyzDLezFfuosBdXsdXJhJUcpqYWF9EEBmWqG3rG8sdy/<0;1>/*)""",
+    ]
+    for s in inputs:
+        assert (
+            str(convert_to_multipath_descriptor(s, network=bdk.Network.REGTEST))
+            == "wpkh([45f35351/48'/1'/0'/2']tpubDEY3tNWvDs8J6xAmwoirxgff61gPN1V6U5numeb6xjvZRB883NPPpRYHt2A6fUE3YyzDLezFfuosBdXsdXJhJUcpqYWF9EEBmWqG3rG8sdy/<0;1>/*)#e0hnlex9"
+        )
+
+    # convert to multipath
+    inputs = [
+        """wpkh([45f35351/48h/1h/0h/2h]xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM)""",
+        """wpkh([45f35351/48h/1h/0h/2h]xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM/0/*)""",
+        """wpkh([45f35351/48h/1h/0h/2h]xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM/1/*)""",
+        """wpkh([45f35351/48h/1h/0h/2h]xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM/<0;1>/*)""",
+    ]
+    for s in inputs:
+        assert (
+            str(convert_to_multipath_descriptor(s, network=bdk.Network.BITCOIN))
+            == "wpkh([45f35351/48'/1'/0'/2']xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM/<0;1>/*)#547tjkap"
+        )
 
 
 def test_multipath_descriptor():
@@ -121,7 +203,7 @@ def test_multipath_descriptor():
         meta_data_handler.add(part)
     assert meta_data_handler.is_complete()
     data = meta_data_handler.get_complete_data()
-    assert data.data_type == DataType.MultiPathDescriptor, "Wrong type"
+    assert data.data_type == DataType.Descriptor, "Wrong type"
     # bdk returns '  instead of h  (which sparrrow does), so the checksum is different
     assert (
         data.data_as_string()
@@ -135,14 +217,12 @@ def test_multipath_descriptor():
     ]
     meta_data_handler = UnifiedDecoder(bdk.Network.REGTEST)
     exceptionwas_raised = False
-    try:
-        for part in parts:
-            meta_data_handler.add(part)
-        assert meta_data_handler.is_complete()
+
+    for part in parts:
+        meta_data_handler.add(part)
+    assert meta_data_handler.is_complete()
+    with pytest.raises(InconsistentDescriptors) as exc_info:
         meta_data_handler.get_complete_data()
-    except DecodingException:
-        exceptionwas_raised = True
-    assert exceptionwas_raised
 
     # 2 different descriptors (both valid) in 2 lines  (coldcard style)    should trough error
     parts = [
@@ -167,7 +247,7 @@ def test_descriptor_to_qr_fragements():
     data = Data.from_str(s, network=bdk.Network.REGTEST)
     assert data.data_type == DataType.Descriptor
     assert isinstance(data.data, bdk.Descriptor)
-    assert data.data.as_string_private() == s
+    assert data.data.to_string_with_secret() == s
 
     ur_fragments = UnifiedEncoder.generate_fragments_for_qr(
         data, qr_export_type=QrExportTypes.ur, max_qr_size=100
@@ -245,21 +325,9 @@ def test_sparrow_descriptor_qr_export():
 def test_sparrow_descriptor_qr_export_to_multi_pathdescriptor():
     s = "pkh([ff9f466a/44'/1'/0']tpubDDgB8TAzEbPhcj26514bW3efj4F5x9Xni2FiahV9iSnxdr8sjBQr378L5ke1KXMbadBYw5aAUxAKP33j8LD4y1ZRY6cSySfUN6cu832cXiM)#hl2ce2je"
 
-    descriptor = MultipathDescriptor.from_descriptor_str(s, network=bdk.Network.REGTEST)
+    descriptor = convert_to_multipath_descriptor(s, network=bdk.Network.REGTEST)
 
     assert (
-        descriptor.as_string()
+        str(descriptor)
         == "pkh([ff9f466a/44'/1'/0']tpubDDgB8TAzEbPhcj26514bW3efj4F5x9Xni2FiahV9iSnxdr8sjBQr378L5ke1KXMbadBYw5aAUxAKP33j8LD4y1ZRY6cSySfUN6cu832cXiM/<0;1>/*)#e666jeka"
     )
-
-
-def test_disallow_import_of_descriptors_without_derivation_path():
-    r = "pkh([ff9f466a/44'/1'/0']tpubDDgB8TAzEbPhcj26514bW3efj4F5x9Xni2FiahV9iSnxdr8sjBQr378L5ke1KXMbadBYw5aAUxAKP33j8LD4y1ZRY6cSySfUN6cu832cXiM/0/*)"
-    c = "pkh([ff9f466a/44'/1'/0']tpubDDgB8TAzEbPhcj26514bW3efj4F5x9Xni2FiahV9iSnxdr8sjBQr378L5ke1KXMbadBYw5aAUxAKP33j8LD4y1ZRY6cSySfUN6cu832cXiM)"
-
-    with pytest.raises(Exception) as exc_info:
-        MultipathDescriptor(
-            bdk_descriptor=bdk.Descriptor(r, network=bdk.Network.REGTEST),
-            change_descriptor=bdk.Descriptor(c, network=bdk.Network.REGTEST),
-        )
-    assert str(exc_info.value) == "The derivation_paths=[None] cannot be empty"

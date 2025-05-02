@@ -157,7 +157,12 @@ class UnifiedEncoder:
                 return cls.bytes_to_ur_byte_fragments(
                     base64.b64decode(serialized.encode()), type=CRYPTO_PSBT.type, max_qr_size=max_qr_size
                 )
-            elif data.data_type == DataType.Descriptor:
+            elif (
+                data.data_type == DataType.Descriptor
+                and isinstance(data.data, bdk.Descriptor)
+                and not data.data.is_multipath()
+            ):
+                # ur doesnt support multipath derivation paths.  so the else path will handle this
                 return cls.bytes_to_ur_byte_fragments(
                     URTools.encode_ur_output(descriptor_str=serialized).to_cbor(),
                     type=CRYPTO_OUTPUT.type,
@@ -175,7 +180,7 @@ class UnifiedEncoder:
                 raw = bytes(data.data.serialize())
             elif data.data_type == DataType.PSBT:
                 file_type = "P"
-                assert isinstance(data.data, bdk.PartiallySignedTransaction)
+                assert isinstance(data.data, bdk.Psbt)
                 raw = base64.b64decode(data.data.serialize())
             else:
                 file_type = "U"

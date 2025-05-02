@@ -1,5 +1,5 @@
 import logging
-from typing import List, Tuple
+from typing import List, Optional
 
 import bdkpython as bdk
 from hwilib.descriptor import Descriptor, PubkeyProvider, parse_descriptor
@@ -22,97 +22,85 @@ def get_adapted_hwi_descriptor(descriptor_str: str, new_derivation_path: str) ->
     return hwi_descriptor
 
 
-class MultipathDescriptor:
+def get_equal_derivation_path(descriptor_str: str) -> Optional[str]:
+    "Returns the derivation_path is all derivation_paths are equal. Otherwise None"
+
+    hwi_descriptor = parse_descriptor(descriptor_str)
+    pubkey_providers = get_all_pubkey_providers(hwi_descriptor=hwi_descriptor)
+
+    # check that all derivation paths are equal
+    derivation_paths = [pubkey_provider.deriv_path for pubkey_provider in pubkey_providers]
+    all_equal = all(x == derivation_paths[0] for x in derivation_paths)
+
+    if all_equal:
+        return pubkey_providers[0].deriv_path
+    else:
+        return None
+
+
+def convert_to_bdk_descriptor(descriptor_str: str, network: bdk.Network) -> bdk.Descriptor:
+    """Currently there is a bug in the multipath descriptors
+    https://github.com/bitcoindevkit/bdk/issues/1845
+
+    Essentially only by providign testnet the descriptor is correctly converted.
+
+    We then manually have to check if the provided descriptor is correct for the network
+
+    Once https://github.com/bitcoindevkit/bdk/issues/1845 is fixed, this wrapper can be removed
     """
-    Will create main+change BDK single and multisig descriptors, no matter if '/<0;1>/*' or '/0/*' or '/1/*' is specified
-    It also uses hwi to handle edge cases that bdk doesnt support yet.
+    # sparrow format for root keys
+    # here we replace this
+    sparrow_root_key_format = "/m]"
+    if sparrow_root_key_format in descriptor_str:
+        if "#" in descriptor_str:
+            descriptor_str = descriptor_str.split("#")[0]
+        descriptor_str = descriptor_str.replace(sparrow_root_key_format, "]")
 
-    This is only necessary until https://github.com/bitcoindevkit/bdk/issues/1021  is done.
-    """
+    # if it is not multipath, it actually works correctly:
+    if "<" not in descriptor_str:
+        return bdk.Descriptor(descriptor_str, network)
 
-    def __init__(self, bdk_descriptor: bdk.Descriptor, change_descriptor: bdk.Descriptor) -> None:
-        self.bdk_descriptors = [bdk_descriptor, change_descriptor]
+    assert "]xpriv" not in descriptor_str, "secret keys not supported"
+    assert "]tpriv" not in descriptor_str, "secret keys not supported"
 
-        for bdk_descriptor in self.bdk_descriptors:
-            # check that the self.bdk_descriptors each have equal derivation_paths
-            all_equal, derivation_paths = self.get_equal_derivation_path(bdk_descriptor.as_string())
-            assert (
-                all_equal
-            ), f"Derivation paths in {bdk_descriptor.as_string()} are not all equal. MultipathDescriptor does not  support this."
-            assert all(derivation_paths), f"The {derivation_paths=} cannot be empty"
+    if network in [bdk.Network.TESTNET4, bdk.Network.TESTNET, bdk.Network.REGTEST, bdk.Network.SIGNET]:
+        # cannot contain mainnet xpub
+        assert descriptor_str.count("]xpub") == 0
+    elif network in [bdk.Network.BITCOIN]:
+        # cannot contain testnet xpub
+        assert descriptor_str.count("]tpub") == 0
 
-    @classmethod
-    def get_equal_derivation_path(cls, descriptor_str: str) -> Tuple[bool, List[str | None]]:
-        "Returns the derivation_path if all derivation_paths are equal. Otherwise None"
+    return bdk.Descriptor(descriptor_str, bdk.Network.TESTNET)
 
-        hwi_descriptor = parse_descriptor(descriptor_str)
-        pubkey_providers = get_all_pubkey_providers(hwi_descriptor=hwi_descriptor)
 
-        # check that all derivation paths are equal
-        derivation_paths = [pubkey_provider.deriv_path for pubkey_provider in pubkey_providers]
-        all_equal = all(x == derivation_paths[0] for x in derivation_paths)
-
-        return all_equal, derivation_paths
-
-    @classmethod
-    def is_valid(cls, descriptor_str: str, network: bdk.Network) -> bool:
-        try:
-            cls.from_descriptor_str(descriptor_str=descriptor_str, network=network)
-        except:
-            return False
-        return True
-
-    @classmethod
-    def from_descriptor_str(cls, descriptor_str: str, network: bdk.Network):
-        all_equal, derivation_paths = cls.get_equal_derivation_path(descriptor_str)
-
-        assert (
-            all_equal
-        ), f"Derivation paths are not all equal, and from this no MultiPathDescriptor can be created."
-
-        # sparrow qr code misses the change derivation path completely
-        assert derivation_paths[0] in [
-            None,
-            "",
-            "/0/*",
-            "/1/*",
-            "/<0;1>/*",
-        ], f"Unknown derivation path {derivation_paths}, and from this no MultiPathDescriptor can be created."
-
-        receive_descriptor = get_adapted_hwi_descriptor(descriptor_str, new_derivation_path="/0/*")
-        change_descriptor = get_adapted_hwi_descriptor(descriptor_str, new_derivation_path="/1/*")
-
-        return cls(
-            bdk.Descriptor(receive_descriptor.to_string(), network=network),
-            bdk.Descriptor(change_descriptor.to_string(), network=network),
+def convert_to_multipath_descriptor(descriptor_str: str, network: bdk.Network) -> bdk.Descriptor:
+    descriptor = convert_to_bdk_descriptor(descriptor_str=descriptor_str, network=network)
+    if descriptor.is_multipath():
+        return descriptor
+    else:
+        return convert_to_bdk_descriptor(
+            descriptor_str=get_adapted_hwi_descriptor(
+                str(descriptor), new_derivation_path="/<0;1>/*"
+            ).to_string(),
+            network=network,
         )
 
-    def as_string(self) -> str:
-        return self._as_string(only_public=True)
 
-    def as_string_private(self) -> str:
-        return self._as_string(only_public=False)
+def is_valid_descriptor(descriptor_str: str, network: bdk.Network) -> bool:
+    try:
+        convert_to_multipath_descriptor(descriptor_str=descriptor_str, network=network)
+    except:
+        return False
+    return True
 
-    def _as_string(self, only_public=False) -> str:
-        # TODO: Once https://github.com/bitcoindevkit/bdk/issues/1021" solved replace hwi with bdk
-        assert len(self.bdk_descriptors) == 2
 
-        receive_descriptor_str = (
-            self.bdk_descriptors[0].as_string()
-            if only_public
-            else self.bdk_descriptors[0].as_string_private()
-        )
+def address_descriptor_from_multipath_descriptor(
+    descriptor: bdk.Descriptor, kind: bdk.KeychainKind, address_index: int
+) -> str:
+    assert descriptor.is_multipath()
+    external_int = 0 if kind == bdk.KeychainKind.EXTERNAL else 1
+    descriptor_str = str(descriptor.to_single_descriptors()[external_int]).split("#")[0]
 
-        receive_descriptor = get_adapted_hwi_descriptor(
-            receive_descriptor_str, new_derivation_path="/<0;1>/*"
-        )
-        return receive_descriptor.to_string(hardened_char="'")
-
-    def address_descriptor(self, kind: bdk.KeychainKind, address_index: int) -> str:
-        receive_descriptor_str = self.bdk_descriptors[0].as_string()
-
-        new_derivation_path = f"/{0 if kind == bdk.KeychainKind.EXTERNAL else 1}/{address_index}"
-        receive_descriptor = get_adapted_hwi_descriptor(
-            receive_descriptor_str, new_derivation_path=new_derivation_path
-        )
-        return receive_descriptor.to_string(hardened_char="'")
+    new_derivation_path = f"/{external_int}/{address_index}"
+    receive_descriptor = get_adapted_hwi_descriptor(descriptor_str, new_derivation_path=new_derivation_path)
+    return receive_descriptor.to_string(hardened_char="'")
