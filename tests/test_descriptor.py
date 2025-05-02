@@ -26,6 +26,20 @@ def test_convert_to_multipath_descriptor():
         with pytest.raises(Exception) as exc_info:
             descriptor = convert_to_bdk_descriptor(s, wrong_network)
 
+    # no path
+    do(
+        "wpkh([a42c6dd3/84'/1'/0']tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks)",
+        is_multipath=False,
+        right_network=bdk.Network.TESTNET,
+        wrong_network=bdk.Network.BITCOIN,
+    )
+    do(
+        "wpkh([a42c6dd3/84'/1'/0']xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM)",
+        is_multipath=False,
+        right_network=bdk.Network.BITCOIN,
+        wrong_network=bdk.Network.TESTNET,
+    )
+
     # single path
     do(
         "wpkh([a42c6dd3/84'/1'/0']tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks/0/*)",
