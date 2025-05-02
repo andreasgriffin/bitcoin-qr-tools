@@ -149,6 +149,34 @@ def test_multipath_descriptor1():
     )
 
 
+def test_derivation_path():
+    # convert to multipath
+    inputs = [
+        """wpkh([45f35351/48h/1h/0h/2h]tpubDEY3tNWvDs8J6xAmwoirxgff61gPN1V6U5numeb6xjvZRB883NPPpRYHt2A6fUE3YyzDLezFfuosBdXsdXJhJUcpqYWF9EEBmWqG3rG8sdy)""",
+        """wpkh([45f35351/48h/1h/0h/2h]tpubDEY3tNWvDs8J6xAmwoirxgff61gPN1V6U5numeb6xjvZRB883NPPpRYHt2A6fUE3YyzDLezFfuosBdXsdXJhJUcpqYWF9EEBmWqG3rG8sdy/0/*)""",
+        """wpkh([45f35351/48h/1h/0h/2h]tpubDEY3tNWvDs8J6xAmwoirxgff61gPN1V6U5numeb6xjvZRB883NPPpRYHt2A6fUE3YyzDLezFfuosBdXsdXJhJUcpqYWF9EEBmWqG3rG8sdy/1/*)""",
+        """wpkh([45f35351/48h/1h/0h/2h]tpubDEY3tNWvDs8J6xAmwoirxgff61gPN1V6U5numeb6xjvZRB883NPPpRYHt2A6fUE3YyzDLezFfuosBdXsdXJhJUcpqYWF9EEBmWqG3rG8sdy/<0;1>/*)""",
+    ]
+    for s in inputs:
+        assert (
+            str(convert_to_multipath_descriptor(s, network=bdk.Network.REGTEST))
+            == "wpkh([45f35351/48'/1'/0'/2']tpubDEY3tNWvDs8J6xAmwoirxgff61gPN1V6U5numeb6xjvZRB883NPPpRYHt2A6fUE3YyzDLezFfuosBdXsdXJhJUcpqYWF9EEBmWqG3rG8sdy/<0;1>/*)#e0hnlex9"
+        )
+
+    # convert to multipath
+    inputs = [
+        """wpkh([45f35351/48h/1h/0h/2h]xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM)""",
+        """wpkh([45f35351/48h/1h/0h/2h]xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM/0/*)""",
+        """wpkh([45f35351/48h/1h/0h/2h]xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM/1/*)""",
+        """wpkh([45f35351/48h/1h/0h/2h]xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM/<0;1>/*)""",
+    ]
+    for s in inputs:
+        assert (
+            str(convert_to_multipath_descriptor(s, network=bdk.Network.BITCOIN))
+            == "wpkh([45f35351/48'/1'/0'/2']xpub6F7kX4BXQmadkhCEFfyfAP9xKH4KPPVvetJWuvTDa5DQQdbsMHhiV9sEnXFvA6iBrXPTHekngbRPwBniUHxCBnbt6HutPKgMwcytd4pjunM/<0;1>/*)#547tjkap"
+        )
+
+
 def test_multipath_descriptor():
 
     # 2 descriptors in 2 lines  (coldcard style)
