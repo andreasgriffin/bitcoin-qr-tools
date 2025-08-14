@@ -17,32 +17,28 @@ tests = ["PyHamcrest (>=2.0.2)", "mypy", "pytest (>=4.6)", "pytest-benchmark", "
 
 [[package]]
 name = "bdkpython"
-version = "1.2.0"
+version = "2.0.0"
 description = "The Python language bindings for the Bitcoin Development Kit"
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "bdkpython-1.2.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:1b72415b448b88ea0ce2acaeaa820880bb83084e08afa5a4c6538fd5a2337338"},
-    {file = "bdkpython-1.2.0-cp310-cp310-macosx_11_0_x86_64.whl", hash = "sha256:6bee46d972fa4d67cabbfb84dfbc35b8cdafd9ede370ccec968b502043cc75ed"},
-    {file = "bdkpython-1.2.0-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:28205a0feca258c950689ba94d669ae1ccc4d6c195fa4b47e3c2eac420954e95"},
-    {file = "bdkpython-1.2.0-cp310-cp310-win_amd64.whl", hash = "sha256:ad843ea21e86176d7f8318da1b79f67e56fca892eed913ee39158583edc481d3"},
-    {file = "bdkpython-1.2.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:2374e618c7850f42056c087f10a71b42ff065445f2ca71826f37325d328c3f1f"},
-    {file = "bdkpython-1.2.0-cp311-cp311-macosx_11_0_x86_64.whl", hash = "sha256:684c1192f666fbe9783e3d261937f69dd0449a6d422e00224dca53fa949a2175"},
-    {file = "bdkpython-1.2.0-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:157867dac2549bdba2893c894329bf6df5973893a395b45cd957f137b1a229e6"},
-    {file = "bdkpython-1.2.0-cp311-cp311-win_amd64.whl", hash = "sha256:8520ddc3295142e93924ec3bd3907f325088b1a23e5e5b75a70ea9f243f991e3"},
-    {file = "bdkpython-1.2.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:06794dee353d7d7ea58d7031941ffd79d2a0dd6c92868fdfc8330568954e7bef"},
-    {file = "bdkpython-1.2.0-cp312-cp312-macosx_11_0_x86_64.whl", hash = "sha256:ec8a79721dab099565c2eaa95432099654201e64b008c1a16276fbb05ab34bcf"},
-    {file = "bdkpython-1.2.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:3030cfdfee1d082ad6aba791b2d159c1a709ac9e9f9c82cb6f091485f4dfab6a"},
-    {file = "bdkpython-1.2.0-cp312-cp312-win_amd64.whl", hash = "sha256:c04f421ec5eaa96a656e59ca9b760f8d2e2598da143b1b28f3a5c545130bd141"},
-    {file = "bdkpython-1.2.0-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:51afce761fcb9407fd4bbf4e5ca3228cdad61f81de6a3f00f233e13a1d623348"},
-    {file = "bdkpython-1.2.0-cp38-cp38-macosx_11_0_x86_64.whl", hash = "sha256:4310e724b2208552c04bc5605df1c3e8a0962f68c1d81bc3fea3aad0ecd98351"},
-    {file = "bdkpython-1.2.0-cp38-cp38-manylinux_2_28_x86_64.whl", hash = "sha256:f0fc67e593e9bca57a90c17efc294abfb98550997d67cc6bc2579ef0fc908064"},
-    {file = "bdkpython-1.2.0-cp38-cp38-win_amd64.whl", hash = "sha256:36da2d46765d46090e88a9d4c834cf7d4c3b695f1324b34a47d745cb60e077b7"},
-    {file = "bdkpython-1.2.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:d30e15eb57b3c84f6277d8f93aaab8ae138db83d9c4d0b426d42290adcd65de5"},
-    {file = "bdkpython-1.2.0-cp39-cp39-macosx_11_0_x86_64.whl", hash = "sha256:518802fec5de7d32f0faa9c63a3a1ac860901260cd7b96d3b845966c3079e063"},
-    {file = "bdkpython-1.2.0-cp39-cp39-manylinux_2_28_x86_64.whl", hash = "sha256:9b507c09e9515c7cfb150085821443784c4fe7e3f9a90067f31b637a736887e1"},
-    {file = "bdkpython-1.2.0-cp39-cp39-win_amd64.whl", hash = "sha256:90ce403222877a4ba6fac8b43a89e1628f0eb2d21a5999a58d743e644d71fcc4"},
+    {file = "bdkpython-2.0.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:85589109c2fd6d45a603bb28c2db299c42ca512f3f743b4361fd098fc771928f"},
+    {file = "bdkpython-2.0.0-cp310-cp310-macosx_11_0_x86_64.whl", hash = "sha256:b9b2250f3c29982d0527c2d653e2c94aff6824eae5406abf7c2a4516575f562c"},
+    {file = "bdkpython-2.0.0-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:7344ca9ae0dad6f2d47d0a34c49b1c3324b2aa7c6cb9809e31a2cd7367fce86e"},
+    {file = "bdkpython-2.0.0-cp310-cp310-win_amd64.whl", hash = "sha256:1f1113be576dcffddaafd26b500eed805bee95397c32c19a7bcf34b75d4a5b57"},
+    {file = "bdkpython-2.0.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:a2de453fc0fcdec4492cb768bc5157b6f046d8b1b5f2a464dcf87b36898f2fd0"},
+    {file = "bdkpython-2.0.0-cp311-cp311-macosx_11_0_x86_64.whl", hash = "sha256:cef53d02d6c9dc54ba931dd797461996e37926e17b276bf17a1d65473de075f0"},
+    {file = "bdkpython-2.0.0-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:6be01ba1db861cb982040509a64111d3f3517f93a21f93230d9652184d88d752"},
+    {file = "bdkpython-2.0.0-cp311-cp311-win_amd64.whl", hash = "sha256:e4000ae25a614568d6551a2b07864c4efe83c2529e407acece6a6e8b5b8ca417"},
+    {file = "bdkpython-2.0.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:ea4113cb957d747183e4dd7516d688d4cb17d9d064ab58bc0412d3d378b3abbf"},
+    {file = "bdkpython-2.0.0-cp312-cp312-macosx_11_0_x86_64.whl", hash = "sha256:ddb461048c5a9714aff0858b988952efea114630b0757b7483d0341448042c2b"},
+    {file = "bdkpython-2.0.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:f4be77e2ef8cc1b53ab8357afad023055a063c98447ad73964e39da2dbdb2c86"},
+    {file = "bdkpython-2.0.0-cp312-cp312-win_amd64.whl", hash = "sha256:a311d7a76be7dea50f69349f2649dbfce142e4a7302dc8747c6f1a313cb19c48"},
+    {file = "bdkpython-2.0.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:17bc0a170dffd3106291176e0be37d974296868b4d2b45f163ef9f626332afe5"},
+    {file = "bdkpython-2.0.0-cp313-cp313-macosx_11_0_x86_64.whl", hash = "sha256:d484660eac248cba7f06bde924deff54c545feb95dde372a3fc80f943f526927"},
+    {file = "bdkpython-2.0.0-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:7eaa1b83c335c66c2622b1b9892f144dceb9f3feeac5b4f48299baa744a42d62"},
+    {file = "bdkpython-2.0.0-cp313-cp313-win_amd64.whl", hash = "sha256:b49cce09fb241bf7bef642c1d88a5603120ef447011131610af73a439359f49e"},
 ]
 
 [[package]]
@@ -274,7 +270,7 @@ description = "Backport of PEP 654 (exception groups)"
 optional = false
 python-versions = ">=3.7"
 groups = ["dev"]
-markers = "python_version < \"3.11\""
+markers = "python_version == \"3.10\""
 files = [
     {file = "exceptiongroup-1.2.2-py3-none-any.whl", hash = "sha256:3111b9d131c238bec2f8f516e123e14ba243563fb135d3fe885990585aa7795b"},
     {file = "exceptiongroup-1.2.2.tar.gz", hash = "sha256:47c2edf7c6738fafb49fd34290706d1a1a2f4d1c6df275526b62cbb4aa5393cc"},
@@ -402,31 +398,6 @@ typing-extensions = ">=4.4,<5.0"
 
 [package.extras]
 qt = ["pyside2 (>=5.14.0,<6.0.0) ; python_version < \"3.10\""]
-
-[[package]]
-name = "importlib-metadata"
-version = "8.7.0"
-description = "Read metadata from Python packages"
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-markers = "python_version == \"3.9\""
-files = [
-    {file = "importlib_metadata-8.7.0-py3-none-any.whl", hash = "sha256:e5dd1551894c77868a30651cef00984d50e1002d06942a7101d34870c5f02afd"},
-    {file = "importlib_metadata-8.7.0.tar.gz", hash = "sha256:d13b81ad223b890aa16c5471f2ac3056cf76c5f10f82d6f9292f0b415f389000"},
-]
-
-[package.dependencies]
-zipp = ">=3.20"
-
-[package.extras]
-check = ["pytest-checkdocs (>=2.4)", "pytest-ruff (>=0.2.1) ; sys_platform != \"cygwin\""]
-cover = ["pytest-cov"]
-doc = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-lint"]
-enabler = ["pytest-enabler (>=2.2)"]
-perf = ["ipython"]
-test = ["flufl.flake8", "importlib_resources (>=1.3) ; python_version < \"3.9\"", "jaraco.test (>=5.4)", "packaging", "pyfakefs", "pytest (>=6,!=8.1.*)", "pytest-perf (>=0.9.2)"]
-type = ["pytest-mypy"]
 
 [[package]]
 name = "iniconfig"
@@ -571,12 +542,10 @@ files = [
 
 [package.dependencies]
 numpy = [
-    {version = ">=1.21.0", markers = "python_version == \"3.9\" and platform_system == \"Darwin\" and platform_machine == \"arm64\""},
     {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
     {version = ">=1.23.5", markers = "python_version == \"3.11\""},
     {version = ">=1.21.4", markers = "python_version == \"3.10\" and platform_system == \"Darwin\""},
     {version = ">=1.21.2", markers = "platform_system != \"Darwin\" and python_version == \"3.10\""},
-    {version = ">=1.19.3", markers = "python_version >= \"3.8\" and platform_system == \"Linux\" and platform_machine == \"aarch64\" and python_version < \"3.10\" or python_version == \"3.9\" and platform_system != \"Darwin\" or python_version == \"3.9\" and platform_machine != \"arm64\""},
 ]
 
 [[package]]
@@ -974,9 +943,6 @@ files = [
     {file = "segno-1.6.1.tar.gz", hash = "sha256:f23da78b059251c36e210d0cf5bfb1a9ec1604ae6e9f3d42f9a7c16d306d847e"},
 ]
 
-[package.dependencies]
-importlib-metadata = {version = ">=3.6.0", markers = "python_version < \"3.10\""}
-
 [[package]]
 name = "semver"
 version = "3.0.4"
@@ -1029,7 +995,7 @@ description = "A lil' TOML parser"
 optional = false
 python-versions = ">=3.8"
 groups = ["dev"]
-markers = "python_version < \"3.11\""
+markers = "python_version == \"3.10\""
 files = [
     {file = "tomli-2.2.1-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:678e4fa69e4575eb77d103de3df8a895e1591b48e740211bd1067378c69e8249"},
     {file = "tomli-2.2.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:023aa114dd824ade0100497eb2318602af309e5a55595f76b626d6d9f3b7b0a6"},
@@ -1077,28 +1043,7 @@ files = [
     {file = "typing_extensions-4.13.2.tar.gz", hash = "sha256:e6c81219bd689f51865d9e372991c540bda33a0379d5573cddb9a3a23f7caaef"},
 ]
 
-[[package]]
-name = "zipp"
-version = "3.21.0"
-description = "Backport of pathlib-compatible object wrapper for zip files"
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-markers = "python_version == \"3.9\""
-files = [
-    {file = "zipp-3.21.0-py3-none-any.whl", hash = "sha256:ac1bbe05fd2991f160ebce24ffbac5f6d11d83dc90891255885223d42b3cd931"},
-    {file = "zipp-3.21.0.tar.gz", hash = "sha256:2c9958f6430a2040341a52eb608ed6dd93ef4392e02ffe219417c1b28b5dd1f4"},
-]
-
-[package.extras]
-check = ["pytest-checkdocs (>=2.4)", "pytest-ruff (>=0.2.1) ; sys_platform != \"cygwin\""]
-cover = ["pytest-cov"]
-doc = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-lint"]
-enabler = ["pytest-enabler (>=2.2)"]
-test = ["big-O", "importlib-resources ; python_version < \"3.9\"", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more-itertools", "pytest (>=6,!=8.1.*)", "pytest-ignore-flaky"]
-type = ["pytest-mypy"]
-
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.9,<3.13"
-content-hash = "1646fa2c199c55311ff0051e2115fa9ae2fc498f48aa762c19d386722a88356b"
+python-versions = ">=3.10,<3.13"
+content-hash = "9b2a94ef8b111b4febd2aba0c833bfe5f735be9023f6bcb399f513500d160ac0"

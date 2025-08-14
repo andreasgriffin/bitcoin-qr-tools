@@ -49,3 +49,14 @@ repos:
           - types-requests
           - pyqt6 
           - bdkpython==1.2.0
+
+
+  # - repo: local
+  #   hooks:
+  #     - id: pyright
+  #       name: Pyright Type Check
+  #       entry: pyright
+  #       language: system
+  #       files: ^bitcoin_qr_tools/[^/]+\.py$  
+  #       types: [python]
+  #       pass_filenames: true
