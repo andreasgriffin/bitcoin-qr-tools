@@ -20,13 +20,12 @@ bdkpython ="^1.2.0"
 pygame ="^2.6.1"
 mss ="^9.0.1"
 hwi = "^3.0.0"
-# pyzbar = "^0.1.9"
 segno = "1.6.1"
 pyqrcode = "^1.2.1"
 pillow = "^10.4.0"
 numpy = "^2.0.1"
 opencv-python-headless = "^4.10.0.84"
-pyzbar =  { git = "https://github.com/andreasgriffin/pyzbar.git", branch = "mac-fix" }   # "^0.7.9"
+pyzbar =  { git = "https://github.com/andreasgriffin/pyzbar.git", rev = "bad840c31dd0f92b616ca29642a408804d5cfa37" }   # "^0.7.9"
 
 
 [tool.poetry.group.dev.dependencies]
