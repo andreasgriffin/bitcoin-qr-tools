@@ -1,6 +1,8 @@
 import bdkpython as bdk
+import pytest
 
 from bitcoin_qr_tools.data import ConverterMultisigWalletExport, Data, DataType
+from bitcoin_qr_tools.utils import DecodingException
 
 
 def test_descriptor():
@@ -11,7 +13,12 @@ def test_descriptor():
     assert isinstance(data.data, bdk.Descriptor)
 
     dump = data.dump()
-    Data.from_dump(dump, network=bdk.Network.REGTEST).data_as_string() == s
+    assert Data.from_dump(dump, network=bdk.Network.REGTEST).data_as_string() == s
+
+    # wrong data type
+    dump["data_type"] = DataType.Fingerprint.name
+    with pytest.raises(DecodingException):
+        Data.from_dump(dump, network=bdk.Network.REGTEST)
 
 
 def test_ConverterLegacyColdcardMultisigWalletExport():

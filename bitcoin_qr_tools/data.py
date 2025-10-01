@@ -775,10 +775,11 @@ class Data:
 
     @classmethod
     def from_dump(cls, d: Dict, network: bdk.Network) -> "Data":
-        data = cls.from_str(d["data"], network=network)
-        d["data_type"] = DataType.from_name(d["data_type"])
-        assert d["data_type"] == data.data_type
-        return data
+        return cls.from_str(
+            d["data"],
+            network=network,
+            data_type=DataType.from_name(_data_type) if (_data_type := d.get("data_type")) else None,
+        )
 
     def data_as_string(self) -> str:
         if not self.data:
@@ -866,57 +867,77 @@ class Data:
         return Data(descriptor, DataType.Descriptor, network=network)
 
     @classmethod
-    def from_str(cls, s: str, network: bdk.Network) -> "Data":
+    def from_str(cls, s: str, network: bdk.Network, data_type: DataType | None = None) -> "Data":
         s = s.strip()
         data = None
 
         # Sequence of checks to identify the type of data in `s`
-        if decoded_bip21 := ConverterBip21._try_decode_bip21(s, network=network):
+        if (not data_type or data_type == DataType.Bip21) and (
+            decoded_bip21 := ConverterBip21._try_decode_bip21(s, network=network)
+        ):
             return Data(decoded_bip21, DataType.Bip21, network=network)
 
-        if ConverterXpub.is_xpub(s):
+        if (not data_type or data_type == DataType.Xpub) and ConverterXpub.is_xpub(s):
             data = ConverterXpub.normalized_to_bip32(s)
             return Data(data, DataType.Xpub, network=network)
 
-        if descriptor := ConverterDescriptor._try_get_descriptor(s, network):
+        if (not data_type or data_type == DataType.Descriptor) and (
+            descriptor := ConverterDescriptor._try_get_descriptor(s, network)
+        ):
             return Data(descriptor, DataType.Descriptor, network=network)
 
-        if descriptor := ConverterDescriptor._try_get_multipath_descriptor(s, network):
+        if (not data_type or data_type == DataType.Descriptor) and (
+            descriptor := ConverterDescriptor._try_get_multipath_descriptor(s, network)
+        ):
             return Data(
                 descriptor, DataType.Descriptor, network=network
             )  # bdk.Descriptor supports multipath descriptors
 
-        if ConverterTxid.is_valid_bitcoin_hash(s):
+        if (not data_type or data_type == DataType.Txid) and ConverterTxid.is_valid_bitcoin_hash(s):
             return Data(s, DataType.Txid, network=network)
 
-        if ConverterFingerprint.is_valid_wallet_fingerprint(s):
+        if (
+            not data_type or data_type == DataType.Fingerprint
+        ) and ConverterFingerprint.is_valid_wallet_fingerprint(s):
             return Data(s, DataType.Fingerprint, network=network)
 
-        if psbt := ConverterPSBT._try_decode_psbt(s):
+        if (not data_type or data_type == DataType.PSBT) and (psbt := ConverterPSBT._try_decode_psbt(s)):
             return Data(psbt, DataType.PSBT, network=network)
 
-        if tx := ConverterTx._try_decode_serialized_transaction(s):
+        if (not data_type or data_type == DataType.Tx) and (
+            tx := ConverterTx._try_decode_serialized_transaction(s)
+        ):
             return Data(tx, DataType.Tx, network=network)
 
-        if signer_info := ConverterSignerInfo._try_extract_signer_info(s):
+        if (not data_type or data_type == DataType.SignerInfo) and (
+            signer_info := ConverterSignerInfo._try_extract_signer_info(s)
+        ):
             return Data(signer_info, DataType.SignerInfo, network=network)
 
-        if signer_infos := ConverterSignerInfos._try_extract_sparrow_signer_infos(s, network):
-            return Data(signer_infos, DataType.SignerInfos, network=network)
-
-        if signer_infos := ConverterSignerInfos._try_extract_multisig_signer_infos_coldcard_and_passport_qr(
-            s, network
+        if (not data_type or data_type == DataType.SignerInfos) and (
+            signer_infos := ConverterSignerInfos._try_extract_sparrow_signer_infos(s, network)
         ):
             return Data(signer_infos, DataType.SignerInfos, network=network)
 
-        if ConverterBip329.is_bip329(s):
+        if (not data_type or data_type == DataType.SignerInfos) and (
+            signer_infos := ConverterSignerInfos._try_extract_multisig_signer_infos_coldcard_and_passport_qr(
+                s, network
+            )
+        ):
+            return Data(signer_infos, DataType.SignerInfos, network=network)
+
+        if (not data_type or data_type == DataType.LabelsBip329) and ConverterBip329.is_bip329(s):
             return Data(s, DataType.LabelsBip329, network=network)
 
-        if wallet_export := ConverterSignerInfos._try_multisig_wallet_export(s, network=network):
+        if (not data_type or data_type == DataType.MultisigWalletExport) and (
+            wallet_export := ConverterSignerInfos._try_multisig_wallet_export(s, network=network)
+        ):
             # this is the Multisig wallet export of jade, and the signers (of course)  are different
             return Data(wallet_export, DataType.MultisigWalletExport, network=network)
 
-        if sign_message_request := ConverterSignMessageRequest._try_extract_sign_message_request(s):
+        if (not data_type or data_type == DataType.SignMessageRequest) and (
+            sign_message_request := ConverterSignMessageRequest._try_extract_sign_message_request(s)
+        ):
             return Data(sign_message_request, DataType.SignMessageRequest, network=network)
 
         raise DecodingException(f"{s} Could not be decoded with from_str")
