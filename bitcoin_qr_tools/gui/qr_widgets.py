@@ -210,21 +210,33 @@ class EnlargableImageWidgetWithButton(QWidget):
     ):
         super().__init__(parent)
 
+        self._pending_path: str | None = None
+        self._loaded_path: str | None = None
+
         layout = QVBoxLayout(self)
         self.enlargable_widget = EnlargableImageWidget(pil_image=pil_image, parent=self, size_hint=size_hint)
-
         layout.addWidget(self.enlargable_widget)
 
         self.button_enlarge_qr = QPushButton()
         self.button_enlarge_qr.setIcon(QIcon(icon_path("zoom.png")))
-        # self.button_enlarge_qr.setIconSize(QSize(30, 30))  # 24x24 pixels
         self.button_enlarge_qr.clicked.connect(self.enlargable_widget.enlarge_image)
         self.button_enlarge_qr.setText(self.tr("Enlarge"))
         self.button_enlarge_qr.setMaximumWidth(200)
         layout.addWidget(self.button_enlarge_qr, alignment=Qt.AlignmentFlag.AlignHCenter)
 
     def load_from_file(self, filepath: str):
-        self.enlargable_widget.load_from_file(filepath=filepath)
+        """Just remember the file path — don't load yet."""
+        self._pending_path = filepath
+        self._loaded_path = None
+
+    def showEvent(self, event):
+        """Actually load the image when the widget first becomes visible."""
+        super().showEvent(event)
+
+        # Only load once
+        if self._pending_path and self._pending_path != self._loaded_path:
+            self.enlargable_widget.load_from_file(self._pending_path)
+            self._loaded_path = self._pending_path
 
 
 class QRCodeWidget(EnlargableImageWidget):
