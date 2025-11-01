@@ -30,7 +30,6 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 from PIL import Image
 from PyQt6.QtCore import QByteArray, QEvent, QObject, QRectF, QSize, Qt, QTimer
@@ -82,7 +81,7 @@ def pil_image_to_qimage(im: Image.Image):
 
 class ImageWidget(QWidget):
     def __init__(
-        self, pil_image: Image.Image | None = None, parent=None, size_hint: Tuple[int, int] | None = None
+        self, pil_image: Image.Image | None = None, parent=None, size_hint: tuple[int, int] | None = None
     ):
         super().__init__(parent)
         self.pil_image = pil_image
@@ -135,10 +134,10 @@ class ImageWidget(QWidget):
 
 class EnlargableImageWidget(ImageWidget):
     def __init__(
-        self, pil_image: Image.Image | None = None, parent=None, size_hint: Tuple[int, int] | None = None
+        self, pil_image: Image.Image | None = None, parent=None, size_hint: tuple[int, int] | None = None
     ):
         super().__init__(pil_image, parent, size_hint=size_hint)
-        self.enlarged_image: Optional[EnlargedImage] = None
+        self.enlarged_image: EnlargedImage | None = None
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def enlarge_image(self):
@@ -206,7 +205,7 @@ class EnlargableImageWidgetWithButton(QWidget):
         self,
         pil_image: Image.Image | None = None,
         parent: QWidget | None = None,
-        size_hint: Tuple[int, int] | None = None,
+        size_hint: tuple[int, int] | None = None,
     ):
         super().__init__(parent)
 
@@ -256,7 +255,7 @@ class QRCodeWidget(EnlargableImageWidget):
 class QRCodeWidgetSVG(QWidget):
     def __init__(self, always_animate=False, clickable=True, parent=None):
         super().__init__(parent)
-        self.svg_renderers: List[QSvgRenderer] = []
+        self.svg_renderers: list[QSvgRenderer] = []
         self.current_index = 0
         self.enlarged_image = None
         self.clickable = clickable
@@ -286,7 +285,7 @@ class QRCodeWidgetSVG(QWidget):
         if self.isVisible():
             self.update()
 
-    def set_data_list(self, data_list: List[str]):
+    def set_data_list(self, data_list: list[str]):
         self.set_renderers(
             [QSvgRenderer(QByteArray(QRGenerator.create_qr_svg(data).encode("utf-8"))) for data in data_list]
         )
@@ -295,7 +294,7 @@ class QRCodeWidgetSVG(QWidget):
         self.always_animate = always_animate
         self.manage_animation()
 
-    def set_images(self, image_list: List[str]):
+    def set_images(self, image_list: list[str]):
         self.set_renderers([QSvgRenderer(QByteArray(image.encode("utf-8"))) for image in image_list])
 
     def manage_animation(self):
@@ -370,7 +369,7 @@ class QRCodeWidgetSVG(QWidget):
             used.
         """
         if len(self.svg_renderers) > 1:
-            images: List[Image.Image] = []
+            images: list[Image.Image] = []
             for renderer in self.svg_renderers:
                 if not renderer.isValid():
                     continue

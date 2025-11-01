@@ -241,7 +241,7 @@ def make_qrs(
     if ext == "svg":
         # limitation: doesn't include progress bar animation
         for i in range(num_parts):
-            fn = f"{rootpath}-{i+1}.{ext}" if num_parts > 1 else outfile
+            fn = f"{rootpath}-{i + 1}.{ext}" if num_parts > 1 else outfile
             qs[i].svg(open(fn, "wb"), scale=scale)
             print(f"Created file {fn!r}")
 

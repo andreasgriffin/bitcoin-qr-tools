@@ -1,26 +1,16 @@
 repos:
-  - repo: https://github.com/pre-commit/mirrors-isort
-    rev: v5.10.1  # Use the specified version of isort
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.13.1  
     hooks:
-      - id: isort
-        args:
-          - --profile=black  # Set the import order style (change 'google' to your preferred style)          
-        exclude: 'urtypes/__init__.py'     
-             
-  - repo: https://github.com/myint/autoflake
-    rev: v2.2.1  # Use the latest version of autoflake
-    hooks:
-      - id: autoflake
-        args:
-          - --remove-all-unused-imports
-          - --remove-unused-variables
-          - --in-place
-          - --exclude=__init__.py
-  - repo: https://github.com/ambv/black
-    rev: 22.3.0
-    hooks:
-    - id: black
-      language_version: python3.10 
+      # Lint + auto-fix (includes import sorting, unused imports, etc.)
+      - id: ruff-format
+      - id: ruff-check
+        args: [--fix, --exit-non-zero-on-fix]
+        # If you don't want to run on notebooks, uncomment:
+        # types_or: [python, pyi]
+      # Formatter (Black-compatible)
+
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.11.2 

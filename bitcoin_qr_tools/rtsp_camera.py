@@ -1,7 +1,6 @@
 import logging
 import os
 import sys
-from typing import Optional
 
 import cv2
 import pygame
@@ -121,7 +120,7 @@ if __name__ == "__main__":
             # pixmap = QPixmap.fromImage(image)
             # self.label_image.setPixmap(pixmap)
 
-        def closeEvent(self, a0: Optional[QCloseEvent]) -> None:
+        def closeEvent(self, a0: QCloseEvent | None) -> None:
             self.timer.stop()
             self.camera.stop()
             super().closeEvent(a0)

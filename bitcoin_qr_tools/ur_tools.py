@@ -1,5 +1,5 @@
 import logging
-from typing import Any, List, Optional
+from typing import Any
 
 import bdkpython as bdk
 from base58 import b58decode_check
@@ -48,7 +48,7 @@ class URComparator:
         return all_same
 
     @classmethod
-    def _compare_keypath(cls, kp1: Optional[UR_KeyPath], kp2: Optional[UR_KeyPath], prefix: str = "") -> bool:
+    def _compare_keypath(cls, kp1: UR_KeyPath | None, kp2: UR_KeyPath | None, prefix: str = "") -> bool:
         if kp1 is None and kp2 is None:
             # print(f"{prefix}Both Keypaths are None")
             return True
@@ -83,7 +83,7 @@ class URComparator:
         else:
             # print(f"{prefix}Same number of components: {len(kp1.components)}")
             # Compare each component
-            for i, (c1, c2) in enumerate(zip(kp1.components, kp2.components)):
+            for i, (c1, c2) in enumerate(zip(kp1.components, kp2.components, strict=False)):
                 print(f"{prefix}Comparing component {i}:")
                 if not cls._compare_path_component(c1, c2, prefix=prefix + "  "):
                     all_same = False
@@ -175,7 +175,7 @@ class URComparator:
             all_same = False
         else:
             # print(f"Same number of script_expressions: {len(o1.script_expressions)}")
-            for i, (se1, se2) in enumerate(zip(o1.script_expressions, o2.script_expressions)):
+            for i, (se1, se2) in enumerate(zip(o1.script_expressions, o2.script_expressions, strict=False)):
                 print(f"Comparing script_expressions[{i}]:")
                 # Compare tag
                 if se1.tag != se2.tag:
@@ -195,15 +195,15 @@ class URComparator:
         print("\nComparing crypto_key:")
         if o1.crypto_key is None and o2.crypto_key is None:
             print("Both crypto_key are None")
-        elif type(o1.crypto_key) != type(o2.crypto_key):
-            print(f"DIFFERENCE: types {type(o1.crypto_key) } != { type(o2.crypto_key)}")
+        elif type(o1.crypto_key) is type(o2.crypto_key):
+            print(f"DIFFERENCE: types {type(o1.crypto_key)} != {type(o2.crypto_key)}")
             all_same = False
         elif isinstance(o1.crypto_key, UR_HDKey) and isinstance(o2.crypto_key, UR_HDKey):
             cls.verbose_compare_hdkeys(o1.crypto_key, o2.crypto_key)
         elif isinstance(o1.crypto_key, UR_MultiKey) and isinstance(o2.crypto_key, UR_MultiKey):
             if len(o1.crypto_key.hd_keys) != len(o2.crypto_key.hd_keys):
-                print(f"DIFFERENCE: .crypto_key.hd_keys have different length")
-            for i, (k1, k2) in enumerate(zip(o1.crypto_key.hd_keys, o2.crypto_key.hd_keys)):
+                print("DIFFERENCE: .crypto_key.hd_keys have different length")
+            for i, (k1, k2) in enumerate(zip(o1.crypto_key.hd_keys, o2.crypto_key.hd_keys, strict=False)):
                 print(f"Comparing {i}.th  keypair {k1, k2}")
                 cls.verbose_compare_hdkeys(k1, k2)
 
@@ -215,9 +215,9 @@ class URComparator:
     @classmethod
     def verbose_compare_accounts(cls, a1: UR_ACCOUNT, a2: UR_ACCOUNT) -> None:
         if a1.master_fingerprint != a2.master_fingerprint:
-            print(f"DIFFERENCE: master_fingerprint")
+            print("DIFFERENCE: master_fingerprint")
 
-        for i, (o1, o2) in enumerate(zip(a1.output_descriptors, a2.output_descriptors)):
+        for i, (o1, o2) in enumerate(zip(a1.output_descriptors, a2.output_descriptors, strict=False)):
             print(f"Comapring {i}. output_descriptors\n")
             cls.verbose_compare_output(o1, o2)
 
@@ -281,7 +281,7 @@ class URTools:
         return Data.from_str(output.descriptor(), network=network)
 
     @classmethod
-    def decode_account_as_signer_infos(cls, account: UR_ACCOUNT, network: bdk.Network) -> List[SignerInfo]:
+    def decode_account_as_signer_infos(cls, account: UR_ACCOUNT, network: bdk.Network) -> list[SignerInfo]:
         return [
             SignerInfo.decode_descriptor_as_signer_info(output.descriptor(), network=network)
             for output in account.output_descriptors
@@ -319,7 +319,6 @@ class URTools:
 
     @classmethod
     def _derivation_path_to_keypath(cls, derivation_path: str) -> UR_KeyPath:
-
         parts = derivation_path.lstrip("/").split("/")
 
         components = []
@@ -355,10 +354,10 @@ class URTools:
         # Extended key structure:
         # version (4 bytes) | depth (1 byte) | parent_fingerprint (4 bytes) |
         # child_number (4 bytes) | chain_code (32 bytes) | key_data (33 bytes)
-        version = decoded[0:4]
+        # version = decoded[0:4]
         decoded[4]
         parent_fingerprint = decoded[5:9]
-        child_number = decoded[9:13]
+        # child_number = decoded[9:13]
         chain_code = decoded[13:45]
         key_data = decoded[45:]
 
@@ -406,8 +405,8 @@ class URTools:
                 return tag
 
     @classmethod
-    def _script_expressions(cls, name: str) -> List[UR_ScriptExpression]:
-        expressions: List[UR_ScriptExpression] = []
+    def _script_expressions(cls, name: str) -> list[UR_ScriptExpression]:
+        expressions: list[UR_ScriptExpression] = []
         for single_expression in name.split("-"):
             for tag in SCRIPT_EXPRESSION_TAG_MAP.values():
                 if tag.expression == single_expression:
@@ -440,7 +439,7 @@ class URTools:
             descriptor_names = [d.name for d in flattened_descriptors]
             multisig_descriptor = flattened_descriptors[-1]
             if not isinstance(multisig_descriptor, MultisigDescriptor):
-                raise Exception(f"descritpor not consistent with a multisig")
+                raise Exception("descritpor not consistent with a multisig")
 
             hd_keys = [cls._pubkey_provider_to_hdkey(pubkey) for pubkey in multisig_descriptor.pubkeys]
             crypto_key = UR_MultiKey(threshold=multisig_descriptor.thresh, ec_keys=[], hd_keys=hd_keys)
@@ -451,12 +450,12 @@ class URTools:
         return UR_OUTPUT(script_expressions=script_expressions, crypto_key=crypto_key)
 
     @classmethod
-    def encode_ur_account(cls, signer_infos: List[SignerInfo], descriptor_names: List[str]) -> UR_ACCOUNT:
+    def encode_ur_account(cls, signer_infos: list[SignerInfo], descriptor_names: list[str]) -> UR_ACCOUNT:
         assert signer_infos, "Empty list signer_infos"
         first_info = signer_infos[0]
 
         output_descriptors = []
-        for signer_info, descriptor_name in zip(signer_infos, descriptor_names):
+        for signer_info, descriptor_name in zip(signer_infos, descriptor_names, strict=False):
             pubkey_provider = PubkeyProvider(
                 origin=KeyOriginInfo.from_string(
                     signer_info.key_origin.replace("m", signer_info.fingerprint)

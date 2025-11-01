@@ -1,13 +1,13 @@
 import logging
 
+from PyQt6 import QtWidgets
+
 from bitcoin_qr_tools.gui.bitcoin_video_widget import DemoBitcoinVideoWidget
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
 
 logger = logging.getLogger(__name__)
 
-
-from PyQt6 import QtWidgets
 
 if __name__ == "__main__":
     import sys

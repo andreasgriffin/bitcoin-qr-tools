@@ -1,7 +1,6 @@
 import base64
 import logging
 from dataclasses import dataclass
-from typing import List
 
 import bdkpython as bdk
 
@@ -32,7 +31,7 @@ class QrExportTypes:
     text = QrExportType("text", "Text")
 
     @classmethod
-    def as_list(cls) -> List[QrExportType]:
+    def as_list(cls) -> list[QrExportType]:
         return [
             export_type for name, export_type in cls.__dict__.items() if isinstance(export_type, QrExportType)
         ]
@@ -42,7 +41,7 @@ class UnifiedEncoder:
     "Create animated and static qr codes"
 
     @classmethod
-    def bytes_to_ur_byte_fragments(cls, encoded: bytes, type="bytes", max_qr_size=50) -> List[str]:
+    def bytes_to_ur_byte_fragments(cls, encoded: bytes, type="bytes", max_qr_size=50) -> list[str]:
         bcor_encoder = CBOREncoder()
         bcor_encoder.encodeBytes(encoded)
         ur = UR(type, bcor_encoder.get_bytes())
@@ -55,7 +54,7 @@ class UnifiedEncoder:
         return fragments
 
     @classmethod
-    def string_to_ur_byte_fragments(cls, string_data: str, max_qr_size=50) -> List[str]:
+    def string_to_ur_byte_fragments(cls, string_data: str, max_qr_size=50) -> list[str]:
         return cls.bytes_to_ur_byte_fragments(string_data.encode(), type="bytes", max_qr_size=max_qr_size)
 
     @staticmethod
@@ -140,7 +139,7 @@ class UnifiedEncoder:
         return version
 
     @classmethod
-    def generate_fragments_for_qr(cls, data: Data, qr_export_type: QrExportType, max_qr_size=50) -> List[str]:
+    def generate_fragments_for_qr(cls, data: Data, qr_export_type: QrExportType, max_qr_size=50) -> list[str]:
         if qr_export_type.name == QrExportTypes.text.name:
             return [data.data_as_string()]
         elif qr_export_type.name == QrExportTypes.ur.name:
@@ -191,7 +190,7 @@ class UnifiedEncoder:
         raise Exception(f"Unknown qr_type {qr_export_type}")
 
     @classmethod
-    def raw_generate_fragments_for_bbqr(cls, raw: bytes, file_type="U", max_qr_size=50) -> List[str]:
+    def raw_generate_fragments_for_bbqr(cls, raw: bytes, file_type="U", max_qr_size=50) -> list[str]:
         version, parts = split_qrs(
             raw, file_type, max_version=cls._max_qr_code_version(num_modules=max_qr_size)
         )

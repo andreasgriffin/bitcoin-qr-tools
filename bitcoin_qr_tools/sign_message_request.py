@@ -1,7 +1,6 @@
 import json
 import logging
 from dataclasses import dataclass
-from typing import Dict
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +25,7 @@ class SignMessageRequest:
     def to_json(self) -> str:
         return json.dumps(self.__dict__)
 
-    def dict(self) -> Dict:
+    def dict(self) -> dict:
         return self.__dict__
 
     def __eq__(self, other: object) -> bool:

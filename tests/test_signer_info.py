@@ -12,7 +12,6 @@ from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
 
 
 def test_SignerInfo():
-
     # test SignerInfo
     s = "[a42c6dd3/84'/1'/0']tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks"
     data = Data.from_str(s, network=bdk.Network.REGTEST)

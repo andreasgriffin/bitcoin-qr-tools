@@ -7,7 +7,7 @@ import urllib.parse
 from dataclasses import dataclass
 from decimal import Decimal
 from os import fdopen
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import base58
 import bdkpython as bdk
@@ -122,7 +122,7 @@ class ConverterAddress:
         try:
             bdkaddress = bdk.Address(s, network)
             return bool(bdkaddress) and bdkaddress.is_valid_for_network(network=network)
-        except:
+        except Exception:
             return False
 
 
@@ -131,7 +131,7 @@ class ConverterMultisigWalletExport:
     name: str
     threshold: int
     address_type_short_name: str
-    signer_infos: List[SignerInfo]
+    signer_infos: list[SignerInfo]
 
     def to_str(self) -> str:
         return self.to_custom_str(hardware_signer_name="")
@@ -153,7 +153,7 @@ Format: {self.address_type_short_name.upper()}
     @classmethod
     def parse_from_legacy_coldcard(
         cls, s: str, network: bdk.Network
-    ) -> "Optional[ConverterMultisigWalletExport]":
+    ) -> "ConverterMultisigWalletExport | None":
         """
 
         Can parse a string like
@@ -178,12 +178,12 @@ Format: {self.address_type_short_name.upper()}
         """
         lines = s.split("\n")
 
-        def extract_value(line: str, key: str) -> Optional[str]:
+        def extract_value(line: str, key: str) -> str | None:
             if line.startswith(key):
                 return line[len(key) :].strip()
             return None
 
-        def extract_unique(key: str) -> Optional[str]:
+        def extract_unique(key: str) -> str | None:
             for line in lines:
                 res = extract_value(line, key=key)
                 if res:
@@ -197,7 +197,7 @@ Format: {self.address_type_short_name.upper()}
         policy = extract_unique("Policy:")
         if not policy:
             return None
-        if not " of " in policy:
+        if " of " not in policy:
             return None
         policy_parts = policy.split(" of ")
         if len(policy_parts) != 2:
@@ -206,7 +206,7 @@ Format: {self.address_type_short_name.upper()}
         try:
             threshold = int(_threshold.strip())
             num_signers = int(_num_signers.strip())
-        except:
+        except Exception:
             return None
         if not (0 < threshold <= num_signers):
             return None
@@ -218,7 +218,7 @@ Format: {self.address_type_short_name.upper()}
 
         current_derivation = None
         # get the signer_infos
-        signer_infos: List[SignerInfo] = []
+        signer_infos: list[SignerInfo] = []
         for line in lines:
             if line.startswith("#"):
                 continue
@@ -228,7 +228,7 @@ Format: {self.address_type_short_name.upper()}
                 current_derivation = this_derivation
 
             # if it is a fingerprint
-            if not ":" in line:
+            if ":" not in line:
                 continue
             parts = line.split(":")
             if len(parts) != 2:
@@ -266,7 +266,7 @@ Format: {self.address_type_short_name.upper()}
 
 class ConverterBip329:
     @classmethod
-    def is_ndjson_with_keys(cls, s: str, keys: List[str]):
+    def is_ndjson_with_keys(cls, s: str, keys: list[str]):
         """
         Checks if the input string s is newline-delimited JSON and each JSON object contains the specified keys.
 
@@ -288,7 +288,7 @@ class ConverterBip329:
                 obj = json.loads(line)
                 # Check if all specified keys are present in the JSON object
                 if not all(key in obj for key in keys):
-                    logger.debug(f"is_ndjson_with_keys: Not all required keys are present in obj")
+                    logger.debug("is_ndjson_with_keys: Not all required keys are present in obj")
                     return False
             except json.JSONDecodeError:
                 return False
@@ -299,12 +299,12 @@ class ConverterBip329:
     def is_bip329(cls, s: str) -> bool:
         try:
             return cls.is_ndjson_with_keys(s, keys=["type", "ref", "label"])
-        except:
+        except Exception:
             return False
 
 
 class ConverterBip21:
-    def __init__(self, data: Dict) -> None:
+    def __init__(self, data: dict) -> None:
         self.data = data
 
     def to_json(self):
@@ -341,7 +341,7 @@ class ConverterBip21:
             if len(v) != 1:
                 raise InvalidBitcoinURI(f"Duplicate Key: {repr(k)}")
 
-        out: Dict[str, Any] = {k: v[0] for k, v in pq.items()}
+        out: dict[str, Any] = {k: v[0] for k, v in pq.items()}
         if address:
             if not ConverterAddress.is_bitcoin_address(address, network=network):
                 raise InvalidBitcoinURI(f"Invalid bitcoin address: {address}")
@@ -396,7 +396,7 @@ class ConverterTx:
         return str(serialized_to_hex(self.tx.serialize()))
 
     @classmethod
-    def _try_transaction_binary(cls, raw: bytes) -> Optional[bdk.Transaction]:
+    def _try_transaction_binary(cls, raw: bytes) -> bdk.Transaction | None:
         # Try each decoding strategy in the loop
         try:
             return bdk.Transaction(raw)
@@ -404,7 +404,7 @@ class ConverterTx:
             return None
 
     @classmethod
-    def _try_decode_serialized_transaction(cls, s: str) -> Optional[bdk.Transaction]:
+    def _try_decode_serialized_transaction(cls, s: str) -> bdk.Transaction | None:
         # Try each decoding strategy in the loop
         for decode in ConverterTools._decoding_strategies():
             try:
@@ -424,7 +424,7 @@ class ConverterPSBT:
         return str(self.psbt.serialize())
 
     @classmethod
-    def _try_decode_psbt_binary(cls, raw: bytes) -> Optional[bdk.Psbt]:
+    def _try_decode_psbt_binary(cls, raw: bytes) -> bdk.Psbt | None:
         psbt_magic_bytes = b"psbt\xff"
 
         # Try each decoding strategy in the loop
@@ -436,7 +436,7 @@ class ConverterPSBT:
         return None
 
     @classmethod
-    def _try_decode_psbt(cls, s) -> Optional[bdk.Psbt]:
+    def _try_decode_psbt(cls, s) -> bdk.Psbt | None:
         psbt_magic_bytes = b"psbt\xff"
 
         # Try each decoding strategy in the loop
@@ -471,7 +471,7 @@ class ConverterSignMessageRequest:
         return f"signmessage {self.data.subpath} ascii:{ascii_str}"
 
     @classmethod
-    def _try_extract_sign_message_request_text(cls, s: str) -> Optional[SignMessageRequest]:
+    def _try_extract_sign_message_request_text(cls, s: str) -> SignMessageRequest | None:
         prefix = "signmessage "
         if not s.startswith(prefix):
             return None
@@ -481,13 +481,13 @@ class ConverterSignMessageRequest:
             s = s[len(prefix) :].strip()
 
             subpath, msg = s.split("ascii:")
-            logger.warning(f"No addres format can be filled for SignMessageRequest")
+            logger.warning("No addres format can be filled for SignMessageRequest")
             return SignMessageRequest(msg=msg, subpath=subpath, addr_fmt="")
-        except:
+        except Exception:
             return None
 
     @classmethod
-    def _try_extract_sign_message_request(cls, s: str) -> Optional[SignMessageRequest]:
+    def _try_extract_sign_message_request(cls, s: str) -> SignMessageRequest | None:
         try:
             d = json.loads(s)
 
@@ -508,11 +508,11 @@ class ConverterSignerInfo:
         return self.data.to_json()
 
     @classmethod
-    def _try_extract_signer_info(cls, s: str) -> Optional[SignerInfo]:
+    def _try_extract_signer_info(cls, s: str) -> SignerInfo | None:
         signer_info = None
         try:
             signer_info = SignerInfo.from_str(s)
-        except:
+        except Exception:
             pass
 
         if signer_info:
@@ -552,14 +552,14 @@ class ConverterSignerInfo:
 
 
 class ConverterSignerInfos:
-    def __init__(self, infos: List[SignerInfo], network: bdk.Network) -> None:
+    def __init__(self, infos: list[SignerInfo], network: bdk.Network) -> None:
         self.data = infos
         self.network = network
 
     @classmethod
     def _try_multisig_wallet_export(
         cls, s: str, network: bdk.Network
-    ) -> Optional[ConverterMultisigWalletExport]:
+    ) -> ConverterMultisigWalletExport | None:
         """_summary_
 
         Args:
@@ -583,7 +583,7 @@ class ConverterSignerInfos:
         first_signer_info = self.data[0]
         assert isinstance(first_signer_info, SignerInfo)
 
-        d: Dict[str, Any] = {
+        d: dict[str, Any] = {
             "chain": "BTC"
             if self.network
             in [
@@ -611,7 +611,7 @@ class ConverterSignerInfos:
         return json.dumps(d)
 
     @classmethod
-    def _try_extract_sparrow_signer_infos(cls, s, network: bdk.Network) -> Optional[List[SignerInfo]]:
+    def _try_extract_sparrow_signer_infos(cls, s, network: bdk.Network) -> list[SignerInfo] | None:
         # if it is a json
         json_data = None
         try:
@@ -621,7 +621,7 @@ class ConverterSignerInfos:
             assert "chain" in json_data
             assert "xfp" in json_data
             # assert "xpub" in json_data  # this is not necessarily always known
-        except:
+        except Exception:
             return None
 
         if network == bdk.Network.BITCOIN:
@@ -657,7 +657,7 @@ class ConverterSignerInfos:
     @classmethod
     def _try_extract_multisig_signer_infos_coldcard_and_passport_qr(
         cls, s, network: bdk.Network
-    ) -> Optional[List[SignerInfo]]:
+    ) -> list[SignerInfo] | None:
         # if it is a json
         json_data = None
         try:
@@ -699,7 +699,7 @@ class ConverterDescriptor:
         return self.descriptor.to_string_with_secret()
 
     @classmethod
-    def _try_get_descriptor(cls, s, network: bdk.Network) -> Optional[bdk.Descriptor]:
+    def _try_get_descriptor(cls, s, network: bdk.Network) -> bdk.Descriptor | None:
         try:
             descriptor = convert_to_bdk_descriptor(s, network)
             if descriptor:
@@ -717,10 +717,9 @@ class ConverterDescriptor:
         return None
 
     @classmethod
-    def _try_get_multipath_descriptor(cls, s: str, network: bdk.Network) -> Optional[bdk.Descriptor]:
+    def _try_get_multipath_descriptor(cls, s: str, network: bdk.Network) -> bdk.Descriptor | None:
         # if new lines are presnt, try checking if there are descriptors in the lines
         if "\n" in s:
-
             splitted_lines = s.split("\n")
             raw_results = [cls._try_get_descriptor(line.strip(), network) for line in splitted_lines]
             # check that all entries return the same multipath descriptor
@@ -740,7 +739,9 @@ class ConverterDescriptor:
 
                 if not len(results) == len(assumed_single_descritpors):
                     raise InconsistentDescriptors(f"The descriptors {splitted_lines} are inconsistent.")
-                for result, assumed_single_descritpor in zip(results, assumed_single_descritpors):
+                for result, assumed_single_descritpor in zip(
+                    results, assumed_single_descritpors, strict=False
+                ):
                     if (
                         not result.to_string_with_secret()
                         == assumed_single_descritpor.to_string_with_secret()
@@ -770,11 +771,11 @@ class Data:
         self.data_type = data_type
         self.network = network
 
-    def dump(self) -> Dict:
+    def dump(self) -> dict:
         return {"data": self.data_as_string(), "data_type": self.data_type.name}
 
     @classmethod
-    def from_dump(cls, d: Dict, network: bdk.Network) -> "Data":
+    def from_dump(cls, d: dict, network: bdk.Network) -> "Data":
         return cls.from_str(
             d["data"],
             network=network,

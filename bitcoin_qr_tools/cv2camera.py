@@ -60,7 +60,6 @@ if __name__ == "__main__":
             self.timer.start(30)  # Update at ~33fps
 
         def showSurface(self, surface: pygame.Surface, scale_to=(640, 480)):
-
             array3d = pygame.surfarray.array3d(surface)
             height, width, _ = array3d.shape
             bytes_per_line = 3 * width

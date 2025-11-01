@@ -4,7 +4,7 @@ import sys
 import time
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, List, Tuple, Union
+from typing import Any
 
 import cv2
 import numpy as np
@@ -52,7 +52,7 @@ class BarcodeData:
         return f"BarcodeData(data={self.data}, rect={self.rect})"
 
 
-TypeSomeCamera = Union[CV2Camera, RTSPCamera, pygame.camera.Camera, ScreenCamera]
+TypeSomeCamera = CV2Camera | RTSPCamera | pygame.camera.Camera | ScreenCamera
 
 
 class VideoWidget(QWidget):
@@ -75,7 +75,7 @@ class VideoWidget(QWidget):
 
             self.pyzbar = pyzbar
             logger.info("Load pyzbar successful")
-        except:
+        except Exception:
             logger.info("Could not load pyzbar. Trying to load fallback cv2")
             import cv2
 
@@ -158,7 +158,7 @@ class VideoWidget(QWidget):
         action_add_rtsp_camera.triggered.connect(self.prompt_rtsp_url)
 
         pygame.camera.init()
-        for index, camera_name, camera in self.get_valid_cameras():
+        for _index, camera_name, camera in self.get_valid_cameras():
             self.combo_cameras.addItem(str(camera_name), userData=camera)
 
         self._layout = QVBoxLayout()
@@ -221,7 +221,7 @@ class VideoWidget(QWidget):
                 self.combo_cameras.setCurrentIndex(self.combo_cameras.count() - 1)
                 self.switch_camera(self.combo_cameras.count() - 1)
                 return
-            except:
+            except Exception:
                 logger.debug(f"{temp_camera} with enable_udp {enable_udp} could not be opened")
 
         QMessageBox().warning(
@@ -267,7 +267,7 @@ class VideoWidget(QWidget):
         if isinstance(selected_camera, (pygame.camera.Camera, CV2Camera)):
             self.change_brightness(selected_camera, value)
 
-    def get_brightness(self, camera: Any) -> Tuple[float, float, float]:
+    def get_brightness(self, camera: Any) -> tuple[float, float, float]:
         if isinstance(camera, pygame.camera.Camera):
             _flipx, _flipy, brightness = camera.get_controls()
             return 0, 255, brightness
@@ -278,7 +278,7 @@ class VideoWidget(QWidget):
 
         return 0, 255, 128
 
-    def change_brightness(self, camera: Union[pygame.camera.Camera, CV2Camera], value: float):
+    def change_brightness(self, camera: pygame.camera.Camera | CV2Camera, value: float):
         v = cv2.CAP_PROP_BRIGHTNESS
 
         target_value = int(value)
@@ -289,7 +289,7 @@ class VideoWidget(QWidget):
             _flipx, _flipy, new_value = camera.get_controls()
 
             if new_value != old_value:
-                logger.debug(f"Changed {v} from {old_value} --> { new_value }")
+                logger.debug(f"Changed {v} from {old_value} --> {new_value}")
 
         elif isinstance(camera, CV2Camera) and camera._cam:
             old_value = camera._cam.get(v)
@@ -297,7 +297,7 @@ class VideoWidget(QWidget):
             new_value = camera._cam.get(v)
 
             if new_value != old_value:
-                logger.debug(f"Changed {v} from {old_value} --> { new_value }")
+                logger.debug(f"Changed {v} from {old_value} --> {new_value}")
 
     def on_preset_process_checkbox(self, state: Any):
         self.post_process_checkbox.setChecked(self.preset_process_checkbox.isChecked())
@@ -360,8 +360,8 @@ class VideoWidget(QWidget):
         # default is opencv, since  pygame doesnt work on mac
         return self.get_cv2camera(index) or self.get_pygame_camera(camera_name, index)
 
-    def get_valid_cameras(self) -> List[Tuple[int, str, TypeSomeCamera]]:
-        valid_cameras: List[Tuple[int, str, TypeSomeCamera]] = []
+    def get_valid_cameras(self) -> list[tuple[int, str, TypeSomeCamera]]:
+        valid_cameras: list[tuple[int, str, TypeSomeCamera]] = []
         for index, camera_name in enumerate(pygame.camera.list_cameras()):
             temp_camera = self._get_camera(camera_name, index)
             if temp_camera:
@@ -382,7 +382,7 @@ class VideoWidget(QWidget):
         if self.current_camera:
             try:
                 self.current_camera.stop()
-            except:
+            except Exception:
                 pass
 
         self.current_camera = selected_camera
@@ -460,7 +460,7 @@ class VideoWidget(QWidget):
         # Return the subsurface
         return image_surface.subsurface(rect)
 
-    def get_barcodes(self, array: np.ndarray) -> List[BarcodeData]:
+    def get_barcodes(self, array: np.ndarray) -> list[BarcodeData]:
         if self.pyzbar:
             decoded_codes = self.pyzbar.decode(array)
             return [BarcodeData(data=decoded.data, rect=decoded.rect) for decoded in decoded_codes]
@@ -538,10 +538,10 @@ class VideoWidget(QWidget):
             self.last_display_fps = time.time()
             if self.frame_counter[-1] - self.frame_counter[0] > 0:
                 logger.debug(
-                    f"fps: {len(self.frame_counter)/(self.frame_counter[-1]- self.frame_counter[0] )  }"
+                    f"fps: {len(self.frame_counter) / (self.frame_counter[-1] - self.frame_counter[0])}"
                 )
 
-        barcodes: List[BarcodeData] = []
+        barcodes: list[BarcodeData] = []
         if self.current_camera:
             try:
                 surface = self.current_camera.get_image()
@@ -566,7 +566,7 @@ class VideoWidget(QWidget):
         surface = pygame.transform.flip(surface, False, True)
         surface = pygame.transform.rotate(surface, -90)
 
-        def transform_and_detect(values: Tuple[int, int] | None) -> List[BarcodeData]:
+        def transform_and_detect(values: tuple[int, int] | None) -> list[BarcodeData]:
             if values is None:
                 return self.get_barcodes(array_original)
             gauss_kernel_size, thres = values
@@ -576,7 +576,7 @@ class VideoWidget(QWidget):
                         array_original.copy(), gauss_kernel_size=gauss_kernel_size, threshold_blockSize=thres
                     )
                 )
-            except:
+            except Exception:
                 return []
 
         arguments = [None, (5, 11), (5, 21), (3, 11), (9, 31), (11, 35), (7, 21)]
@@ -584,7 +584,7 @@ class VideoWidget(QWidget):
         barcodes = sum(list_of_barcodes, [])
         if barcodes:
             logger.debug(
-                f"Found barcodes with parameters {[argument for barcodes, argument in  zip(list_of_barcodes, arguments) if barcodes]}"
+                f"Found barcodes with parameters {[argument for barcodes, argument in zip(list_of_barcodes, arguments, strict=False) if barcodes]}"
             )
 
         sorted_barcodes = sorted(barcodes, key=lambda item: len(item.data), reverse=True)
@@ -606,7 +606,6 @@ class VideoWidget(QWidget):
             self.signal_raw_qr_data.emit(selected_barcode.data)
 
     def showSurface(self, surface: pygame.Surface, scale_to=(640, 480)):
-
         array3d = pygame.surfarray.array3d(surface)
         height, width, _ = array3d.shape
         bytes_per_line = 3 * width

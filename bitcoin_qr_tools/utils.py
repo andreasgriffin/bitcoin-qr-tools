@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from hwilib.descriptor import Descriptor
 
@@ -31,10 +30,10 @@ class WrongNetwork(Exception):
     pass
 
 
-def _flatten_descriptors(descriptor: Descriptor) -> List[Descriptor]:
+def _flatten_descriptors(descriptor: Descriptor) -> list[Descriptor]:
     if descriptor.pubkeys and len(descriptor.subdescriptors) == 0:
         return [descriptor]
     elif len(descriptor.pubkeys) == 0 and len(descriptor.subdescriptors) == 1:
         return [descriptor] + _flatten_descriptors(descriptor.subdescriptors[0])
     else:
-        raise Exception(f"The descriptor cannot be flattened")
+        raise Exception("The descriptor cannot be flattened")

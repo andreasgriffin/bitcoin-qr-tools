@@ -119,5 +119,5 @@ class ConverterXpub:
     def is_slip132(cls, key: str) -> bool:
         try:
             return cls.get_slip132_version_bytes(key) in cls.version_bytes_map
-        except:
+        except Exception:
             return False

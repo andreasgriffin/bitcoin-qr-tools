@@ -1,7 +1,6 @@
 import json
 import logging
 import re
-from typing import Dict, List, Optional, Tuple
 
 import bdkpython as bdk
 from hwilib.descriptor import (
@@ -22,9 +21,9 @@ class SignerInfo:
         fingerprint: str,
         key_origin: str,
         xpub: str,
-        derivation_path: Optional[str] = None,
-        name: Optional[str] = None,
-        first_address: Optional[str] = None,
+        derivation_path: str | None = None,
+        name: str | None = None,
+        first_address: str | None = None,
     ) -> None:
         """_summary_
 
@@ -56,7 +55,7 @@ class SignerInfo:
     def to_json(self) -> str:
         return json.dumps(self.__dict__)
 
-    def dict(self) -> Dict:
+    def dict(self) -> dict:
         return self.__dict__
 
     def __eq__(self, other: object) -> bool:
@@ -71,7 +70,7 @@ class SignerInfo:
         ]
 
     @classmethod
-    def _inner_most_pubkey_provider(cls, descriptors: List[Descriptor]) -> Tuple[List[str], PubkeyProvider]:
+    def _inner_most_pubkey_provider(cls, descriptors: list[Descriptor]) -> tuple[list[str], PubkeyProvider]:
         """
         Deturns the name of the descriptor (also when it was nested) and the single PubkeyProvider found
 
@@ -103,7 +102,7 @@ class SignerInfo:
             is_testnet = hwi_pk_prov.extkey.is_testnet
             if is_testnet != cls._is_testnet(network):
                 raise WrongNetwork(
-                    f"""Expected Network {network}, but got {'Testnet' if is_testnet else 'Mainnet'}"""
+                    f"""Expected Network {network}, but got {"Testnet" if is_testnet else "Mainnet"}"""
                 )
 
         return SignerInfo(
@@ -115,24 +114,24 @@ class SignerInfo:
         )
 
     @classmethod
-    def _get_inner_most_signer_info(cls, expr: str) -> Tuple[str, str]:
+    def _get_inner_most_signer_info(cls, expr: str) -> tuple[str, str]:
         funcs = []
         error = False
         while not error:
             try:
                 func, expr = _get_func_expr(expr)
                 funcs.append(func)
-            except:
+            except Exception:
                 error = True
         return "p2" + "-".join([func for func in funcs]), expr
 
     @classmethod
-    def _handle_incomplete_descriptor_bare_p2wsh(cls, descriptor_str: str) -> "Optional[SignerInfo]":
+    def _handle_incomplete_descriptor_bare_p2wsh(cls, descriptor_str: str) -> "SignerInfo | None":
         try:
             name, most_inner_expr = cls._get_inner_most_signer_info(descriptor_str)
             signer_info = SignerInfo.from_str(most_inner_expr)
             signer_info.name = name
-        except:
+        except Exception:
             return None
         return signer_info
 
