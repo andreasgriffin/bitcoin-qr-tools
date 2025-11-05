@@ -1,11 +1,12 @@
 import logging
 import os
 import sys
+from typing import Optional
 
 import cv2
 import pygame
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QImage, QPixmap
+from PyQt6.QtGui import QCloseEvent, QImage, QPixmap
 from PyQt6.QtWidgets import QApplication, QLabel, QVBoxLayout, QWidget
 
 logger = logging.getLogger(__name__)
@@ -120,10 +121,10 @@ if __name__ == "__main__":
             # pixmap = QPixmap.fromImage(image)
             # self.label_image.setPixmap(pixmap)
 
-        def closeEvent(self, event):
+        def closeEvent(self, a0: Optional[QCloseEvent]) -> None:
             self.timer.stop()
             self.camera.stop()
-            super().closeEvent(event)
+            super().closeEvent(a0)
 
     app = QApplication(sys.argv)
     window = MainWindow("rtsp://192.168.178.27:8086/webcam")

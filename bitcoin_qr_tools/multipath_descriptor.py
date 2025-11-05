@@ -39,15 +39,6 @@ def get_equal_derivation_path(descriptor_str: str) -> Optional[str]:
 
 
 def convert_to_bdk_descriptor(descriptor_str: str, network: bdk.Network) -> bdk.Descriptor:
-    """Currently there is a bug in the multipath descriptors
-    https://github.com/bitcoindevkit/bdk/issues/1845
-
-    Essentially only by providign testnet the descriptor is correctly converted.
-
-    We then manually have to check if the provided descriptor is correct for the network
-
-    Once https://github.com/bitcoindevkit/bdk/issues/1845 is fixed, this wrapper can be removed
-    """
     # sparrow format for root keys
     # here we replace this
     sparrow_root_key_format = "/m]"
@@ -56,21 +47,7 @@ def convert_to_bdk_descriptor(descriptor_str: str, network: bdk.Network) -> bdk.
             descriptor_str = descriptor_str.split("#")[0]
         descriptor_str = descriptor_str.replace(sparrow_root_key_format, "]")
 
-    # if it is not multipath, it actually works correctly:
-    if "<" not in descriptor_str:
-        return bdk.Descriptor(descriptor_str, network)
-
-    assert "]xpriv" not in descriptor_str, "secret keys not supported"
-    assert "]tpriv" not in descriptor_str, "secret keys not supported"
-
-    if network in [bdk.Network.TESTNET4, bdk.Network.TESTNET, bdk.Network.REGTEST, bdk.Network.SIGNET]:
-        # cannot contain mainnet xpub
-        assert descriptor_str.count("]xpub") == 0
-    elif network in [bdk.Network.BITCOIN]:
-        # cannot contain testnet xpub
-        assert descriptor_str.count("]tpub") == 0
-
-    return bdk.Descriptor(descriptor_str, bdk.Network.TESTNET)
+    return bdk.Descriptor(descriptor_str, network)
 
 
 def convert_to_multipath_descriptor(descriptor_str: str, network: bdk.Network) -> bdk.Descriptor:
