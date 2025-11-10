@@ -1,19 +1,18 @@
 import logging
 
-from bitcoin_qr_tools.data import DecodingException
-
-logger = logging.getLogger(__name__)
-
 import bdkpython as bdk
 import pygame
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QKeySequence, QShortcut
 
+from bitcoin_qr_tools.data import DecodingException
 from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
 
 from ..data import Data
 from .video_widget import BarcodeData, VideoWidget
+
+logger = logging.getLogger(__name__)
 
 
 class BitcoinVideoWidget(VideoWidget):

@@ -127,7 +127,6 @@ def test_descriptor_master_xpub():
 
 
 def test_multipath_descriptor1():
-
     # 2 descriptors in 2 lines  (coldcard style)
     parts = [
         """wsh(sortedmulti(2,[45f35351/48h/1h/0h/2h]tpubDEY3tNWvDs8J6xAmwoirxgff61gPN1V6U5numeb6xjvZRB883NPPpRYHt2A6fUE3YyzDLezFfuosBdXsdXJhJUcpqYWF9EEBmWqG3rG8sdy/<0;1>/*,[829074ff/48h/1h/0h/2h]tpubDDx9arPwEvHGnnkKN1YJXFE4W6JZXyVX9HGjZW75nWe1FCsTYu2k3i7VtCwhGR9zj6UUYnseZUnwL7T6Znru3NmXkcjEQxMqRx7Rxz8rPp4/<0;1>/*,[d5b43540/48h/1h/0h/2h]tpubDFnCcKU3iUF4sPeQC68r2ewDaBB7TvLmQBTs12hnNS8nu6CPjZPmzapp7Woz6bkFuLfSjSpg6gacheKBaWBhDnEbEpKtCnVFdQnfhYGkPQF/<0;1>/*))#54uq36v8"""
@@ -192,7 +191,6 @@ def test_derivation_path():
 
 
 def test_multipath_descriptor():
-
     # 2 descriptors in 2 lines  (coldcard style)
     parts = [
         """wpkh([0f056943/84h/1h/0h]tpubDC7jGaaSE66Pn4dgtbAAstde4bCyhSUs4r3P8WhMVvPByvcRrzrwqSvpF9Ghx83Z1LfVugGRrSBko5UEKELCz9HoMv5qKmGq3fqnnbS5E9r/0/*)#erexmnep
@@ -259,7 +257,6 @@ def test_descriptor_to_qr_fragements():
 
 
 def test_multipath_descriptor_to_qr_fragements():
-
     # 2 descriptors in 2 lines  (coldcard style)
     s = "wpkh([0f056943/84'/1'/0']tpubDC7jGaaSE66Pn4dgtbAAstde4bCyhSUs4r3P8WhMVvPByvcRrzrwqSvpF9Ghx83Z1LfVugGRrSBko5UEKELCz9HoMv5qKmGq3fqnnbS5E9r/<0;1>/*)#86p2gdxy"
 

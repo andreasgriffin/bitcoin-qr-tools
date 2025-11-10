@@ -78,7 +78,6 @@ AB9A2E94: xpub6CJQ9dk1R9ssG4EcS3REdEJ24f5F4ahb5H7sKpP4a63jsjayxuqe6dJN4U3t7ce9sz
 
 
 def test_Converter_jade():
-
     s = """# Exported by Blockstream Jade
 Name: hwi3374c2e55c4b
 Policy: 1 of 3

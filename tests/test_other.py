@@ -5,7 +5,6 @@ from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
 
 
 def test_xpub():
-
     # test xpub
     s = "tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks"
     data = Data.from_str(s, network=bdk.Network.REGTEST)
@@ -14,7 +13,6 @@ def test_xpub():
 
 
 def test_txid():
-
     # test txid
     s = "14cd7d7ec4ab969afcb1609a6638b89895ae023446fd523875b0e930fdcd1b67"
     data = Data.from_str(s, network=bdk.Network.REGTEST)
@@ -23,7 +21,6 @@ def test_txid():
 
 
 def test_tx():
-
     # test tx
     s = "020000000001010000000000000000000000000000000000000000000000000000000000000000ffffffff0502ad000101ffffffff0200f9029500000000160014b947c0de955cd2ccdfcd5b33198d2656834d0cd50000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf90120000000000000000000000000000000000000000000000000000000000000000000000000"
     data = Data.from_str(s, network=bdk.Network.REGTEST)

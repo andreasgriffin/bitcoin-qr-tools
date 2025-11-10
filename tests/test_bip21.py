@@ -60,7 +60,6 @@ def test_bip21():
     for address in TEST_ADDRESSES:
         exception_raised = False
         try:
-
             s = f"bitcoin:{address}?label=Luke-Jr"
             data = Data.from_str(s, network=bdk.Network.REGTEST)
 

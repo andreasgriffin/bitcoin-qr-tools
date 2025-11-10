@@ -6,7 +6,6 @@ from bitcoin_qr_tools.sign_message_request import SignMessageRequest
 
 
 def test_SignMessageRequest():
-
     # working
     s = '{"msg":"test message", "subpath": "m/84h/0h/0h/0/10","addr_fmt": "p2wpkh"}'
     data = Data.from_str(s, network=bdk.Network.REGTEST)

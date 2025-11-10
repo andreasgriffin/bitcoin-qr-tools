@@ -1,5 +1,4 @@
 import logging
-from typing import List, Optional
 
 import bdkpython as bdk
 from hwilib.descriptor import Descriptor, PubkeyProvider, parse_descriptor
@@ -7,7 +6,7 @@ from hwilib.descriptor import Descriptor, PubkeyProvider, parse_descriptor
 logger = logging.getLogger(__name__)
 
 
-def get_all_pubkey_providers(hwi_descriptor: Descriptor) -> List[PubkeyProvider]:
+def get_all_pubkey_providers(hwi_descriptor: Descriptor) -> list[PubkeyProvider]:
     pubkey_providers = hwi_descriptor.pubkeys.copy()
     for subdescriptor in hwi_descriptor.subdescriptors:
         pubkey_providers += get_all_pubkey_providers(subdescriptor).copy()
@@ -22,7 +21,7 @@ def get_adapted_hwi_descriptor(descriptor_str: str, new_derivation_path: str) ->
     return hwi_descriptor
 
 
-def get_equal_derivation_path(descriptor_str: str) -> Optional[str]:
+def get_equal_derivation_path(descriptor_str: str) -> str | None:
     "Returns the derivation_path is all derivation_paths are equal. Otherwise None"
 
     hwi_descriptor = parse_descriptor(descriptor_str)
@@ -66,7 +65,7 @@ def convert_to_multipath_descriptor(descriptor_str: str, network: bdk.Network) -
 def is_valid_descriptor(descriptor_str: str, network: bdk.Network) -> bool:
     try:
         convert_to_multipath_descriptor(descriptor_str=descriptor_str, network=network)
-    except:
+    except Exception:
         return False
     return True
 
