@@ -269,7 +269,7 @@ class QRCodeWidgetSVG(QWidget):
         if clickable:
             self.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        self.timer = QTimer()
+        self.timer = QTimer(self)
         self.timer.timeout.connect(self.next_svg)
 
     def set_renderers(self, svg_renderers):
@@ -352,13 +352,29 @@ class QRCodeWidgetSVG(QWidget):
             self.enlarged_image = EnlargedSVG(self.svg_renderers[self.current_index])
 
         self.enlarged_image.exec()
-        self.enlarged_image.update_image(self.svg_renderers[self.current_index])
-        self.manage_animation()
+        try:
+            self.enlarged_image.update_image(self.svg_renderers[self.current_index])
+            self.manage_animation()
+        except RuntimeError as e:
+            if "has been deleted" in str(e):
+                logger.debug("Ignoring post-enlarge update on deleted QRCodeWidgetSVG")
+                return
+            raise
 
     def mousePressEvent(self, event: QMouseEvent | None):
         if self.clickable:
             self.enlarge_image()
-        super().mousePressEvent(event)
+            if event:
+                event.accept()
+            return
+
+        try:
+            super().mousePressEvent(event)
+        except RuntimeError as e:
+            if "has been deleted" in str(e):
+                logger.debug("Ignoring stale mousePressEvent on deleted QRCodeWidgetSVG")
+                return
+            raise
 
     def save_file(self, filename: Path, antialias=False):
         """Save all QR codes to files. If format is 'GIF', combines them into
