@@ -82,6 +82,9 @@ class VideoWidget(QWidget):
             self.cv2 = cv2
 
         self.label_image = QLabel()
+        self.label_image.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.label_image.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.label_image.setMinimumSize(640, 480)
         self.lower_widget = QWidget()
         self.lower_widget_layout = QHBoxLayout(self.lower_widget)
 
