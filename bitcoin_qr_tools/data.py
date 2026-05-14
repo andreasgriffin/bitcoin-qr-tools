@@ -508,10 +508,10 @@ class ConverterSignerInfo:
         return self.data.to_json()
 
     @classmethod
-    def _try_extract_signer_info(cls, s: str) -> SignerInfo | None:
+    def _try_extract_signer_info(cls, s: str, network: bdk.Network) -> SignerInfo | None:
         signer_info = None
         try:
-            signer_info = SignerInfo.from_str(s)
+            signer_info = SignerInfo.from_str(s, network=network)
         except Exception:
             pass
 
@@ -542,6 +542,8 @@ class ConverterSignerInfo:
             if d.get("derivation_path"):
                 derivation_path = d.get("derivation_path")
             if fingerprint and key_origin and xpub:
+                xpub = ConverterXpub.normalized_to_bip32(xpub)
+                ConverterXpub.ensure_xpub_matches_network(xpub, network=network)
                 return SignerInfo(
                     fingerprint=fingerprint, key_origin=key_origin, xpub=xpub, derivation_path=derivation_path
                 )
@@ -911,7 +913,7 @@ class Data:
             return Data(tx, DataType.Tx, network=network)
 
         if (not data_type or data_type == DataType.SignerInfo) and (
-            signer_info := ConverterSignerInfo._try_extract_signer_info(s)
+            signer_info := ConverterSignerInfo._try_extract_signer_info(s, network)
         ):
             return Data(signer_info, DataType.SignerInfo, network=network)
 
