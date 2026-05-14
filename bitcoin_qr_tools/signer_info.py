@@ -10,6 +10,7 @@ from hwilib.descriptor import (
     parse_descriptor,
 )
 
+from bitcoin_qr_tools.converter_xpub import ConverterXpub
 from bitcoin_qr_tools.utils import WrongNetwork, _flatten_descriptors
 
 logger = logging.getLogger(__name__)
@@ -108,7 +109,7 @@ class SignerInfo:
         return SignerInfo(
             fingerprint=hwi_pk_prov.origin.fingerprint.hex(),
             key_origin=hwi_pk_prov.origin.get_derivation_path(),
-            xpub=hwi_pk_prov.pubkey,
+            xpub=cls._normalize_xpub_and_validate_network(hwi_pk_prov.pubkey, network),
             derivation_path=hwi_pk_prov.deriv_path,
             name=name,
         )
@@ -126,14 +127,47 @@ class SignerInfo:
         return "p2" + "-".join([func for func in funcs]), expr
 
     @classmethod
-    def _handle_incomplete_descriptor_bare_p2wsh(cls, descriptor_str: str) -> "SignerInfo | None":
+    def _handle_incomplete_descriptor_bare_p2wsh(
+        cls, descriptor_str: str, network: bdk.Network
+    ) -> "SignerInfo | None":
         try:
             name, most_inner_expr = cls._get_inner_most_signer_info(descriptor_str)
-            signer_info = SignerInfo.from_str(most_inner_expr)
+            signer_info = SignerInfo.from_str(most_inner_expr, network)
             signer_info.name = name
         except Exception:
             return None
         return signer_info
+
+    @classmethod
+    def _normalize_xpub_and_validate_network(cls, xpub: str, network: bdk.Network) -> str:
+        xpub = ConverterXpub.normalized_to_bip32(xpub)
+        ConverterXpub.ensure_xpub_matches_network(xpub, network)
+        return xpub
+
+    @classmethod
+    def _wrapped_single_key_descriptor_to_signer_info(
+        cls, s: str, network: bdk.Network
+    ) -> "SignerInfo | None":
+        if re.fullmatch(r"[a-z0-9_]+\(.*\)(#.*)?", s, re.IGNORECASE) is None:
+            return None
+        try:
+            return cls.decode_descriptor_as_signer_info(s, network)
+        except WrongNetwork:
+            raise
+        except Exception:
+            pass
+
+        try:
+            _, most_inner_expr = cls._get_inner_most_signer_info(s.split("#")[0])
+            if not most_inner_expr.startswith("["):
+                return None
+            if most_inner_expr.count("[") != 1 or most_inner_expr.count("]") != 1 or "," in most_inner_expr:
+                return None
+            return SignerInfo.from_str(most_inner_expr, network)
+        except WrongNetwork:
+            raise
+        except Exception:
+            return None
 
     @classmethod
     def decode_descriptor_as_signer_info(cls, descriptor_str: str, network: bdk.Network) -> "SignerInfo":
@@ -145,13 +179,15 @@ class SignerInfo:
             )
         except ValueError as e:
             if "A matching pair of parentheses cannot be found" in e.args:
-                signer_info = cls._handle_incomplete_descriptor_bare_p2wsh(descriptor_str=descriptor_str)
+                signer_info = cls._handle_incomplete_descriptor_bare_p2wsh(
+                    descriptor_str=descriptor_str, network=network
+                )
                 if signer_info:
                     return signer_info
             raise e
 
     @classmethod
-    def from_str(cls, s: str) -> "SignerInfo":
+    def from_str(cls, s: str, network: bdk.Network) -> "SignerInfo":
         """
         Splits 1 keystore,e.g. "[a42c6dd3/84'/1'/0']xpub/0/*"
         into fingerprint, key_origin, xpub, wallet_path
@@ -169,6 +205,11 @@ class SignerInfo:
         #         derivation_path=pubkey_provider.deriv_path,
         #     )
         # however this cannot handle slip-132
+
+        if not s.startswith("["):
+            signer_info = cls._wrapped_single_key_descriptor_to_signer_info(s, network)
+            if signer_info:
+                return signer_info
 
         def key_origin_contains_valid_characters(s: str) -> bool:
             # Matches strings that consist of 'h', '/', digits, and optionally ends with a single quote
@@ -189,6 +230,6 @@ class SignerInfo:
         return SignerInfo(
             fingerprint=groups[0],
             key_origin=key_origin,
-            xpub=groups[2],
+            xpub=cls._normalize_xpub_and_validate_network(groups[2], network),
             derivation_path=groups[3],
         )

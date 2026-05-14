@@ -103,6 +103,224 @@ def test_SignerInfo():
     }
 
 
+@pytest.mark.parametrize(
+    ("s", "expected"),
+    [
+        (
+            "wsh([836da7f8/48h/1h/0h/2h]tpubDFiK2xSmCcRM17KgB65EkNan8iADU9bCu3nsyXgQB7e7YQqbRZ9JX1HTa4GyLMRdpfTEzPkHedy31zkK6G8g4yVTSxcgBBewKctXTGmQq3i/0/*)#vywsl5uc",
+            {
+                "fingerprint": "836da7f8",
+                "key_origin": "m/48h/1h/0h/2h",
+                "xpub": "tpubDFiK2xSmCcRM17KgB65EkNan8iADU9bCu3nsyXgQB7e7YQqbRZ9JX1HTa4GyLMRdpfTEzPkHedy31zkK6G8g4yVTSxcgBBewKctXTGmQq3i",
+                "derivation_path": "/0/*",
+                "network": bdk.Network.TESTNET,
+                "data_type": DataType.SignerInfo,
+            },
+        ),
+        (
+            "wsh([836da7f8/48h/1h/0h/2h]tpubDFiK2xSmCcRM17KgB65EkNan8iADU9bCu3nsyXgQB7e7YQqbRZ9JX1HTa4GyLMRdpfTEzPkHedy31zkK6G8g4yVTSxcgBBewKctXTGmQq3i/0/*)",
+            {
+                "fingerprint": "836da7f8",
+                "key_origin": "m/48h/1h/0h/2h",
+                "xpub": "tpubDFiK2xSmCcRM17KgB65EkNan8iADU9bCu3nsyXgQB7e7YQqbRZ9JX1HTa4GyLMRdpfTEzPkHedy31zkK6G8g4yVTSxcgBBewKctXTGmQq3i",
+                "derivation_path": "/0/*",
+                "network": bdk.Network.TESTNET,
+                "data_type": DataType.SignerInfo,
+            },
+        ),
+        (
+            "sh(wsh([836da7f8/48h/1h/0h/1h]tpubDFiK2xSmCcRLxS7HA8vrMGtVP7VS2p6DAoVzUSjwCv3vDUgcPabR4NczzMo557v1f6TtUv9BeqwfCGdWscrE5eL5XBhQyvk5imAhQYwhDVT/0/*))#3qwq8jlr",
+            {
+                "fingerprint": "836da7f8",
+                "key_origin": "m/48h/1h/0h/1h",
+                "xpub": "tpubDFiK2xSmCcRLxS7HA8vrMGtVP7VS2p6DAoVzUSjwCv3vDUgcPabR4NczzMo557v1f6TtUv9BeqwfCGdWscrE5eL5XBhQyvk5imAhQYwhDVT",
+                "derivation_path": "/0/*",
+                "network": bdk.Network.TESTNET,
+                "data_type": DataType.SignerInfo,
+            },
+        ),
+        (
+            "sh(wsh([836da7f8/48h/1h/0h/1h]tpubDFiK2xSmCcRLxS7HA8vrMGtVP7VS2p6DAoVzUSjwCv3vDUgcPabR4NczzMo557v1f6TtUv9BeqwfCGdWscrE5eL5XBhQyvk5imAhQYwhDVT/0/*))",
+            {
+                "fingerprint": "836da7f8",
+                "key_origin": "m/48h/1h/0h/1h",
+                "xpub": "tpubDFiK2xSmCcRLxS7HA8vrMGtVP7VS2p6DAoVzUSjwCv3vDUgcPabR4NczzMo557v1f6TtUv9BeqwfCGdWscrE5eL5XBhQyvk5imAhQYwhDVT",
+                "derivation_path": "/0/*",
+                "network": bdk.Network.TESTNET,
+                "data_type": DataType.SignerInfo,
+            },
+        ),
+        (
+            "wsh([ab5a5ac6/48h/0h/0h/2h]xpub6EyZLRdGxHA9GReL45q69wCDCu5JFkXWhPnEuc26TrKxpGtzXvxn5so3i2GHoAw5gSiVQFJsqzxSSw2qGweLBZTont5QtHp8qg4BWunLkAz/0/*)#829xuzmt",
+            {
+                "fingerprint": "ab5a5ac6",
+                "key_origin": "m/48h/0h/0h/2h",
+                "xpub": "xpub6EyZLRdGxHA9GReL45q69wCDCu5JFkXWhPnEuc26TrKxpGtzXvxn5so3i2GHoAw5gSiVQFJsqzxSSw2qGweLBZTont5QtHp8qg4BWunLkAz",
+                "derivation_path": "/0/*",
+                "network": bdk.Network.BITCOIN,
+                "data_type": DataType.SignerInfo,
+            },
+        ),
+        (
+            "wsh([ab5a5ac6/48h/0h/0h/2h]xpub6EyZLRdGxHA9GReL45q69wCDCu5JFkXWhPnEuc26TrKxpGtzXvxn5so3i2GHoAw5gSiVQFJsqzxSSw2qGweLBZTont5QtHp8qg4BWunLkAz/0/*)",
+            {
+                "fingerprint": "ab5a5ac6",
+                "key_origin": "m/48h/0h/0h/2h",
+                "xpub": "xpub6EyZLRdGxHA9GReL45q69wCDCu5JFkXWhPnEuc26TrKxpGtzXvxn5so3i2GHoAw5gSiVQFJsqzxSSw2qGweLBZTont5QtHp8qg4BWunLkAz",
+                "derivation_path": "/0/*",
+                "network": bdk.Network.BITCOIN,
+                "data_type": DataType.SignerInfo,
+            },
+        ),
+        (
+            "wpkh([836da7f8/84h/1h/0h]tpubDCnYo7LmgBohcomwFKN8yc6CmCCeirHo4e5Xusx8r7w1cPLsR8WxNSmmJwsKaLao7Kjvan6gdHACMYmG43nHsRSRo7RELrhDx2B9UMcSjBy/<0;1>/*)#tgjn5jxg",
+            {
+                "fingerprint": "836da7f8",
+                "key_origin": "m/84h/1h/0h",
+                "xpub": "tpubDCnYo7LmgBohcomwFKN8yc6CmCCeirHo4e5Xusx8r7w1cPLsR8WxNSmmJwsKaLao7Kjvan6gdHACMYmG43nHsRSRo7RELrhDx2B9UMcSjBy",
+                "derivation_path": "/<0;1>/*",
+                "network": bdk.Network.TESTNET,
+                "data_type": DataType.Descriptor,
+            },
+        ),
+        (
+            "wpkh([836da7f8/84h/1h/0h]tpubDCnYo7LmgBohcomwFKN8yc6CmCCeirHo4e5Xusx8r7w1cPLsR8WxNSmmJwsKaLao7Kjvan6gdHACMYmG43nHsRSRo7RELrhDx2B9UMcSjBy/<0;1>/*)",
+            {
+                "fingerprint": "836da7f8",
+                "key_origin": "m/84h/1h/0h",
+                "xpub": "tpubDCnYo7LmgBohcomwFKN8yc6CmCCeirHo4e5Xusx8r7w1cPLsR8WxNSmmJwsKaLao7Kjvan6gdHACMYmG43nHsRSRo7RELrhDx2B9UMcSjBy",
+                "derivation_path": "/<0;1>/*",
+                "network": bdk.Network.TESTNET,
+                "data_type": DataType.Descriptor,
+            },
+        ),
+        (
+            "wpkh([ab5a5ac6/84h/0h/0h]xpub6C3wqvLTaQdN9GXmze5FaBcMiyM4X5Dg5dBvjQhbGpwVvnpqcngNzzP5EqYCTiNFTpMK7SN3JFaSkwsMKuh91dcWebyKUVgkNQAekuFHAnt/<0;1>/*)#s9kzzyud",
+            {
+                "fingerprint": "ab5a5ac6",
+                "key_origin": "m/84h/0h/0h",
+                "xpub": "xpub6C3wqvLTaQdN9GXmze5FaBcMiyM4X5Dg5dBvjQhbGpwVvnpqcngNzzP5EqYCTiNFTpMK7SN3JFaSkwsMKuh91dcWebyKUVgkNQAekuFHAnt",
+                "derivation_path": "/<0;1>/*",
+                "network": bdk.Network.BITCOIN,
+                "data_type": DataType.Descriptor,
+            },
+        ),
+        (
+            "wpkh([ab5a5ac6/84h/0h/0h]xpub6C3wqvLTaQdN9GXmze5FaBcMiyM4X5Dg5dBvjQhbGpwVvnpqcngNzzP5EqYCTiNFTpMK7SN3JFaSkwsMKuh91dcWebyKUVgkNQAekuFHAnt/<0;1>/*)",
+            {
+                "fingerprint": "ab5a5ac6",
+                "key_origin": "m/84h/0h/0h",
+                "xpub": "xpub6C3wqvLTaQdN9GXmze5FaBcMiyM4X5Dg5dBvjQhbGpwVvnpqcngNzzP5EqYCTiNFTpMK7SN3JFaSkwsMKuh91dcWebyKUVgkNQAekuFHAnt",
+                "derivation_path": "/<0;1>/*",
+                "network": bdk.Network.BITCOIN,
+                "data_type": DataType.Descriptor,
+            },
+        ),
+        (
+            "sh([75b600b9/45']xpub68kgMRTM3H3bz4ZeCVPSWgJvAJQFCqTfRYv24WwzweGpu9494gb1oeJLmPEaFR87fRfyASha9pKL147Zw2ZCA4SoHjEfuiNqKdiMZ5XAoNX)",
+            {
+                "fingerprint": "75b600b9",
+                "key_origin": "m/45h",
+                "xpub": "xpub68kgMRTM3H3bz4ZeCVPSWgJvAJQFCqTfRYv24WwzweGpu9494gb1oeJLmPEaFR87fRfyASha9pKL147Zw2ZCA4SoHjEfuiNqKdiMZ5XAoNX",
+                "derivation_path": None,
+                "network": bdk.Network.BITCOIN,
+                "data_type": DataType.SignerInfo,
+            },
+        ),
+        (
+            "tr([0439f926/86'/0'/0']xpub6DUFgM9mxwoMqP525JwVGQnhBtUVT2rXFz9wEdfy8MuZAbUFLWQBJgkmvmVt7gWvYZXoresMFsFvVKc9qSvhFHsBrorb5g9nGPkGy7YJkgT/0/*)",
+            {
+                "fingerprint": "0439f926",
+                "key_origin": "m/86h/0h/0h",
+                "xpub": "xpub6DUFgM9mxwoMqP525JwVGQnhBtUVT2rXFz9wEdfy8MuZAbUFLWQBJgkmvmVt7gWvYZXoresMFsFvVKc9qSvhFHsBrorb5g9nGPkGy7YJkgT",
+                "derivation_path": "/0/*",
+                "network": bdk.Network.BITCOIN,
+                "data_type": DataType.Descriptor,
+            },
+        ),
+        (
+            "pkh([ff9f466a/44'/1'/0']tpubDDgB8TAzEbPhcj26514bW3efj4F5x9Xni2FiahV9iSnxdr8sjBQr378L5ke1KXMbadBYw5aAUxAKP33j8LD4y1ZRY6cSySfUN6cu832cXiM)",
+            {
+                "fingerprint": "ff9f466a",
+                "key_origin": "m/44h/1h/0h",
+                "xpub": "tpubDDgB8TAzEbPhcj26514bW3efj4F5x9Xni2FiahV9iSnxdr8sjBQr378L5ke1KXMbadBYw5aAUxAKP33j8LD4y1ZRY6cSySfUN6cu832cXiM",
+                "derivation_path": None,
+                "network": bdk.Network.TESTNET,
+                "data_type": DataType.Descriptor,
+            },
+        ),
+        (
+            "sh(wpkh([836da7f8/49h/1h/0h]tpubDCnYo7LmgBohcomwFKN8yc6CmCCeirHo4e5Xusx8r7w1cPLsR8WxNSmmJwsKaLao7Kjvan6gdHACMYmG43nHsRSRo7RELrhDx2B9UMcSjBy/<0;1>/*))",
+            {
+                "fingerprint": "836da7f8",
+                "key_origin": "m/49h/1h/0h",
+                "xpub": "tpubDCnYo7LmgBohcomwFKN8yc6CmCCeirHo4e5Xusx8r7w1cPLsR8WxNSmmJwsKaLao7Kjvan6gdHACMYmG43nHsRSRo7RELrhDx2B9UMcSjBy",
+                "derivation_path": "/<0;1>/*",
+                "network": bdk.Network.TESTNET,
+                "data_type": DataType.Descriptor,
+            },
+        ),
+    ],
+)
+def test_signer_info_from_wrapped_single_key_descriptors(s, expected):
+    signer_info = SignerInfo.from_str(s, expected["network"])
+    assert signer_info.fingerprint == expected["fingerprint"]
+    assert signer_info.key_origin == expected["key_origin"]
+    assert signer_info.xpub == expected["xpub"]
+    assert signer_info.derivation_path == expected["derivation_path"]
+
+    data = Data.from_str(s, network=expected["network"])
+    assert data.data_type == expected["data_type"]
+    if expected["data_type"] == DataType.SignerInfo:
+        assert data.data == signer_info
+
+
+@pytest.mark.parametrize(
+    "s",
+    [
+        "wsh(sortedmulti(2,[836da7f8/48h/1h/0h/2h]tpubDFiK2xSmCcRM17KgB65EkNan8iADU9bCu3nsyXgQB7e7YQqbRZ9JX1HTa4GyLMRdpfTEzPkHedy31zkK6G8g4yVTSxcgBBewKctXTGmQq3i/0/*,[ab5a5ac6/48h/0h/0h/2h]xpub6EyZLRdGxHA9GReL45q69wCDCu5JFkXWhPnEuc26TrKxpGtzXvxn5so3i2GHoAw5gSiVQFJsqzxSSw2qGweLBZTont5QtHp8qg4BWunLkAz/0/*))",
+        "wsh(multi(2,[836da7f8/48h/1h/0h/2h]tpubDFiK2xSmCcRM17KgB65EkNan8iADU9bCu3nsyXgQB7e7YQqbRZ9JX1HTa4GyLMRdpfTEzPkHedy31zkK6G8g4yVTSxcgBBewKctXTGmQq3i/0/*,[ab5a5ac6/48h/0h/0h/2h]xpub6EyZLRdGxHA9GReL45q69wCDCu5JFkXWhPnEuc26TrKxpGtzXvxn5so3i2GHoAw5gSiVQFJsqzxSSw2qGweLBZTont5QtHp8qg4BWunLkAz/0/*))",
+        "wsh(sortedmulti(2,[0439f926/48'/0'/0'/2']xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/0/*,[a32efffd/48'/0'/0'/2']xpub6EuZLQYmVs16eNnxVEh175kFwJH2bEmVJGobDMjvxafSz9VxY9er5bvrmcLXHdjqmnsvvnuyF1GUG1RxQ17bhR8yvEBJm7LTcNc4vKY7xds/0/*,[95af25ef/48'/0'/0'/2']xpub6EqLWU42dB2QNuQ5w8nCrwq3zwnyGWYQyd3fpu27BcQG8adgTdxoJBonAU6kjcQQKxCzvEfm3e3sp5d4ZKVXXVRQor6PLvbafehtr8QwtgS/0/*))",
+        "sh(wpkh(not_a_key))",
+        "hello",
+    ],
+)
+def test_signer_info_from_wrapped_single_key_descriptors_reject_invalid_inputs(s):
+    with pytest.raises(Exception):
+        SignerInfo.from_str(s, bdk.Network.BITCOIN)
+
+
+@pytest.mark.parametrize(
+    ("s", "network", "expected_message"),
+    [
+        (
+            "wpkh([ab5a5ac6/84h/0h/0h]xpub6C3wqvLTaQdN9GXmze5FaBcMiyM4X5Dg5dBvjQhbGpwVvnpqcngNzzP5EqYCTiNFTpMK7SN3JFaSkwsMKuh91dcWebyKUVgkNQAekuFHAnt/<0;1>/*)#s9kzzyud",
+            bdk.Network.TESTNET,
+            "Expected Network Network.TESTNET, but got Mainnet",
+        ),
+        (
+            "wpkh([836da7f8/84h/1h/0h]tpubDCnYo7LmgBohcomwFKN8yc6CmCCeirHo4e5Xusx8r7w1cPLsR8WxNSmmJwsKaLao7Kjvan6gdHACMYmG43nHsRSRo7RELrhDx2B9UMcSjBy/<0;1>/*)#tgjn5jxg",
+            bdk.Network.BITCOIN,
+            "Expected Network Network.BITCOIN, but got Testnet",
+        ),
+        (
+            "wsh([ab5a5ac6/48h/0h/0h/2h]xpub6EyZLRdGxHA9GReL45q69wCDCu5JFkXWhPnEuc26TrKxpGtzXvxn5so3i2GHoAw5gSiVQFJsqzxSSw2qGweLBZTont5QtHp8qg4BWunLkAz/0/*)#829xuzmt",
+            bdk.Network.TESTNET,
+            "xpub6EyZLRdGxHA9GReL45q69wCDCu5JFkXWhPnEuc26TrKxpGtzXvxn5so3i2GHoAw5gSiVQFJsqzxSSw2qGweLBZTont5QtHp8qg4BWunLkAz doesnt start with tpub, which is required for Network.TESTNET",
+        ),
+        (
+            "wsh([836da7f8/48h/1h/0h/2h]tpubDFiK2xSmCcRM17KgB65EkNan8iADU9bCu3nsyXgQB7e7YQqbRZ9JX1HTa4GyLMRdpfTEzPkHedy31zkK6G8g4yVTSxcgBBewKctXTGmQq3i/0/*)#vywsl5uc",
+            bdk.Network.BITCOIN,
+            "tpubDFiK2xSmCcRM17KgB65EkNan8iADU9bCu3nsyXgQB7e7YQqbRZ9JX1HTa4GyLMRdpfTEzPkHedy31zkK6G8g4yVTSxcgBBewKctXTGmQq3i doesnt start with xpub, which is required for Network.BITCOIN",
+        ),
+    ],
+)
+def test_signer_info_from_str_rejects_cross_network_descriptors(s, network, expected_message):
+    with pytest.raises(WrongNetwork) as exc_info:
+        SignerInfo.from_str(s, network)
+    assert str(exc_info.value) == expected_message
+
+
 def test_signer_infos():
     # this is the  sparrow export  format of coldcard
     parts = [

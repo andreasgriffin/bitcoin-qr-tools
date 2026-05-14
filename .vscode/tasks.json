@@ -1,0 +1,17 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Poetry Install",
+            "type": "shell",
+            "command": "poetry install",
+            "osx": {
+                "command": "export PATH=\"$HOME/.local/bin:$HOME/.poetry/bin:$HOME/Library/Application Support/pypoetry/venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH\"; poetry install || python3 -m poetry install || python -m poetry install"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        }
+    ]
+}
