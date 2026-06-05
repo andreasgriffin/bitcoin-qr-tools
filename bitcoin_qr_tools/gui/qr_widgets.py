@@ -253,7 +253,7 @@ class QRCodeWidget(EnlargableImageWidget):
 
 
 class QRCodeWidgetSVG(QWidget):
-    def __init__(self, always_animate=False, clickable=True, parent=None):
+    def __init__(self, always_animate=False, clickable=True, parent=None, qr_switch_msec=500):
         super().__init__(parent)
         self.svg_renderers: list[QSvgRenderer] = []
         self.current_index = 0
@@ -269,6 +269,7 @@ class QRCodeWidgetSVG(QWidget):
         if clickable:
             self.setCursor(Qt.CursorShape.PointingHandCursor)
 
+        self.qr_switch_msec = qr_switch_msec
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.next_svg)
 
@@ -304,7 +305,7 @@ class QRCodeWidgetSVG(QWidget):
             or (self.enlarged_image and self.enlarged_image.isVisible())
         )
         if should_animate:
-            self.timer.start(1000)  # Change SVG every 1 second
+            self.timer.start(self.qr_switch_msec)
         else:
             self.timer.stop()
 

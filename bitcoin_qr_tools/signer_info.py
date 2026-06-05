@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import re
@@ -98,7 +100,7 @@ class SignerInfo:
     @classmethod
     def hwi_pubkey_provider_to_signer_info(
         cls, hwi_pk_prov: PubkeyProvider, network: bdk.Network, name: str | None = None
-    ) -> "SignerInfo":
+    ) -> SignerInfo:
         if hwi_pk_prov.extkey:
             is_testnet = hwi_pk_prov.extkey.is_testnet
             if is_testnet != cls._is_testnet(network):
@@ -129,13 +131,10 @@ class SignerInfo:
     @classmethod
     def _handle_incomplete_descriptor_bare_p2wsh(
         cls, descriptor_str: str, network: bdk.Network
-    ) -> "SignerInfo | None":
-        try:
-            name, most_inner_expr = cls._get_inner_most_signer_info(descriptor_str)
-            signer_info = SignerInfo.from_str(most_inner_expr, network)
-            signer_info.name = name
-        except Exception:
-            return None
+    ) -> SignerInfo:
+        name, most_inner_expr = cls._get_inner_most_signer_info(descriptor_str)
+        signer_info = SignerInfo.from_str(most_inner_expr, network)
+        signer_info.name = name
         return signer_info
 
     @classmethod
@@ -145,9 +144,7 @@ class SignerInfo:
         return xpub
 
     @classmethod
-    def _wrapped_single_key_descriptor_to_signer_info(
-        cls, s: str, network: bdk.Network
-    ) -> "SignerInfo | None":
+    def _wrapped_single_key_descriptor_to_signer_info(cls, s: str, network: bdk.Network) -> SignerInfo | None:
         if re.fullmatch(r"[a-z0-9_]+\(.*\)(#.*)?", s, re.IGNORECASE) is None:
             return None
         try:
@@ -170,7 +167,7 @@ class SignerInfo:
             return None
 
     @classmethod
-    def decode_descriptor_as_signer_info(cls, descriptor_str: str, network: bdk.Network) -> "SignerInfo":
+    def decode_descriptor_as_signer_info(cls, descriptor_str: str, network: bdk.Network) -> SignerInfo:
         try:
             descriptor = parse_descriptor(desc=descriptor_str)
             names, pubkey_provider = cls._inner_most_pubkey_provider([descriptor])
@@ -187,7 +184,7 @@ class SignerInfo:
             raise e
 
     @classmethod
-    def from_str(cls, s: str, network: bdk.Network) -> "SignerInfo":
+    def from_str(cls, s: str, network: bdk.Network) -> SignerInfo:
         """
         Splits 1 keystore,e.g. "[a42c6dd3/84'/1'/0']xpub/0/*"
         into fingerprint, key_origin, xpub, wallet_path
