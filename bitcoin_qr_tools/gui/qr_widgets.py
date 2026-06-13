@@ -253,7 +253,7 @@ class QRCodeWidget(EnlargableImageWidget):
 
 
 class QRCodeWidgetSVG(QWidget):
-    def __init__(self, always_animate=False, clickable=True, parent=None, qr_switch_msec=500):
+    def __init__(self, always_animate=False, clickable=True, parent=None, qr_switch_msec=700):
         super().__init__(parent)
         self.svg_renderers: list[QSvgRenderer] = []
         self.current_index = 0
