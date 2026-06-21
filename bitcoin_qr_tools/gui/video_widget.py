@@ -33,6 +33,7 @@ from bitcoin_qr_tools.rtsp_camera import RTSPCamera
 from bitcoin_qr_tools.screen_camera import ScreenCamera
 
 from ..cv2camera import CV2Camera
+from .camera_labels import get_qt_camera_devices, resolve_camera_display_name, uniquify_camera_labels
 
 logger = logging.getLogger(__name__)
 
@@ -365,15 +366,28 @@ class VideoWidget(QWidget):
 
     def get_valid_cameras(self) -> list[tuple[int, str, TypeSomeCamera]]:
         valid_cameras: list[tuple[int, str, TypeSomeCamera]] = []
-        for index, camera_name in enumerate(pygame.camera.list_cameras()):
+        pygame_camera_names = list(pygame.camera.list_cameras())
+        qt_camera_devices = get_qt_camera_devices()
+        candidate_count = max(len(pygame_camera_names), len(qt_camera_devices))
+
+        for index in range(candidate_count):
+            camera_name: str | int = pygame_camera_names[index] if index < len(pygame_camera_names) else index
             temp_camera = self._get_camera(camera_name, index)
             if temp_camera:
-                valid_cameras.append((index, camera_name, temp_camera))
+                display_name = resolve_camera_display_name(index, camera_name, qt_camera_devices)
+                valid_cameras.append((index, display_name, temp_camera))
 
         if not valid_cameras:
             temp_camera = self._get_camera(0, 0)
             if temp_camera:
-                valid_cameras.append((0, str(0), temp_camera))
+                display_name = resolve_camera_display_name(0, 0, qt_camera_devices)
+                valid_cameras.append((0, display_name, temp_camera))
+
+        if valid_cameras:
+            unique_labels = uniquify_camera_labels([camera_name for _, camera_name, _ in valid_cameras])
+            valid_cameras = [
+                (index, unique_label, camera) for (index, _camera_name, camera), unique_label in zip(valid_cameras, unique_labels)
+            ]
 
         return valid_cameras
 
