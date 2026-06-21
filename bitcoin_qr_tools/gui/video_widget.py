@@ -368,10 +368,8 @@ class VideoWidget(QWidget):
         valid_cameras: list[tuple[int, str, TypeSomeCamera]] = []
         pygame_camera_names = list(pygame.camera.list_cameras())
         qt_camera_devices = get_qt_camera_devices()
-        candidate_count = max(len(pygame_camera_names), len(qt_camera_devices))
 
-        for index in range(candidate_count):
-            camera_name: str | int = pygame_camera_names[index] if index < len(pygame_camera_names) else index
+        for index, camera_name in enumerate(pygame_camera_names):
             temp_camera = self._get_camera(camera_name, index)
             if temp_camera:
                 display_name = resolve_camera_display_name(index, camera_name, qt_camera_devices)

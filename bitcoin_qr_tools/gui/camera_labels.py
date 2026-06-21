@@ -53,8 +53,8 @@ def resolve_camera_display_name(
         ):
             return description
 
-    if 0 <= index < len(qt_camera_devices):
-        description = qt_camera_devices[index][0].strip()
+    if index == 0 and len(qt_camera_devices) == 1:
+        description = qt_camera_devices[0][0].strip()
         if description:
             return description
 

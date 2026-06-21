@@ -14,10 +14,19 @@ def test_resolve_camera_display_name_prefers_qt_identifier_match():
     assert resolve_camera_display_name(0, "/dev/video2", qt_camera_devices) == "Logitech Brio"
 
 
-def test_resolve_camera_display_name_falls_back_to_qt_index():
+def test_resolve_camera_display_name_uses_single_qt_device_as_safe_fallback():
     qt_camera_devices = [("Integrated Webcam", "usb-camera-0")]
 
     assert resolve_camera_display_name(0, "/dev/video0", qt_camera_devices) == "Integrated Webcam"
+
+
+def test_resolve_camera_display_name_does_not_guess_by_qt_order():
+    qt_camera_devices = [
+        ("Integrated Webcam", "usb-camera-0"),
+        ("Logitech Brio", "usb-camera-1"),
+    ]
+
+    assert resolve_camera_display_name(0, 0, qt_camera_devices) == "0"
 
 
 def test_resolve_camera_display_name_uses_source_name_without_qt_match():
