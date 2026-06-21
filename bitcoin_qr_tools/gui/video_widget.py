@@ -34,6 +34,7 @@ from bitcoin_qr_tools.screen_camera import ScreenCamera
 
 from ..cv2camera import CV2Camera
 from .camera_labels import get_qt_camera_devices, resolve_camera_display_name, uniquify_camera_labels
+from .camera_permission import CameraPermissionStatus, ensure_camera_permission
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +162,7 @@ class VideoWidget(QWidget):
         menu.addAction(action_add_rtsp_camera)
         action_add_rtsp_camera.triggered.connect(self.prompt_rtsp_url)
 
+        self.camera_permission_status = ensure_camera_permission()
         pygame.camera.init()
         for _index, camera_name, camera in self.get_valid_cameras():
             self.combo_cameras.addItem(str(camera_name), userData=camera)
@@ -365,6 +367,13 @@ class VideoWidget(QWidget):
         return self.get_cv2camera(index) or self.get_pygame_camera(camera_name, index)
 
     def get_valid_cameras(self) -> list[tuple[int, str, TypeSomeCamera]]:
+        if self.camera_permission_status in {
+            CameraPermissionStatus.DENIED,
+            CameraPermissionStatus.RESTRICTED,
+        }:
+            logger.info("Camera permission denied; skipping camera discovery")
+            return []
+
         valid_cameras: list[tuple[int, str, TypeSomeCamera]] = []
         pygame_camera_names = list(pygame.camera.list_cameras())
         qt_camera_devices = get_qt_camera_devices()
