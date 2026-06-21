@@ -71,7 +71,7 @@ def probe_camera_permission(request_access: bool = False) -> CameraPermissionPro
             status_after=CameraPermissionStatus.AUTHORIZED,
         )
 
-    script_path = Path(__file__).with_name("macos_camera_permission.swift")
+    script_path = Path(__file__).parent / "data" / "macos_camera_permission.swift"
     command = ["/usr/bin/xcrun", "swift", str(script_path)]
     if request_access:
         command.append("--request")
