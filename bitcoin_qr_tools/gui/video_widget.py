@@ -38,11 +38,80 @@ from .camera_permission import CameraPermissionStatus, ensure_camera_permission
 
 logger = logging.getLogger(__name__)
 
+DetectionVariant = tuple[int, int] | None
+FULL_DETECTION_VARIANTS = [
+    None,
+    (5, 11),
+    (5, 21),
+    (3, 11),
+    (9, 31),
+    (11, 35),
+    (7, 21),
+]
+DEFAULT_DETECTION_VARIANTS = [
+    None,
+    (5, 11),
+    (5, 21),
+    (11, 35),
+]
+DEFAULT_DETECTION_MAX_WORKERS = 3
 
-def threaded_list(f, args):
-    with ThreadPoolExecutor() as executor:
+
+def threaded_list(f, args, max_workers=None):
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
         res = [executor.submit(f, arg) for arg in args]
     return [r.result() for r in res]
+
+
+def normalize_detection_variants(variants):
+    if variants is None:
+        return list(DEFAULT_DETECTION_VARIANTS)
+    normalized = list(variants)
+    if not normalized:
+        return [None]
+    return normalized
+
+
+def preprocess_for_qr_detection(
+    array: np.ndarray,
+    gauss_kernel_size: int = 5,
+    single_channel: int | None = None,
+    threshold_blockSize: int = 11,
+    threshold_C: float = 0,
+) -> np.ndarray:
+    """
+    Preprocess a 3D NumPy array for QR detection, returning a 3D NumPy array.
+
+    Args:
+        array (np.ndarray): Input 3D NumPy array in RGB format.
+
+    Returns:
+        np.ndarray: Processed 3D NumPy array in RGB format.
+    """
+    # Ensure the array is in the right format (RGB)
+    if array.ndim != 3 or array.shape[2] != 3:
+        raise ValueError("Input array must be a 3D NumPy array with 3 channels (RGB)")
+
+    # Convert RGB to Grayscale
+    if single_channel is None:
+        gray = cv2.cvtColor(array, cv2.COLOR_RGB2GRAY)
+    else:
+        gray = array[:, :, single_channel]
+
+    # logger.debug("Average brightness (grayscale):",  np.mean(gray))
+
+    # Enhance contrast using histogram equalization
+    gray = cv2.equalizeHist(gray)
+
+    # # Apply Gaussian blur to reduce noise
+    gray = cv2.GaussianBlur(gray, (gauss_kernel_size, gauss_kernel_size), 0)
+
+    # # Apply adaptive thresholding
+    gray = cv2.adaptiveThreshold(
+        gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, threshold_blockSize, threshold_C
+    )
+
+    return cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
 
 
 class BarcodeData:
@@ -70,6 +139,9 @@ class VideoWidget(QWidget):
         self.cv2 = None
         self.pyzbar = None
         self.scan_animation_position = 0
+        self.last_selected_barcode: BarcodeData | None = None
+        self.detection_variants = normalize_detection_variants(None)
+        self.max_workers = DEFAULT_DETECTION_MAX_WORKERS
         try:
             # check if loading works
             # it depend on zlib installed in the os
@@ -393,7 +465,10 @@ class VideoWidget(QWidget):
         if valid_cameras:
             unique_labels = uniquify_camera_labels([camera_name for _, camera_name, _ in valid_cameras])
             valid_cameras = [
-                (index, unique_label, camera) for (index, _camera_name, camera), unique_label in zip(valid_cameras, unique_labels)
+                (index, unique_label, camera)
+                for (index, _camera_name, camera), unique_label in zip(
+                    valid_cameras, unique_labels, strict=False
+                )
             ]
 
         return valid_cameras
@@ -514,49 +589,20 @@ class VideoWidget(QWidget):
         else:
             return []
 
-    @staticmethod
-    def preprocess_for_qr_detection(
-        array: np.ndarray,
-        gauss_kernel_size: int = 5,
-        single_channel: int | None = None,
-        threshold_blockSize: int = 11,
-        threshold_C: float = 0,
-    ):
-        """
-        Preprocess a 3D NumPy array for QR detection, returning a 3D NumPy array.
-
-        Args:
-            array (np.ndarray): Input 3D NumPy array in RGB format.
-
-        Returns:
-            np.ndarray: Processed 3D NumPy array in RGB format.
-        """
-        # Ensure the array is in the right format (RGB)
-        if array.ndim != 3 or array.shape[2] != 3:
-            raise ValueError("Input array must be a 3D NumPy array with 3 channels (RGB)")
-
-        # Convert RGB to Grayscale
-        if single_channel is None:
-            gray = cv2.cvtColor(array, cv2.COLOR_RGB2GRAY)
+    def set_detection_config(self, detection_variants=None, max_workers: int | None = None) -> None:
+        self.detection_variants = normalize_detection_variants(detection_variants)
+        if max_workers is not None:
+            self.max_workers = max_workers
+        elif self.detection_variants == list(DEFAULT_DETECTION_VARIANTS):
+            self.max_workers = DEFAULT_DETECTION_MAX_WORKERS
         else:
-            gray = array[:, :, single_channel]
+            self.max_workers = None
 
-        # logger.debug("Average brightness (grayscale):",  np.mean(gray))
-
-        # Enhance contrast using histogram equalization
-        gray = cv2.equalizeHist(gray)
-
-        # # Apply Gaussian blur to reduce noise
-        gray = cv2.GaussianBlur(gray, (gauss_kernel_size, gauss_kernel_size), 0)
-
-        # # Apply adaptive thresholding
-        gray = cv2.adaptiveThreshold(
-            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, threshold_blockSize, threshold_C
-        )
-
-        return cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+    def get_detection_config(self):
+        return list(self.detection_variants), self.max_workers
 
     def update_frame(self):
+        self.last_selected_barcode = None
         self.frame_counter.append(time.time())
         if time.time() - self.last_display_fps > 10:
             self.last_display_fps = time.time()
@@ -585,7 +631,7 @@ class VideoWidget(QWidget):
         )
         array = array_original = pygame.surfarray.array3d(surface)
         if self.post_process_checkbox.isChecked():
-            array = self.preprocess_for_qr_detection(array_original.copy())
+            array = preprocess_for_qr_detection(array_original.copy())
             surface = pygame.surfarray.make_surface(array)
         surface = pygame.transform.flip(surface, False, True)
         surface = pygame.transform.rotate(surface, -90)
@@ -596,19 +642,21 @@ class VideoWidget(QWidget):
             gauss_kernel_size, thres = values
             try:
                 return self.get_barcodes(
-                    self.preprocess_for_qr_detection(
+                    preprocess_for_qr_detection(
                         array_original.copy(), gauss_kernel_size=gauss_kernel_size, threshold_blockSize=thres
                     )
                 )
             except Exception:
                 return []
 
-        arguments = [None, (5, 11), (5, 21), (3, 11), (9, 31), (11, 35), (7, 21)]
-        list_of_barcodes = threaded_list(transform_and_detect, arguments)
+        list_of_barcodes = threaded_list(
+            transform_and_detect, self.detection_variants, max_workers=self.max_workers
+        )
         barcodes = sum(list_of_barcodes, [])
         if barcodes:
             logger.debug(
-                f"Found barcodes with parameters {[argument for barcodes, argument in zip(list_of_barcodes, arguments, strict=False) if barcodes]}"
+                "Found barcodes with parameters "
+                f"{[argument for barcodes, argument in zip(list_of_barcodes, self.detection_variants, strict=False) if barcodes]}"
             )
 
         sorted_barcodes = sorted(barcodes, key=lambda item: len(item.data), reverse=True)
@@ -616,6 +664,7 @@ class VideoWidget(QWidget):
         selected_barcode = sorted_barcodes[0] if sorted_barcodes else None
         if selected_barcode and not selected_barcode.data:
             selected_barcode = None
+        self.last_selected_barcode = selected_barcode
 
         if selected_barcode:
             self._on_draw_surface(surface, selected_barcode)
