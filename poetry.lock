@@ -412,28 +412,32 @@ name = "hwi"
 version = "3.2.0"
 description = "A library for working with Bitcoin hardware wallets"
 optional = false
-python-versions = "<3.13,>=3.9"
+python-versions = "^3.9,<3.15"
 groups = ["main"]
-files = [
-    {file = "hwi-3.2.0-py3-none-any.whl", hash = "sha256:8a795341e2cd3393d4c8d3a0f03ddc90f4994666e277ac21ec52a02000573109"},
-    {file = "hwi-3.2.0.tar.gz", hash = "sha256:4a225a2e22990fa114066feafcd3cb66a6ecaa3711a0d8a0cad61e7f8c507455"},
-]
+files = []
+develop = false
 
 [package.dependencies]
 cbor2 = ">=5.4.6,<5.8"
-ecdsa = ">=0,<1"
+ecdsa = "~0"
 hidapi = ">=0.14.0"
 libusb1 = ">=1.7,<4"
-mnemonic = ">=0,<1"
-noiseprotocol = ">=0.3.1,<0.4.0"
-protobuf = ">=4.23.3,<5.0.0"
-pyaes = ">=1.6,<2.0"
-pyserial = ">=3.5,<4.0"
-semver = ">=3.0.1,<4.0.0"
-typing-extensions = ">=4.4,<5.0"
+mnemonic = "~0"
+noiseprotocol = "^0.3.1"
+protobuf = "^4.23.3"
+pyaes = "^1.6"
+pyserial = "^3.5"
+semver = "^3.0.1"
+typing-extensions = "^4.4"
 
 [package.extras]
 qt = ["pyside2 (>=5.14.0,<6.0.0) ; python_version < \"3.10\""]
+
+[package.source]
+type = "git"
+url = "https://github.com/andreasgriffin/HWI.git"
+reference = "master"
+resolved_reference = "38ccb5169365d2a635539ef828ab46ed81dd1205"
 
 [[package]]
 name = "iniconfig"
@@ -1110,5 +1114,5 @@ markers = {dev = "python_version == \"3.10\""}
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.10,<3.13"
-content-hash = "1ac57871c4abe1ee1129fa7e227009d368c47958b76f5941200140a7cd9b7f30"
+python-versions = ">=3.10,<3.15"
+content-hash = "9d7040610abfbf5a0c744c85cccaf68ba193a600b4565ddfb569f1e227d66625"

@@ -13,13 +13,13 @@ description = "Python bitcoin qr reader and generator"
 homepage = "https://github.com/andreasgriffin/bitcoin-qrreader"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.13"
+python = ">=3.10,<3.15"
 pyqt6 = "^6.7.0"
 base58 = "^2.1.1"
 bdkpython ="^2.0.0"
 pygame ="^2.6.1"
 mss ="^9.0.1"
-hwi = "^3.0.0"
+hwi =  { git = "https://github.com/andreasgriffin/HWI.git", branch = "master" } 
 segno = "1.6.1"
 pyqrcode = "^1.2.1"
 pillow = ">=10.4.0"
