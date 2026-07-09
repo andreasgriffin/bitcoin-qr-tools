@@ -10,9 +10,11 @@ import cv2
 import numpy as np
 import pygame
 import pygame.camera
+from bitcoin_safe_lib.gui.qt.signal_tracker import SignalTracker
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QAction, QCloseEvent
+from PyQt6.QtMultimedia import QMediaDevices
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -124,6 +126,62 @@ class BarcodeData:
 
 
 TypeSomeCamera = CV2Camera | RTSPCamera | pygame.camera.Camera | ScreenCamera
+CameraKey = tuple[str, str | int]
+CAMERA_KEY_ROLE = Qt.ItemDataRole.UserRole + 1
+SCREEN_CAMERA_KEY: CameraKey = ("screen", "screen")
+CAMERA_REFRESH_SETTLE_MS = 250
+CAMERA_REFRESH_RETRY_MS = 1000
+CAMERA_REFRESH_MAX_RETRIES = 4
+
+
+def device_camera_key(identifier: str | int) -> CameraKey:
+    return ("device", identifier)
+
+
+def rtsp_camera_key(url: str) -> CameraKey:
+    return ("rtsp", url)
+
+
+def device_identifier(camera_name: str | int, index: int) -> str | int:
+    if isinstance(camera_name, str) and camera_name.strip():
+        return camera_name.strip()
+    return index
+
+
+def choose_camera_key_after_refresh(
+    current_key: CameraKey | None,
+    previous_device_keys: list[CameraKey],
+    refreshed_device_keys: list[CameraKey],
+    preserved_custom_keys: list[CameraKey],
+    auto_switch_new: bool,
+) -> CameraKey | None:
+    if auto_switch_new:
+        new_device_keys = [key for key in refreshed_device_keys if key not in previous_device_keys]
+        if new_device_keys:
+            return new_device_keys[-1]
+
+    if current_key in refreshed_device_keys or current_key in preserved_custom_keys:
+        return current_key
+
+    if refreshed_device_keys:
+        return refreshed_device_keys[0]
+
+    non_screen_custom_keys = [key for key in preserved_custom_keys if key != SCREEN_CAMERA_KEY]
+    if non_screen_custom_keys:
+        return non_screen_custom_keys[-1]
+
+    if preserved_custom_keys:
+        return preserved_custom_keys[0]
+
+    return None
+
+
+def should_retry_empty_camera_refresh(
+    previous_device_keys: list[CameraKey],
+    refreshed_device_keys: list[CameraKey],
+    retries_remaining: int,
+) -> bool:
+    return bool(previous_device_keys) and not refreshed_device_keys and retries_remaining > 0
 
 
 class VideoWidget(QWidget):
@@ -142,6 +200,7 @@ class VideoWidget(QWidget):
         self.last_selected_barcode: BarcodeData | None = None
         self.detection_variants = normalize_detection_variants(None)
         self.max_workers = DEFAULT_DETECTION_MAX_WORKERS
+        self.signal_tracker = SignalTracker()
         try:
             # check if loading works
             # it depend on zlib installed in the os
@@ -180,7 +239,9 @@ class VideoWidget(QWidget):
         self.preset_process_checkbox = QCheckBox(
             translate("video", "Enhance picture for detection"), parent=self
         )
-        self.preset_process_checkbox.stateChanged.connect(self.on_preset_process_checkbox)
+        self.signal_tracker.connect(
+            self.preset_process_checkbox.stateChanged, self.on_preset_process_checkbox
+        )
         self.preset_process_checkbox.setChecked(False)
 
         # middle widget
@@ -207,7 +268,7 @@ class VideoWidget(QWidget):
         self.brightness_slider.setValue(100)
         self.brightness_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.brightness_slider.setTickInterval(10)
-        self.brightness_slider.valueChanged.connect(self.on_change_brightness)
+        self.signal_tracker.connect(self.brightness_slider.valueChanged, self.on_change_brightness)
 
         self.label_brightness_slider = QLabel(translate("video", "Brightness (reduce for bright displays):"))
         self.middle_widget_layout.addWidget(self.label_brightness_slider)
@@ -228,16 +289,14 @@ class VideoWidget(QWidget):
         action_show_camera_controls = QAction(translate("video", "Show camera controls"), self)
         menu.addAction(action_show_camera_controls)
         action_show_camera_controls.setCheckable(True)
-        action_show_camera_controls.triggered.connect(self.middle_widget.setVisible)
+        self.signal_tracker.connect(action_show_camera_controls.triggered, self.middle_widget.setVisible)
 
         action_add_rtsp_camera = QAction(translate("video", "Add RTSP Camera"), self)
         menu.addAction(action_add_rtsp_camera)
-        action_add_rtsp_camera.triggered.connect(self.prompt_rtsp_url)
+        self.signal_tracker.connect(action_add_rtsp_camera.triggered, self.prompt_rtsp_url)
 
         self.camera_permission_status = ensure_camera_permission()
         pygame.camera.init()
-        for _index, camera_name, camera in self.get_valid_cameras():
-            self.combo_cameras.addItem(str(camera_name), userData=camera)
 
         self._layout = QVBoxLayout()
         self._layout.addWidget(self.label_image)
@@ -248,22 +307,23 @@ class VideoWidget(QWidget):
         self.setLayout(self._layout)
 
         self.current_camera: TypeSomeCamera | None = None
+        self._media_devices: QMediaDevices | None = None
+        self._camera_refresh_retries_remaining = 0
+        self.camera_refresh_timer = QtCore.QTimer(self)
+        self.camera_refresh_timer.setInterval(CAMERA_REFRESH_SETTLE_MS)
+        self.camera_refresh_timer.setSingleShot(True)
+        self.signal_tracker.connect(self.camera_refresh_timer.timeout, self._refresh_available_cameras)
 
         self.timer = QtCore.QTimer(self)
-        self.timer.timeout.connect(self.update_frame)
+        self.signal_tracker.connect(self.timer.timeout, self.update_frame)
         self.timer.start(int(1000.0 / 30.0))  # 30 FPS
 
-        # Add "Screen" option for screen capture
-        self.combo_cameras.addItem(translate("video", "Screen"), userData=ScreenCamera())
-
-        # switch to the last camera that isn
-        if self.combo_cameras.count():
-            last_camera_idx = max(self.combo_cameras.count() - 2, 0)
-            self.combo_cameras.setCurrentIndex(last_camera_idx)
-            self.switch_camera(last_camera_idx)
+        self.refresh_camera_list(auto_switch_new=False)
+        self._add_camera_item(translate("video", "Screen"), ScreenCamera(), SCREEN_CAMERA_KEY)
 
         # signals
-        self.combo_cameras.currentIndexChanged.connect(self.switch_camera)
+        self.signal_tracker.connect(self.combo_cameras.currentIndexChanged, self.switch_camera)
+        self._connect_camera_hotplug_notifications()
 
         signal.signal(signal.SIGTERM, self.signal_handler)
         signal.signal(signal.SIGINT, self.signal_handler)  # Handle Ctrl+C
@@ -295,7 +355,7 @@ class VideoWidget(QWidget):
             try:
                 temp_camera.start(enable_udp=enable_udp)
                 temp_camera.stop()
-                self.combo_cameras.addItem(str(url), userData=temp_camera)
+                self._add_camera_item(str(url), temp_camera, rtsp_camera_key(url))
                 self.combo_cameras.setCurrentIndex(self.combo_cameras.count() - 1)
                 self.switch_camera(self.combo_cameras.count() - 1)
                 return
@@ -305,6 +365,113 @@ class VideoWidget(QWidget):
         QMessageBox().warning(
             None, translate("video", "Error"), translate("video", "The camera could not be opened")
         )
+
+    def _connect_camera_hotplug_notifications(self):
+        try:
+            self._media_devices = QMediaDevices(self)
+            self.signal_tracker.connect(self._media_devices.videoInputsChanged, self.schedule_camera_refresh)
+        except Exception as e:
+            logger.debug(f"Could not connect camera hotplug notifications: {e}")
+
+    def _disconnect_camera_hotplug_notifications(self):
+        self.camera_refresh_timer.stop()
+        self.signal_tracker.disconnect_all()
+
+    def schedule_camera_refresh(self):
+        self._camera_refresh_retries_remaining = CAMERA_REFRESH_MAX_RETRIES
+        self.camera_refresh_timer.setInterval(CAMERA_REFRESH_SETTLE_MS)
+        self.camera_refresh_timer.start()
+
+    def _refresh_available_cameras(self):
+        logger.info("Camera device change detected; refreshing available cameras")
+        refreshed = self.refresh_camera_list(auto_switch_new=True)
+        if refreshed:
+            self._camera_refresh_retries_remaining = 0
+            return
+
+        self._camera_refresh_retries_remaining -= 1
+        self.camera_refresh_timer.setInterval(CAMERA_REFRESH_RETRY_MS)
+        self.camera_refresh_timer.start()
+
+    def _add_camera_item(self, label: str, camera: TypeSomeCamera, camera_key: CameraKey):
+        self.combo_cameras.addItem(str(label), userData=camera)
+        index = self.combo_cameras.count() - 1
+        self.combo_cameras.setItemData(index, camera_key, CAMERA_KEY_ROLE)
+
+    def _camera_key_for_index(self, index: int) -> CameraKey | None:
+        if index < 0:
+            return None
+        camera_key = self.combo_cameras.itemData(index, CAMERA_KEY_ROLE)
+        if isinstance(camera_key, tuple) and len(camera_key) == 2:
+            return camera_key
+        return None
+
+    def _current_camera_key(self) -> CameraKey | None:
+        return self._camera_key_for_index(self.combo_cameras.currentIndex())
+
+    def _index_for_camera_key(self, camera_key: CameraKey | None) -> int:
+        if camera_key is None:
+            return -1
+        for index in range(self.combo_cameras.count()):
+            if self._camera_key_for_index(index) == camera_key:
+                return index
+        return -1
+
+    def _custom_camera_items(self) -> list[tuple[str, TypeSomeCamera, CameraKey]]:
+        custom_items: list[tuple[str, TypeSomeCamera, CameraKey]] = []
+        for index in range(self.combo_cameras.count()):
+            camera_key = self._camera_key_for_index(index)
+            camera = self.combo_cameras.itemData(index)
+            if camera_key is None or camera is None or camera_key[0] == "device":
+                continue
+            custom_items.append((self.combo_cameras.itemText(index), camera, camera_key))
+        return custom_items
+
+    def refresh_camera_list(self, auto_switch_new: bool) -> bool:
+        previous_key = self._current_camera_key()
+        previous_device_keys = [
+            camera_key
+            for index in range(self.combo_cameras.count())
+            if (camera_key := self._camera_key_for_index(index)) and camera_key[0] == "device"
+        ]
+        custom_items = self._custom_camera_items()
+        discovered_camera_items = [
+            (str(camera_name), camera, device_camera_key(device_identifier(camera_name, index)))
+            for index, camera_name, camera in self.get_valid_cameras()
+        ]
+        refreshed_device_keys = [camera_key for _, _, camera_key in discovered_camera_items]
+        if should_retry_empty_camera_refresh(
+            previous_device_keys=previous_device_keys,
+            refreshed_device_keys=refreshed_device_keys,
+            retries_remaining=self._camera_refresh_retries_remaining,
+        ):
+            logger.info("Camera refresh returned no physical devices; preserving current list until retry")
+            return False
+
+        preserved_custom_keys = [camera_key for _, _, camera_key in custom_items]
+        next_camera_key = choose_camera_key_after_refresh(
+            current_key=previous_key,
+            previous_device_keys=previous_device_keys,
+            refreshed_device_keys=refreshed_device_keys,
+            preserved_custom_keys=preserved_custom_keys,
+            auto_switch_new=auto_switch_new,
+        )
+
+        self.combo_cameras.blockSignals(True)
+        self.combo_cameras.clear()
+        for label, camera, camera_key in [*discovered_camera_items, *custom_items]:
+            self._add_camera_item(label, camera, camera_key)
+
+        next_index = self._index_for_camera_key(next_camera_key)
+        if next_index < 0 and self.combo_cameras.count():
+            next_index = 0
+        if next_index >= 0:
+            self.combo_cameras.setCurrentIndex(next_index)
+        self.combo_cameras.blockSignals(False)
+
+        if next_index >= 0 and self.combo_cameras.itemData(next_index) is not self.current_camera:
+            self.switch_camera(next_index)
+        return True
 
     def stop_timer_and_stop_all_cameras(self):
         self.timer.stop()
@@ -329,6 +496,7 @@ class VideoWidget(QWidget):
 
     def closeEvent(self, event: QCloseEvent | None) -> None:
         self.aboutToClose.emit(self)  # Emit the signal when the window is about to close
+        self._disconnect_camera_hotplug_notifications()
         self.stop_timer_and_stop_all_cameras()
         super().closeEvent(event)
 
@@ -707,7 +875,7 @@ class DemoVideoWidget(VideoWidget):
 
         self.layout().addWidget(self.label_qr)  # type: ignore
 
-        self.signal_raw_qr_data.connect(self.show_qr)
+        self.signal_tracker.connect(self.signal_raw_qr_data, self.show_qr)
 
     def show_qr(self, qr_data):
         s = qr_data.decode("utf-8")
