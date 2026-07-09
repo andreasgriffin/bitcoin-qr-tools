@@ -16,7 +16,6 @@ homepage = "https://github.com/andreasgriffin/bitcoin-qrreader"
 python = ">=3.10,<3.15"
 pyqt6 = "^6.7.0"
 base58 = "^2.1.1"
-bdkpython ="^2.0.0"
 pygame ="^2.6.1"
 mss ="^9.0.1"
 hwi =  { git = "https://github.com/andreasgriffin/HWI.git", branch = "master" } 
@@ -26,6 +25,7 @@ pillow = ">=10.4.0"
 numpy = "^2.0.1"
 opencv-python-headless = "^4.10.0.84"
 pyzbar =  { git = "https://github.com/andreasgriffin/pyzbar.git", rev = "bad840c31dd0f92b616ca29642a408804d5cfa37" }   # "^0.7.9"
+bitcoin-safe-lib = {  git = "https://github.com/andreasgriffin/bitcoin-safe-lib.git", branch = "main" }  
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"

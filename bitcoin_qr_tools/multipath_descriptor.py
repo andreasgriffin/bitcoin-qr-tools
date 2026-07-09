@@ -1,6 +1,7 @@
 import logging
 
 import bdkpython as bdk
+from bitcoin_safe_lib.util import network_kind
 from hwilib.descriptor import Descriptor, PubkeyProvider, parse_descriptor
 
 logger = logging.getLogger(__name__)
@@ -46,7 +47,7 @@ def convert_to_bdk_descriptor(descriptor_str: str, network: bdk.Network) -> bdk.
             descriptor_str = descriptor_str.split("#")[0]
         descriptor_str = descriptor_str.replace(sparrow_root_key_format, "]")
 
-    return bdk.Descriptor(descriptor_str, network)
+    return bdk.Descriptor(descriptor_str, network_kind(network))
 
 
 def convert_to_multipath_descriptor(descriptor_str: str, network: bdk.Network) -> bdk.Descriptor:
