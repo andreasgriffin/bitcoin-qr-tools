@@ -3,10 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
-try:
-    from PyQt6.QtMultimedia import QMediaDevices
-except Exception:
-    QMediaDevices = None
+from PyQt6.QtMultimedia import QMediaDevices
 
 
 def _normalize_camera_identifier(value: Any) -> str:
@@ -21,9 +18,6 @@ def _decode_qt_camera_id(camera_id: Any) -> str:
 
 
 def get_qt_camera_devices() -> list[tuple[str, str]]:
-    if QMediaDevices is None:
-        return []
-
     camera_devices: list[tuple[str, str]] = []
     for device in QMediaDevices.videoInputs():
         description = device.description().strip()
