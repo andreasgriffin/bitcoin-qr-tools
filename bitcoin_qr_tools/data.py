@@ -509,9 +509,16 @@ class ConverterSignerInfo:
 
     @classmethod
     def _try_extract_signer_info(cls, s: str, network: bdk.Network) -> SignerInfo | None:
+        """Try to parse signer info.
+
+        Raises:
+            WrongNetwork: If the input is valid signer info for a different network.
+        """
         signer_info = None
         try:
             signer_info = SignerInfo.from_str(s, network=network)
+        except WrongNetwork:
+            raise
         except Exception:
             pass
 
@@ -562,17 +569,10 @@ class ConverterSignerInfos:
     def _try_multisig_wallet_export(
         cls, s: str, network: bdk.Network
     ) -> ConverterMultisigWalletExport | None:
-        """_summary_
-
-        Args:
-            s (str): _description_
-            network (bdk.Network): _description_
+        """Try to parse a multisig wallet export.
 
         Raises:
-            e: WrongNetwork, if the format is correct, but it is WrongNetwork
-
-        Returns:
-            Optional[ConverterMultisigWalletExport]: _description_
+            WrongNetwork: If the export matches but belongs to a different network.
         """
         try:
             return ConverterMultisigWalletExport.parse_from_legacy_coldcard(s, network=network)
@@ -614,6 +614,11 @@ class ConverterSignerInfos:
 
     @classmethod
     def _try_extract_sparrow_signer_infos(cls, s, network: bdk.Network) -> list[SignerInfo] | None:
+        """Try to parse Sparrow-style signer infos.
+
+        Raises:
+            WrongNetwork: If the export matches but declares a different network.
+        """
         # if it is a json
         json_data = None
         try:
@@ -660,6 +665,11 @@ class ConverterSignerInfos:
     def _try_extract_multisig_signer_infos_coldcard_and_passport_qr(
         cls, s, network: bdk.Network
     ) -> list[SignerInfo] | None:
+        """Try to parse Coldcard/Passport multisig signer infos.
+
+        Raises:
+            WrongNetwork: If the contained xpubs belong to a different network.
+        """
         # if it is a json
         json_data = None
         try:
@@ -707,6 +717,9 @@ class ConverterDescriptor:
             if descriptor:
                 logger.debug("detected descriptor")
                 return descriptor
+        except bdk.DescriptorError.Key as e:
+            if "Invalid network" in str(e):
+                raise WrongNetwork(f"Expected Network {network.name}") from e
         except Exception:
             pass
 

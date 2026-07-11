@@ -1,8 +1,8 @@
 import bdkpython as bdk
 import pytest
 
-from bitcoin_qr_tools.data import ConverterMultisigWalletExport, Data, DataType
-from bitcoin_qr_tools.utils import DecodingException
+from bitcoin_qr_tools.data import ConverterDescriptor, ConverterMultisigWalletExport, Data, DataType
+from bitcoin_qr_tools.utils import DecodingException, WrongNetwork
 
 
 def test_descriptor():
@@ -19,6 +19,14 @@ def test_descriptor():
     dump["data_type"] = DataType.Fingerprint.name
     with pytest.raises(DecodingException):
         Data.from_dump(dump, network=bdk.Network.REGTEST)
+
+
+def test_try_get_descriptor_raises_wrong_network_on_bdk_invalid_network():
+    s = "wpkh([836da7f8/84h/1h/0h]tpubDCnYo7LmgBohcomwFKN8yc6CmCCeirHo4e5Xusx8r7w1cPLsR8WxNSmmJwsKaLao7Kjvan6gdHACMYmG43nHsRSRo7RELrhDx2B9UMcSjBy/<0;1>/*)#tgjn5jxg"
+    with pytest.raises(WrongNetwork) as exc_info:
+        ConverterDescriptor._try_get_descriptor(s, network=bdk.Network.BITCOIN)
+
+    assert str(exc_info.value) == "Expected Network BITCOIN"
 
 
 def test_ConverterLegacyColdcardMultisigWalletExport():

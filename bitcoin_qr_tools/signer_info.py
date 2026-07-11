@@ -105,7 +105,7 @@ class SignerInfo:
             is_testnet = hwi_pk_prov.extkey.is_testnet
             if is_testnet != cls._is_testnet(network):
                 raise WrongNetwork(
-                    f"""Expected Network {network}, but got {"Testnet" if is_testnet else "Mainnet"}"""
+                    f"""Expected Network {network.name}, but got {"Testnet" if is_testnet else "Mainnet"}"""
                 )
 
         return SignerInfo(
