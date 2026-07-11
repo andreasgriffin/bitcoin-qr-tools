@@ -45,10 +45,10 @@ class ConverterXpub:
         "Raises an exception if not matching"
         if network == bdk.Network.BITCOIN:
             if not xpub.startswith("xpub"):
-                raise WrongNetwork(f"{xpub} doesnt start with xpub, which is required for {network}")
+                raise WrongNetwork(f"Expected xpub... for {network.name}")
         else:
             if not xpub.startswith("tpub"):
-                raise WrongNetwork(f"{xpub} doesnt start with tpub, which is required for {network}")
+                raise WrongNetwork(f"Expected tpub... for {network.name}")
 
     @classmethod
     def is_xpub(cls, s: str) -> bool:

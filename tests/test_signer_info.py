@@ -296,22 +296,22 @@ def test_signer_info_from_wrapped_single_key_descriptors_reject_invalid_inputs(s
         (
             "wpkh([ab5a5ac6/84h/0h/0h]xpub6C3wqvLTaQdN9GXmze5FaBcMiyM4X5Dg5dBvjQhbGpwVvnpqcngNzzP5EqYCTiNFTpMK7SN3JFaSkwsMKuh91dcWebyKUVgkNQAekuFHAnt/<0;1>/*)#s9kzzyud",
             bdk.Network.TESTNET,
-            "Expected Network Network.TESTNET, but got Mainnet",
+            "Expected Network TESTNET, but got Mainnet",
         ),
         (
             "wpkh([836da7f8/84h/1h/0h]tpubDCnYo7LmgBohcomwFKN8yc6CmCCeirHo4e5Xusx8r7w1cPLsR8WxNSmmJwsKaLao7Kjvan6gdHACMYmG43nHsRSRo7RELrhDx2B9UMcSjBy/<0;1>/*)#tgjn5jxg",
             bdk.Network.BITCOIN,
-            "Expected Network Network.BITCOIN, but got Testnet",
+            "Expected Network BITCOIN, but got Testnet",
         ),
         (
             "wsh([ab5a5ac6/48h/0h/0h/2h]xpub6EyZLRdGxHA9GReL45q69wCDCu5JFkXWhPnEuc26TrKxpGtzXvxn5so3i2GHoAw5gSiVQFJsqzxSSw2qGweLBZTont5QtHp8qg4BWunLkAz/0/*)#829xuzmt",
             bdk.Network.TESTNET,
-            "xpub6EyZLRdGxHA9GReL45q69wCDCu5JFkXWhPnEuc26TrKxpGtzXvxn5so3i2GHoAw5gSiVQFJsqzxSSw2qGweLBZTont5QtHp8qg4BWunLkAz doesnt start with tpub, which is required for Network.TESTNET",
+            "Expected tpub... for TESTNET",
         ),
         (
             "wsh([836da7f8/48h/1h/0h/2h]tpubDFiK2xSmCcRM17KgB65EkNan8iADU9bCu3nsyXgQB7e7YQqbRZ9JX1HTa4GyLMRdpfTEzPkHedy31zkK6G8g4yVTSxcgBBewKctXTGmQq3i/0/*)#vywsl5uc",
             bdk.Network.BITCOIN,
-            "tpubDFiK2xSmCcRM17KgB65EkNan8iADU9bCu3nsyXgQB7e7YQqbRZ9JX1HTa4GyLMRdpfTEzPkHedy31zkK6G8g4yVTSxcgBBewKctXTGmQq3i doesnt start with xpub, which is required for Network.BITCOIN",
+            "Expected xpub... for BITCOIN",
         ),
     ],
 )
@@ -468,10 +468,7 @@ def test_multisig_signer_infos_coldcard_qr_wrong_network():
     with pytest.raises(WrongNetwork) as exc_info:
         assert meta_data_handler.is_complete()
         meta_data_handler.get_complete_data()
-    assert (
-        str(exc_info.value)
-        == "tpubD8NXmKsmWp3a3DXhbihAYbYLGaRNVdTnr6JoSxxfXYQcmwVtW2hv8QoDwng6JtEonmJoL3cNEwfd2cLXMpGezwZ2vL2dQ7259bueNKj9C8n doesnt start with xpub, which is required for Network.BITCOIN"
-    )
+    assert str(exc_info.value) == "Expected xpub... for BITCOIN"
 
     # and now test that also an xpub cannot be entered in the test network
     parts = [
@@ -485,10 +482,7 @@ def test_multisig_signer_infos_coldcard_qr_wrong_network():
     with pytest.raises(WrongNetwork) as exc_info:
         assert meta_data_handler.is_complete()
         meta_data_handler.get_complete_data()
-    assert (
-        str(exc_info.value)
-        == "xpub6C6nQwHaWbSrzs5tZ1q7m5R9cPK9eYpNMFesiXsYrgc1P8bvLLAet9JfHjYXKjToD8cBRswJXXbbFpXgwsswVPAZzKMa1jUp2kVkGVUaJa7 doesnt start with tpub, which is required for Network.TESTNET"
-    )
+    assert str(exc_info.value) == "Expected tpub... for TESTNET"
 
 
 def test_ur_passport_multisig_sparrow_signer_info():
