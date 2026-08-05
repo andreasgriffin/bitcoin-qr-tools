@@ -32,6 +32,7 @@ import sys
 from pathlib import Path
 
 from PIL import Image
+from PyQt6 import sip
 from PyQt6.QtCore import QByteArray, QEvent, QObject, QRectF, QSize, Qt, QTimer
 from PyQt6.QtGui import (
     QCloseEvent,
@@ -309,8 +310,8 @@ class QRCodeWidgetSVG(QWidget):
         else:
             self.timer.stop()
 
-    def next_svg(self):
-        if not self.svg_renderers:
+    def next_svg(self) -> None:
+        if sip.isdeleted(self) or not self.svg_renderers:
             return
 
         self.current_index = (self.current_index + 1) % len(self.svg_renderers)
