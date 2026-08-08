@@ -1,9 +1,7 @@
 import logging
-import signal
-import sys
 import time
 from collections import deque
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor, wait
 from typing import Any
 
 import cv2
@@ -57,12 +55,7 @@ DEFAULT_DETECTION_VARIANTS = [
     (11, 35),
 ]
 DEFAULT_DETECTION_MAX_WORKERS = 3
-
-
-def threaded_list(f, args, max_workers=None):
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        res = [executor.submit(f, arg) for arg in args]
-    return [r.result() for r in res]
+DETECTION_WAIT_TIMEOUT_SECONDS = 0.08
 
 
 def normalize_detection_variants(variants):
@@ -200,7 +193,11 @@ class VideoWidget(QWidget):
         self.last_selected_barcode: BarcodeData | None = None
         self.detection_variants = normalize_detection_variants(None)
         self.max_workers = DEFAULT_DETECTION_MAX_WORKERS
+        self._detection_executor: ThreadPoolExecutor | None = None
+        self._detection_executor_workers: int | None = None
+        self._active_detection_futures: dict[Future, DetectionVariant] = {}
         self.signal_tracker = SignalTracker()
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
         try:
             # check if loading works
             # it depend on zlib installed in the os
@@ -325,14 +322,6 @@ class VideoWidget(QWidget):
         self.signal_tracker.connect(self.combo_cameras.currentIndexChanged, self.switch_camera)
         self._connect_camera_hotplug_notifications()
 
-        signal.signal(signal.SIGTERM, self.signal_handler)
-        signal.signal(signal.SIGINT, self.signal_handler)  # Handle Ctrl+C
-
-    def signal_handler(self, sig, frame):
-        logger.debug("Signal received:", sig)
-        self.stop_timer_and_stop_all_cameras()
-        sys.exit(0)
-
     @property
     def zoom(self) -> float:
         return self.zoom_slider.value() / 10
@@ -347,7 +336,7 @@ class VideoWidget(QWidget):
     def add_rtsp_camera(self, url: str):
         # Here you would add your actual logic to handle the RTSP camera
         # This is a placeholder function to illustrate what you might do
-        logger.debug("Adding RTSP Camera with URL:", url)
+        logger.debug("Adding RTSP Camera with URL: %s", url)
         # Assume validation of the URL or further actions here
 
         for enable_udp in [False, True]:
@@ -376,6 +365,30 @@ class VideoWidget(QWidget):
     def _disconnect_camera_hotplug_notifications(self):
         self.camera_refresh_timer.stop()
         self.signal_tracker.disconnect_all()
+
+    def _detection_worker_count(self) -> int:
+        return max(1, self.max_workers or len(self.detection_variants))
+
+    def _get_detection_executor(self) -> ThreadPoolExecutor:
+        worker_count = self._detection_worker_count()
+        if self._detection_executor and self._detection_executor_workers == worker_count:
+            return self._detection_executor
+
+        if self._detection_executor:
+            self._detection_executor.shutdown(wait=False, cancel_futures=True)
+
+        self._detection_executor = ThreadPoolExecutor(max_workers=worker_count)
+        self._detection_executor_workers = worker_count
+        return self._detection_executor
+
+    def _clear_finished_detection_futures(self) -> bool:
+        if not self._active_detection_futures:
+            return False
+
+        self._active_detection_futures = {
+            future: variant for future, variant in self._active_detection_futures.items() if not future.done()
+        }
+        return bool(self._active_detection_futures)
 
     def schedule_camera_refresh(self):
         self._camera_refresh_retries_remaining = CAMERA_REFRESH_MAX_RETRIES
@@ -497,6 +510,11 @@ class VideoWidget(QWidget):
     def closeEvent(self, event: QCloseEvent | None) -> None:
         self.aboutToClose.emit(self)  # Emit the signal when the window is about to close
         self._disconnect_camera_hotplug_notifications()
+        if self._detection_executor:
+            self._detection_executor.shutdown(wait=False, cancel_futures=True)
+            self._detection_executor = None
+            self._detection_executor_workers = None
+        self._active_detection_futures.clear()
         self.stop_timer_and_stop_all_cameras()
         super().closeEvent(event)
 
@@ -766,6 +784,12 @@ class VideoWidget(QWidget):
         else:
             self.max_workers = None
 
+        if self._detection_executor and self._detection_executor_workers != self._detection_worker_count():
+            self._detection_executor.shutdown(wait=False, cancel_futures=True)
+            self._detection_executor = None
+            self._detection_executor_workers = None
+        self._active_detection_futures.clear()
+
     def get_detection_config(self):
         return list(self.detection_variants), self.max_workers
 
@@ -804,28 +828,52 @@ class VideoWidget(QWidget):
         surface = pygame.transform.flip(surface, False, True)
         surface = pygame.transform.rotate(surface, -90)
 
-        def transform_and_detect(values: tuple[int, int] | None) -> list[BarcodeData]:
-            if values is None:
-                return self.get_barcodes(array_original)
-            gauss_kernel_size, thres = values
-            try:
-                return self.get_barcodes(
-                    preprocess_for_qr_detection(
-                        array_original.copy(), gauss_kernel_size=gauss_kernel_size, threshold_blockSize=thres
-                    )
-                )
-            except Exception:
-                return []
+        if not self._clear_finished_detection_futures():
 
-        list_of_barcodes = threaded_list(
-            transform_and_detect, self.detection_variants, max_workers=self.max_workers
-        )
-        barcodes = sum(list_of_barcodes, [])
+            def transform_and_detect(values: tuple[int, int] | None) -> list[BarcodeData]:
+                if values is None:
+                    return self.get_barcodes(array_original)
+                gauss_kernel_size, thres = values
+                try:
+                    return self.get_barcodes(
+                        preprocess_for_qr_detection(
+                            array_original.copy(),
+                            gauss_kernel_size=gauss_kernel_size,
+                            threshold_blockSize=thres,
+                        )
+                    )
+                except Exception:
+                    return []
+
+            future_map = {
+                self._get_detection_executor().submit(transform_and_detect, values): values
+                for values in self.detection_variants
+            }
+            done, not_done = wait(future_map, timeout=DETECTION_WAIT_TIMEOUT_SECONDS)
+
+            found_variants: list[DetectionVariant] = []
+            for future in done:
+                try:
+                    detected = future.result()
+                except Exception:
+                    detected = []
+
+                if not detected:
+                    continue
+
+                found_variants.append(future_map[future])
+                barcodes.extend(detected)
+
+            if barcodes:
+                for future in not_done:
+                    future.cancel()
+            else:
+                self._active_detection_futures = {future: future_map[future] for future in not_done}
+        else:
+            found_variants = []
+
         if barcodes:
-            logger.debug(
-                "Found barcodes with parameters "
-                f"{[argument for barcodes, argument in zip(list_of_barcodes, self.detection_variants, strict=False) if barcodes]}"
-            )
+            logger.debug(f"Found barcodes with parameters {found_variants}")
 
         sorted_barcodes = sorted(barcodes, key=lambda item: len(item.data), reverse=True)
         # only show the 1. barcode (with the longest data)
