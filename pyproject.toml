@@ -5,7 +5,7 @@ line-length = 110
 
 [tool.poetry]
 name = "bitcoin-qr-tools"
-version = "3.2.1"
+version = "4.0.0"
 authors = ["andreasgriffin <andreasgriffin@proton.me>"]
 license = "GPL-3.0"
 readme = "README.md"
@@ -18,7 +18,7 @@ pyqt6 = "^6.7.0"
 base58 = "^2.1.1"
 pygame ="^2.6.1"
 mss ="^9.0.1"
-hwi =  { git = "https://github.com/andreasgriffin/HWI.git", branch = "master" } 
+hwi =  { git = "https://github.com/bitcoin-core/HWI.git", branch = "master" } 
 segno = "1.6.1"
 pyqrcode = "^1.2.1"
 pillow = ">=10.4.0"
