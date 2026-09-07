@@ -16,6 +16,12 @@ def get_all_pubkey_providers(hwi_descriptor: Descriptor) -> list[PubkeyProvider]
 
 def get_adapted_hwi_descriptor(descriptor_str: str, new_derivation_path: str) -> Descriptor:
     hwi_descriptor = parse_descriptor(descriptor_str)
+    # HWI parses a derivation suffix only as part of a full key expression. ``00`` is a
+    # throwaway hexadecimal key, so ``00/<0;1>/*`` lets HWI turn ``/<0;1>/*`` into its
+    # typed deriv_path, ranged, and multipath_len fields without changing any real key.
+    # key_expr_index is a key's position in a descriptor (e.g. 1 for the second key in
+    # multi(2,key0,key1)). This temporary provider has no descriptor position, so 0 is
+    # arbitrary and is not copied to the real providers.
     adapted_path = PubkeyProvider.parse(f"00{new_derivation_path}", key_expr_index=0)
     pubkey_providers = get_all_pubkey_providers(hwi_descriptor)
     for pubkey_provider in pubkey_providers:
