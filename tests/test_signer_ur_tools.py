@@ -1,6 +1,7 @@
 from typing import List
 
 import bdkpython as bdk
+import pytest
 from hwilib.descriptor import parse_descriptor
 
 from bitcoin_qr_tools.data import Data, DataType
@@ -256,3 +257,90 @@ def test_encode_descriptor_multi_sig3():
 
     # URComparator.verbose_compare_output(output, expected_output)
     assert output.to_cbor() == expected_output.to_cbor()
+
+
+####  URTools path/encoding internals
+
+
+def _components(kp):
+    return [(c.index, c.hardened, c.wildcard) for c in kp.components]
+
+
+def test_derivation_path_to_keypath_converts_typed_paths():
+    # a non-ranged path becomes components without a trailing wildcard
+    kp = URTools._derivation_path_to_keypath([[0], [12]], ranged=False)
+    assert _components(kp) == [(0, False, False), (12, False, False)]
+
+    # the hardened high bit is decoded into the hardened flag
+    kp = URTools._derivation_path_to_keypath([[0x80000000], [12]], ranged=False)
+    assert _components(kp) == [(0, True, False), (12, False, False)]
+
+    # a ranged-only "/*" path (no fixed components) yields just the wildcard
+    kp = URTools._derivation_path_to_keypath(None, ranged=True)
+    assert _components(kp) == [(None, False, True)]
+
+    # ranged appends the wildcard after the fixed components
+    kp = URTools._derivation_path_to_keypath([[0]], ranged=True)
+    assert _components(kp) == [(0, False, False), (None, False, True)]
+
+    # nothing to encode: empty components and the keystone-compatible defaults
+    kp = URTools._derivation_path_to_keypath(None, ranged=False)
+    assert kp.components == []
+    assert kp.depth == 0
+    assert kp.source_fingerprint is None
+
+
+def test_derivation_path_to_keypath_rejects_multipath():
+    # UR crypto-output has no representation for <a;b> multipath segments
+    with pytest.raises(AssertionError):
+        URTools._derivation_path_to_keypath([[0, 1]], ranged=True)
+
+
+def test_pubkey_provider_hdkey_roundtrip_preserves_path_shapes():
+    xpub = "xpub6CEgqLoi7LDrHbhDUXePVGwqxNaiLLcwusnzxTCULc7X337quHv1TamzNBXqNMtmwKuQKHEBquk8Sj8CjUAqehCR7MrqDsQdyYADKsjuxA8"
+    origin = "[0439f926/84'/0'/0']"
+
+    for suffix, expected_deriv_path, expected_ranged in [
+        ("", None, False),
+        ("/*", None, True),
+        ("/0/12", [[0], [12]], False),
+        ("/0/*", [[0]], True),
+    ]:
+        provider = parse_descriptor(f"wpkh({origin}{xpub}{suffix})").pubkeys[0]
+        hdkey = URTools._pubkey_provider_to_hdkey(provider)
+
+        decoded = URTools._hd_key_to_pubkey_provider(hdkey)
+        assert decoded.pubkey == provider.pubkey
+        assert decoded.origin.to_string() == provider.origin.to_string()
+        assert decoded.deriv_path == expected_deriv_path
+        assert decoded.ranged is expected_ranged
+
+        # re-encoding the decoded provider must yield a byte-identical HDKey
+        assert URTools._pubkey_provider_to_hdkey(decoded).to_cbor() == hdkey.to_cbor()
+
+
+def test_encode_ur_output_sorts_sortedmulti_keys():
+    # keys given in descending pubkey order; sortedmulti must emit them ascending
+    desc = (
+        "wsh(sortedmulti(1,"
+        "[5459f23b/48'/1'/0'/2']tpubDF5XHNeYNBkmPio8Zkw8zz6hBFoQ5BgXthUENZ7x51nbgNeC7exH6ZR8ZHSLEkLrKLxL1ELarJoDcZ1ZCAVCGALKA2V2KrNfegb2dPvdY5K,"
+        "[5aa39a43/48'/1'/0'/2']tpubDDyGGnd9qGbDsccDSe2imVHJPd96WysYkMVAf95PWzbbCmmKHSW7vLxvrTW3HsAau9MWirkJsyaALGJwqwcReu3LZVMg6XbRgBNYTtKXeuD))"
+    )
+    output = URTools.encode_ur_output(desc)
+    pubkeys = [k.bip32_key(include_derivation_path=False) for k in output.crypto_key.hd_keys]
+    assert pubkeys == sorted(pubkeys)
+
+
+def test_encode_ur_output_preserves_unsorted_multi_key_order():
+    # plain multi (not sortedmulti) keeps the descriptor's key order
+    desc = (
+        "wsh(multi(1,"
+        "[5459f23b/48'/1'/0'/2']tpubDF5XHNeYNBkmPio8Zkw8zz6hBFoQ5BgXthUENZ7x51nbgNeC7exH6ZR8ZHSLEkLrKLxL1ELarJoDcZ1ZCAVCGALKA2V2KrNfegb2dPvdY5K,"
+        "[5aa39a43/48'/1'/0'/2']tpubDDyGGnd9qGbDsccDSe2imVHJPd96WysYkMVAf95PWzbbCmmKHSW7vLxvrTW3HsAau9MWirkJsyaALGJwqwcReu3LZVMg6XbRgBNYTtKXeuD))"
+    )
+    output = URTools.encode_ur_output(desc)
+    pubkeys = [k.bip32_key(include_derivation_path=False) for k in output.crypto_key.hd_keys]
+    assert pubkeys == [
+        "tpubDF5XHNeYNBkmPio8Zkw8zz6hBFoQ5BgXthUENZ7x51nbgNeC7exH6ZR8ZHSLEkLrKLxL1ELarJoDcZ1ZCAVCGALKA2V2KrNfegb2dPvdY5K",
+        "tpubDDyGGnd9qGbDsccDSe2imVHJPd96WysYkMVAf95PWzbbCmmKHSW7vLxvrTW3HsAau9MWirkJsyaALGJwqwcReu3LZVMg6XbRgBNYTtKXeuD",
+    ]
