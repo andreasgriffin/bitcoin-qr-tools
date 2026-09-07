@@ -2,11 +2,15 @@ import binascii
 
 import bdkpython as bdk
 import pytest
+from hwilib.descriptor import parse_descriptor
 
 from bitcoin_qr_tools.data import Data, DataType, InconsistentDescriptors, SignerInfo
 from bitcoin_qr_tools.multipath_descriptor import (
+    address_descriptor_from_multipath_descriptor,
     convert_to_bdk_descriptor,
     convert_to_multipath_descriptor,
+    get_adapted_hwi_descriptor,
+    get_all_pubkey_providers,
 )
 from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
 from bitcoin_qr_tools.unified_encoder import QrExportTypes, UnifiedEncoder
@@ -67,6 +71,62 @@ def test_convert_to_multipath_descriptor():
         right_network=bdk.Network.BITCOIN,
         wrong_network=bdk.Network.TESTNET,
     )
+
+
+def test_get_adapted_hwi_descriptor_uses_typed_derivation_paths():
+    descriptor_str = (
+        "wpkh([a42c6dd3/84h/1h/0h]"
+        "tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks/9/*)"
+    )
+
+    for path, expected_deriv_path, expected_ranged, expected_multipath_len in [
+        ("", None, False, 1),
+        ("/*", None, True, 1),
+        ("/0/12", [[0], [12]], False, 1),
+        ("/<0;1>/*", [[0, 1]], True, 2),
+    ]:
+        adapted_descriptor = get_adapted_hwi_descriptor(descriptor_str, path)
+        provider = get_all_pubkey_providers(adapted_descriptor)[0]
+
+        assert provider.deriv_path == expected_deriv_path
+        assert provider.ranged is expected_ranged
+        assert provider.multipath_len == expected_multipath_len
+        assert provider.to_string(hardened_char="'").endswith(path)
+
+
+def test_get_adapted_hwi_descriptor_updates_nested_pubkeys():
+    descriptor_str = (
+        "wsh(sortedmulti(2,"
+        "[45f35351/48h/1h/0h/2h]tpubDEY3tNWvDs8J6xAmwoirxgff61gPN1V6U5numeb6xjvZRB883NPPpRYHt2A6fUE3YyzDLezFfuosBdXsdXJhJUcpqYWF9EEBmWqG3rG8sdy/0/*,"
+        "[829074ff/48h/1h/0h/2h]tpubDDx9arPwEvHGnnkKN1YJXFE4W6JZXyVX9HGjZW75nWe1FCsTYu2k3i7VtCwhGR9zj6UUYnseZUnwL7T6Znru3NmXkcjEQxMqRx7Rxz8rPp4/0/*,"
+        "[d5b43540/48h/1h/0h/2h]tpubDFnCcKU3iUF4sPeQC68r2ewDaBB7TvLmQBTs12hnNS8nu6CPjZPmzapp7Woz6bkFuLfSjSpg6gacheKBaWBhDnEbEpKtCnVFdQnfhYGkPQF/0/*))"
+    )
+
+    providers = get_all_pubkey_providers(
+        get_adapted_hwi_descriptor(descriptor_str, new_derivation_path="/<0;1>/*")
+    )
+
+    assert len(providers) == 3
+    assert all(provider.deriv_path == [[0, 1]] for provider in providers)
+    assert all(provider.ranged for provider in providers)
+    assert all(provider.multipath_len == 2 for provider in providers)
+
+
+def test_address_descriptor_from_multipath_descriptor_is_not_ranged():
+    descriptor = convert_to_multipath_descriptor(
+        "wpkh([a42c6dd3/84h/1h/0h]tpubDDnGNapGEY6AZAdQbfRJgMg9fvz8pUBrLwvyvUqEgcUfgzM6zc2eVK4vY9x9L5FJWdX8WumXuLEDV5zDZnTfbn87vLe9XceCFwTu9so9Kks/0/*)",
+        bdk.Network.REGTEST,
+    )
+
+    address_descriptor = address_descriptor_from_multipath_descriptor(
+        descriptor, bdk.KeychainKind.INTERNAL, address_index=12
+    )
+    provider = get_all_pubkey_providers(parse_descriptor(address_descriptor))[0]
+
+    assert provider.deriv_path == [[1], [12]]
+    assert not provider.ranged
+    assert "/1/12)" in address_descriptor
+    assert "/*" not in address_descriptor
 
 
 def test_descriptor():

@@ -293,8 +293,11 @@ class URTools:
             fingerprint=hdkey.origin.source_fingerprint, path=parse_path(hdkey.origin.path())
         )
         xpub = hdkey.bip32_key(include_derivation_path=False)
-        deriv_path = f"/{hdkey.children.path()}"
-        return PubkeyProvider(origin=key_origin, pubkey=xpub, deriv_path=deriv_path)
+        pubkey_provider = PubkeyProvider.parse(
+            f"{xpub}/{hdkey.children.path()}" if hdkey.children else xpub, key_expr_index=0
+        )
+        pubkey_provider.origin = key_origin
+        return pubkey_provider
 
     @classmethod
     def _key_origin_to_keypath(cls, key_origin_info: KeyOriginInfo, fingerprint: bytes = None) -> UR_KeyPath:
@@ -318,25 +321,23 @@ class URTools:
         return UR_KeyPath(components=components, source_fingerprint=fingerprint, depth=len(components))
 
     @classmethod
-    def _derivation_path_to_keypath(cls, derivation_path: str) -> UR_KeyPath:
-        parts = derivation_path.lstrip("/").split("/")
-
+    def _derivation_path_to_keypath(
+        cls, derivation_path: list[list[int]] | None, ranged: bool = False
+    ) -> UR_KeyPath:
         components = []
-        for part in parts:
-            if part == "*":
-                # Wildcard component
-                component = UR_PathComponent(index=None, hardened=False)
-                component.wildcard = True
-                components.append(component)
-            else:
-                # Regular BIP32 index
-                integer_idx = int(part)
-                hardened = (integer_idx & 0x80000000) != 0
-                index = integer_idx & ~0x80000000 if hardened else integer_idx
+        for part in derivation_path or []:
+            assert len(part) == 1, "UR output does not support multipath derivation paths"
+            integer_idx = part[0]
+            hardened = (integer_idx & 0x80000000) != 0
+            index = integer_idx & ~0x80000000 if hardened else integer_idx
+            component = UR_PathComponent(index=index, hardened=hardened)
+            component.wildcard = False
+            components.append(component)
 
-                component = UR_PathComponent(index=index, hardened=hardened)
-                component.wildcard = False
-                components.append(component)
+        if ranged:
+            component = UR_PathComponent(index=None, hardened=False)
+            component.wildcard = True
+            components.append(component)
 
         depth = 0  # keystone lets this at 0.  len(components)
         return UR_KeyPath(components=components, source_fingerprint=None, depth=depth)
@@ -378,8 +379,8 @@ class URTools:
 
         # Parse the children path if provided
         children_keypath = (
-            cls._derivation_path_to_keypath(pubkey_provider.deriv_path)
-            if pubkey_provider.deriv_path
+            cls._derivation_path_to_keypath(pubkey_provider.deriv_path, ranged=pubkey_provider.ranged)
+            if pubkey_provider.deriv_path or pubkey_provider.ranged
             else None
         )
 
@@ -441,7 +442,12 @@ class URTools:
             if not isinstance(multisig_descriptor, MultisigDescriptor):
                 raise Exception("descritpor not consistent with a multisig")
 
-            hd_keys = [cls._pubkey_provider_to_hdkey(pubkey) for pubkey in multisig_descriptor.pubkeys]
+            pubkey_providers = (
+                sorted(multisig_descriptor.pubkeys)
+                if multisig_descriptor.is_sorted
+                else multisig_descriptor.pubkeys
+            )
+            hd_keys = [cls._pubkey_provider_to_hdkey(pubkey) for pubkey in pubkey_providers]
             crypto_key = UR_MultiKey(threshold=multisig_descriptor.thresh, ec_keys=[], hd_keys=hd_keys)
         else:
             raise NotImplementedError(f"{len(hwi_descriptor.pubkeys)} pubkeys")
@@ -456,12 +462,11 @@ class URTools:
 
         output_descriptors = []
         for signer_info, descriptor_name in zip(signer_infos, descriptor_names, strict=False):
-            pubkey_provider = PubkeyProvider(
-                origin=KeyOriginInfo.from_string(
-                    signer_info.key_origin.replace("m", signer_info.fingerprint)
-                ),
-                pubkey=signer_info.xpub,
-                deriv_path=signer_info.derivation_path,
+            pubkey_provider = PubkeyProvider.parse(
+                f"{signer_info.xpub}{signer_info.derivation_path or ''}", key_expr_index=0
+            )
+            pubkey_provider.origin = KeyOriginInfo.from_string(
+                signer_info.key_origin.replace("m", signer_info.fingerprint)
             )
             crypto_key = cls._pubkey_provider_to_hdkey(pubkey_provider)
 

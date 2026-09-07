@@ -16,13 +16,16 @@ def get_all_pubkey_providers(hwi_descriptor: Descriptor) -> list[PubkeyProvider]
 
 def get_adapted_hwi_descriptor(descriptor_str: str, new_derivation_path: str) -> Descriptor:
     hwi_descriptor = parse_descriptor(descriptor_str)
+    adapted_path = PubkeyProvider.parse(f"00{new_derivation_path}", key_expr_index=0)
     pubkey_providers = get_all_pubkey_providers(hwi_descriptor)
     for pubkey_provider in pubkey_providers:
-        pubkey_provider.deriv_path = new_derivation_path
+        pubkey_provider.deriv_path = adapted_path.deriv_path
+        pubkey_provider.ranged = adapted_path.ranged
+        pubkey_provider.multipath_len = adapted_path.multipath_len
     return hwi_descriptor
 
 
-def get_equal_derivation_path(descriptor_str: str) -> str | None:
+def get_equal_derivation_path(descriptor_str: str) -> list[list[int]] | None:
     "Returns the derivation_path is all derivation_paths are equal. Otherwise None"
 
     hwi_descriptor = parse_descriptor(descriptor_str)

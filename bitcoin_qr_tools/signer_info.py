@@ -11,6 +11,7 @@ from hwilib.descriptor import (
     _get_func_expr,
     parse_descriptor,
 )
+from hwilib.key import multipath_to_string
 
 from bitcoin_qr_tools.converter_xpub import ConverterXpub
 from bitcoin_qr_tools.utils import WrongNetwork, _flatten_descriptors
@@ -108,11 +109,19 @@ class SignerInfo:
                     f"""Expected Network {network.name}, but got {"Testnet" if is_testnet else "Mainnet"}"""
                 )
 
+        derivation_path = (
+            multipath_to_string(hwi_pk_prov.deriv_path)
+            if hwi_pk_prov.deriv_path is not None
+            else ""
+        )
+        if hwi_pk_prov.ranged:
+            derivation_path += "/*"
+
         return SignerInfo(
             fingerprint=hwi_pk_prov.origin.fingerprint.hex(),
             key_origin=hwi_pk_prov.origin.get_derivation_path(),
             xpub=cls._normalize_xpub_and_validate_network(hwi_pk_prov.pubkey, network),
-            derivation_path=hwi_pk_prov.deriv_path,
+            derivation_path=derivation_path or None,
             name=name,
         )
 
