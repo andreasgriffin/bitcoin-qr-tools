@@ -1,5 +1,14 @@
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
+
+from PyQt6.QtWidgets import QApplication
+
+import bitcoin_qr_tools.gui.video_widget as video_widget_module
 from bitcoin_qr_tools.gui.video_widget import (
     SCREEN_CAMERA_KEY,
+    CameraPermissionStatus,
+    VideoWidget,
     choose_camera_key_after_refresh,
     device_camera_key,
     device_identifier,
@@ -74,3 +83,45 @@ def test_should_retry_empty_camera_refresh_when_previous_devices_exist():
         refreshed_device_keys=[],
         retries_remaining=2,
     )
+
+
+class _FakeScreenCamera:
+    def stop(self):
+        pass
+
+
+def _get_qapplication() -> QApplication:
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])
+    return app
+
+
+def test_close_returns_quickly_with_blocked_detection_worker(monkeypatch):
+    _get_qapplication()
+    monkeypatch.setattr(
+        video_widget_module, "ensure_camera_permission", lambda: CameraPermissionStatus.DENIED
+    )
+    monkeypatch.setattr(video_widget_module.pygame.camera, "init", lambda: None)
+    monkeypatch.setattr(video_widget_module, "ScreenCamera", _FakeScreenCamera)
+    monkeypatch.setattr(VideoWidget, "_connect_camera_hotplug_notifications", lambda self: None)
+
+    widget = VideoWidget()
+    unblock_worker = threading.Event()
+    executor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(unblock_worker.wait)
+    widget._detection_executor = executor
+    widget._detection_executor_workers = 1
+    widget._active_detection_futures = {future: None}
+
+    started = time.monotonic()
+    widget.close()
+    elapsed = time.monotonic() - started
+
+    assert elapsed < 0.2
+    assert widget._detection_executor is None
+    assert widget._detection_executor_workers is None
+    assert widget._active_detection_futures == {}
+
+    unblock_worker.set()
+    future.result(timeout=1)
