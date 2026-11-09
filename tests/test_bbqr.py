@@ -1,8 +1,26 @@
-import bdkpython as bdk
+import random
 
+import bdkpython as bdk
+import pytest
+
+from bitcoin_qr_tools.bbqr.split import BBQRCapacityError, split_qrs
 from bitcoin_qr_tools.data import Data, DataType, serialized_to_hex
 from bitcoin_qr_tools.unified_decoder import UnifiedDecoder
 from bitcoin_qr_tools.unified_encoder import QrExportTypes, UnifiedEncoder
+
+
+def test_large_bbqr_uses_a_larger_qr_version():
+    payload = random.Random(0).randbytes(300_000)
+
+    with pytest.raises(BBQRCapacityError, match="Cannot make it fit"):
+        split_qrs(payload, "U", max_version=8)
+
+    fragments = UnifiedEncoder.raw_generate_fragments_for_bbqr(
+        raw=payload,
+        max_qr_size=50,
+    )
+
+    assert 1 < len(fragments) <= 1295
 
 
 def test_qqbr_generator():

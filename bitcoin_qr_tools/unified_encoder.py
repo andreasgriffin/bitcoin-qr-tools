@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import bdkpython as bdk
 
-from bitcoin_qr_tools.bbqr.split import split_qrs
+from bitcoin_qr_tools.bbqr.split import BBQRCapacityError, split_qrs
 from bitcoin_qr_tools.data import Data, DataType
 from bitcoin_qr_tools.ur_tools import URTools
 from bitcoin_qr_tools.urtypes.bytes import BYTES
@@ -17,6 +17,8 @@ from .ur.ur import UR
 from .ur.ur_encoder import UREncoder
 
 logger = logging.getLogger(__name__)
+
+MAX_QR_CODE_VERSION = 40
 
 
 @dataclass
@@ -191,7 +193,13 @@ class UnifiedEncoder:
 
     @classmethod
     def raw_generate_fragments_for_bbqr(cls, raw: bytes, file_type="U", max_qr_size=50) -> list[str]:
-        version, parts = split_qrs(
-            raw, file_type, max_version=cls._max_qr_code_version(num_modules=max_qr_size)
-        )
-        return parts
+        """Generate BBQR fragments, increasing QR density when the frame limit requires it."""
+        initial_version = cls._max_qr_code_version(num_modules=max_qr_size)
+        for max_version in range(initial_version, MAX_QR_CODE_VERSION + 1):
+            try:
+                return split_qrs(raw, file_type, max_version=max_version)[1]
+            except BBQRCapacityError:
+                if max_version == MAX_QR_CODE_VERSION:
+                    raise
+
+        raise RuntimeError("BBQR generation exhausted all supported QR versions")
