@@ -16,6 +16,10 @@ from .consts import HEADER_LEN, KNOWN_FILETYPES
 from .utils import encode_data, int2base36, version_to_chars
 
 
+class BBQRCapacityError(ValueError):
+    """Raised when data exceeds the configured BBQR version and frame limits."""
+
+
 def num_qr_needed(ver, ll, split_mod):
     # Determine number of QR's at indicated version would be
     # needed to hold ll characters. when 2 or more QR, consider
@@ -61,7 +65,7 @@ def find_best_version(ll, split_mod, min_split=1, max_split=1295, min_version=5,
     options.sort(key=lambda v: (v[1], v[0]))
 
     if not options:
-        raise ValueError("Cannot make it fit")
+        raise BBQRCapacityError("Cannot make it fit")
 
     return options[0]
 
